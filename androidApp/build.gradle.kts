@@ -1,18 +1,12 @@
 plugins {
-    alias(libs.plugins.androidApplication)
-    alias(libs.plugins.kotlinAndroid)
-    alias(libs.plugins.composeMultiplatform)
-    alias(libs.plugins.composeCompiler)
+    id("testscanner.android.application")
 }
 
 android {
     namespace = "com.testscanner.android"
-    compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
         applicationId = "com.testscanner"
-        minSdk = libs.versions.minSdk.get().toInt()
-        targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
     }
@@ -27,19 +21,13 @@ android {
             )
         }
     }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-}
-
-kotlin {
-    jvmToolchain(libs.versions.jvmTarget.get().toInt())
 }
 
 dependencies {
     implementation(project(":composeApp"))
+    implementation(project(":core:permissions"))
+    implementation(platform(libs.koin.bom))
+    implementation(libs.koin.android)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.ktx)
     implementation(compose.runtime)

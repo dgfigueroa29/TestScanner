@@ -9,8 +9,8 @@ esta tabla — hay un test que verifica que los IDs y las fases no divergen.
 
 | ID | Nombre | Plataformas | Fuente | Fase | Dependencia |
 |---|---|---|---|:---:|---|
-| `GMS_CODE_SCANNER` | Google Code Scanner | Android | Cámara (UI propia) | 2 | `com.google.android.gms:play-services-code-scanner` |
-| `MLKIT_CAMERAX` | ML Kit + CameraX | Android | Cámara | 2 | `com.google.mlkit:barcode-scanning` + `androidx.camera:*` |
+| `GMS_CODE_SCANNER` | Google Code Scanner | Android | Cámara (UI propia) | 2 ✅ | `com.google.android.gms:play-services-code-scanner` |
+| `MLKIT_CAMERAX` | ML Kit + CameraX | Android | Cámara | 2 ✅ | `com.google.mlkit:barcode-scanning` + `androidx.camera:*` |
 | `VISION_IOS` | Vision / AVFoundation | iOS | Cámara | 3 | Framework del sistema |
 | `ZXING_CPP` | ZXing-cpp | Android, iOS, Desktop | Cámara + imagen | 3 | Binding KMP de zxing-cpp |
 | `BROWSER_DETECTOR` | BarcodeDetector API | Web | Cámara + imagen | 4 | API del navegador |

@@ -21,7 +21,10 @@ completa, aunque todavía sin motores de cámara reales.
 - [x] Parser semántico de valores (URL, WiFi, vCard, email, teléfono, geo, producto)
 - [x] MVI de la feature de escaneo + UI de catálogo y resultados
 - [x] Design system propio (tokens, tema claro/oscuro)
-- [x] Tests de dominio: selección, fallback, parser, catálogo
+- [x] Tests de dominio: selección, fallback, parser, catálogo, comparador y marcador
+- [x] Suite de contrato de motores (`BarcodeScannerEngineContractTest`)
+- [x] Comparador de motores en paralelo + métricas por motor (objetivo G5)
+- [x] `build-logic/` con convention plugins
 - [x] SDD, 6 ADRs y catálogo de motores documentados
 
 **Criterio de salida:** la app arranca en Android, Desktop y Web; el catálogo lista los 7 motores
@@ -29,13 +32,14 @@ con su estado real; los tests de `:core:domain` y `:core:data` pasan en CI.
 
 ---
 
-## Fase 2 — Android real
+## Fase 2 — Android real (en curso)
 
-- [ ] `build-logic/` con convention plugins (`kmp-library`, `kmp-compose`, `android-app`)
-- [ ] `:engines:gms-code-scanner` — Google Code Scanner, sin permisos
-- [ ] `:engines:mlkit-camerax` — ML Kit Barcode + CameraX, con overlay propio
-- [ ] `CameraPreview` actual de Android (`PreviewView` en `AndroidView`)
-- [ ] `PermissionController` actual de Android + flujo de denegación permanente
+- [x] `:engines:gms-code-scanner` — Google Code Scanner, sin permisos
+- [x] `:engines:mlkit-camerax` — ML Kit Barcode + CameraX, con linterna, zoom y decodificación de imagen
+- [x] `PermissionController` actual de Android + flujo de denegación permanente
+- [x] Arranque de Koin por plataforma (`initKoin`) con `Context` en Android
+- [ ] `CameraPreview` actual de Android (`PreviewView` en `AndroidView`) enlazando `cameraController`
+- [ ] Overlay de detección sobre el preview usando `cornerPoints`
 - [ ] Historial persistente con Room KMP (`:feature:history`)
 - [ ] Suite de contrato de motores ejecutándose en `androidTest`
 - [ ] CI: `assembleDebug` + lint + detekt en cada PR
@@ -91,10 +95,10 @@ Registrada de forma explícita para que no se olvide:
 
 | # | Deuda | Se salda en |
 |---|---|---|
-| D1 | Sin convention plugins: cada módulo repite su configuración KMP | Fase 2 |
+| ~~D1~~ | ~~Sin convention plugins: cada módulo repite su configuración KMP~~ | **Saldada**: `build-logic/` con `testscanner.kmp.library`, `.kmp.compose` y `.android.application` |
 | D2 | Preferencias en memoria, no persistidas | Fase 2 (`multiplatform-settings`) |
 | D3 | Historial en memoria | Fase 2 (Room KMP) |
 | D4 | Navegación propia sin deep links ni restauración de estado | Fase 3 (revisión ADR-0005) |
 | D5 | Strings hardcodeados en la UI, sin `composeResources` | Fase 2 |
-| D6 | Sin suite de contrato ejecutada contra motores reales (no hay motores de cámara aún) | Fase 2 |
+| D6 | La suite de contrato existe y la pasa el motor manual, pero aún no se ejecuta contra motores de cámara reales | Fase 2 |
 | D7 | `:androidApp` sin ProGuard/R8 configurado para release | Fase 2 |

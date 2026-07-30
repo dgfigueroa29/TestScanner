@@ -1,6 +1,9 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 
+// Único módulo que NO usa `testscanner.kmp.compose`: necesita frameworks de iOS, un ejecutable de
+// Wasm y el target JVM nombrado "desktop" para el plugin de escritorio. Meter todo eso en un
+// convention plugin que solo usaría este módulo sería una abstracción de un solo cliente.
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
@@ -57,6 +60,11 @@ kotlin {
         }
 
         androidMain.dependencies {
+            // Los motores de Android se enlazan SOLO aquí: el binario de iOS, Desktop y Web no
+            // debe cargar ML Kit ni Play Services (RNF-06).
+            implementation(project(":engines:gms-code-scanner"))
+            implementation(project(":engines:mlkit-camerax"))
+
             implementation(libs.androidx.activity.compose)
             implementation(libs.kotlinx.coroutines.android)
             implementation(libs.koin.android)

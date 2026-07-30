@@ -1,4 +1,7 @@
 pluginManagement {
+    // Build incluido con los convention plugins (ver build-logic/).
+    includeBuild("build-logic")
+
     repositories {
         google {
             mavenContent {
@@ -39,8 +42,8 @@ include(":core:scanner-testing")
 
 // Motores de escaneo — un módulo por alternativa (ver docs/ENGINES.md)
 include(":engines:manual")
-// Fase 2: include(":engines:gms-code-scanner")
-// Fase 2: include(":engines:mlkit-camerax")
+include(":engines:gms-code-scanner")
+include(":engines:mlkit-camerax")
 // Fase 3: include(":engines:vision-ios")
 // Fase 3: include(":engines:zxing-cpp")
 // Fase 4: include(":engines:browser-detector")
