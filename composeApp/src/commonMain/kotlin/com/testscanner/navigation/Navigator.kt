@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.update
 /** Destinos de la app. Ver ADR-0005 para por qué la navegación es propia en esta fase. */
 sealed interface Destination {
     data object Scanner : Destination
+    data object Comparison : Destination
     data object History : Destination
 }
 

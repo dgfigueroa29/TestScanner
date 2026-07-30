@@ -16,7 +16,7 @@ y Web con un único código base.
 | Catálogo de los 7 motores con capacidades | ✅ declarado |
 | Selección automática + cadena de fallback | ✅ implementados y testeados |
 | Suite de contrato que todo motor debe pasar | ✅ implementada |
-| Comparador de motores en paralelo + métricas (G5) | ✅ implementados |
+| Comparador de motores con marcador en vivo (G5) | ✅ implementado y en la UI |
 | Motor de entrada manual | ✅ funcional en las 4 plataformas |
 | Google Code Scanner y ML Kit + CameraX (Android) | ✅ implementados, sin compilar aún |
 | Historial persistente con Room KMP | ✅ Android, iOS y Desktop (Web: en memoria) |
@@ -62,7 +62,7 @@ core/designsystem   tema y componentes Compose compartidos
 core/permissions    abstracción de permisos por plataforma
 core/database       Room KMP: historial persistente (sin target wasmJs)
 engines/*           un módulo por alternativa de escaneo
-feature/scanner     MVI + pantalla de escaneo
+feature/scanner     MVI, pantalla de escaneo y comparador de motores
 feature/history     historial filtrable por motor
 composeApp          raíz Compose Multiplatform y composition root de la DI
 androidApp          shell de Android

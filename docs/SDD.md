@@ -227,7 +227,7 @@ TestScanner/
 │   └── mlkit-ocr/                     # (Fase 4) Android + iOS
 │
 ├── feature/
-│   ├── scanner/                       # pantalla de escaneo + selector de motor
+│   ├── scanner/                       # pantalla de escaneo, selector de motor y comparador
 │   └── history/                       # historial, filtrable por motor
 │
 ├── composeApp/                        # raíz CMP: App(), navegación, wiring de DI
@@ -559,8 +559,8 @@ tamaño real del frame, y mapea la UI, que es quien sabe cómo se está escaland
 ### 9.3 Navegación
 
 Navegador propio mínimo (`sealed interface Destination` + backstack en un `StateFlow`), sin
-dependencia externa. Con la llegada del historial el grafo tiene dos destinos; Android le cede el
-botón atrás del sistema y el resto de plataformas usan la barra inferior. Razón: la navegación multiplataforma de Jetpack está aún
+dependencia externa. El grafo tiene tres destinos — escanear, comparar e historial; Android le cede
+el botón atrás del sistema y todas las plataformas usan la barra inferior. Razón: la navegación multiplataforma de Jetpack está aún
 en versiones alpha/beta y no queremos que su ciclo de releases bloquee el nuestro en la fase de
 fundaciones. La migración a `navigation-compose` multiplataforma está prevista para la Fase 3,
 cuando el grafo tenga suficientes destinos como para justificarla. Ver `docs/adr/ADR-0005`.
@@ -707,7 +707,7 @@ código de iOS es mayoritariamente `commonMain` compilado en ellos.
 | **2. Android real** ✅ | `:engines:gms-code-scanner`, `:engines:mlkit-camerax`, preview CameraX + overlay, permisos, convention plugins, historial con Room, CI en GitHub Actions | Escaneo real en Android con dos motores intercambiables en caliente |
 | **3. iOS** | `:engines:vision-ios`, preview con `UIKitView`, shell Xcode, `:engines:zxing-cpp` | Escaneo real en iOS; ZXing-cpp comparable entre Android e iOS |
 | **4. Web y OCR** | `:engines:browser-detector`, `:engines:mlkit-ocr`, escaneo desde imagen (RF-07) | Las cuatro plataformas escanean; OCR disponible como alternativa |
-| **5. Producto** | ✅ `ComparingScannerEngine` + `EngineScoreboard` (adelantados) · pendiente: UI de comparación lado a lado, exportación de historial, Play Feature Delivery | G5 medible en la app |
+| **5. Producto** | ✅ `ComparingScannerEngine`, `EngineScoreboard` y pantalla de comparación (adelantados) · pendiente: exportación de historial, Play Feature Delivery, accesibilidad | G5 medible en la app |
 
 ### 14.1 Qué se elimina en la Fase 1
 
@@ -736,6 +736,22 @@ que preservar (§2.1). El historial de git conserva el estado previo.
 | R6 | Web target sin acceso a cámara en contexto no-HTTPS | Bajo | Documentado; el motor reporta `Unsupported` con la razón |
 | R7 | Sobre-modularización ralentiza el build | Medio | Convention plugins en `build-logic` (Fase 2) y medición con `--scan` |
 | R8 | Deriva entre el catálogo documentado y el código | Bajo | `docs/ENGINES.md` es la fuente; un test verifica que el registro y la tabla coinciden en IDs |
+
+---
+
+### 9.4 Comparación de motores (G5)
+
+`ComparingScannerEngine` ejecuta varios motores en paralelo sobre la misma petición y
+`EngineScoreboard` reduce el stream a métricas por motor. La pantalla "Comparar" los expone.
+
+Un detalle contraintuitivo del diseño: **la petición de comparación no exige escaneo continuo ni
+múltiples códigos**, aunque sería lo natural. Exigirlos filtraría por capacidades y dejaría fuera
+justo al Google Code Scanner, que es *one-shot* y a la vez el motor más interesante de contrastar.
+Basta con pedir la misma fuente y los mismos formatos: cada motor aporta lo que sabe, el que termina
+antes deja de emitir, y el marcador refleja esa diferencia — que es precisamente el dato buscado.
+
+Lo que **sí** se excluye es comparar entre fuentes distintas: la entrada manual no participa en una
+comparación de cámara, porque no es un decodificador y contrastarla no mide nada.
 
 ---
 

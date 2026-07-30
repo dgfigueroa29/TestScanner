@@ -1,0 +1,30 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{kt,kts}]
+# Debe coincidir con `style.MaxLineLength` de config/detekt/detekt.yml: detekt-formatting embebe
+# ktlint, que lee este archivo. Si divergen, las dos reglas se contradicen y el build falla por un
+# motivo que no aparece en ninguna de las dos configuraciones.
+max_line_length = 120
+
+ij_kotlin_allow_trailing_comma = true
+ij_kotlin_allow_trailing_comma_on_call_site = true
+
+# Los @Composable usan PascalCase por convención de Compose.
+ktlint_function_naming_ignore_when_annotated_with = Composable
+
+[*.{yml,yaml,json,toml}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[gradle/wrapper/gradle-wrapper.properties]
+insert_final_newline = false

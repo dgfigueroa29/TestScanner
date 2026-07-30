@@ -13,6 +13,7 @@ import com.testscanner.core.domain.usecase.SaveDetectionUseCase
 import com.testscanner.core.domain.usecase.SelectScannerEngineUseCase
 import com.testscanner.core.domain.usecase.SetPreferredEngineUseCase
 import com.testscanner.core.domain.usecase.SetScanFormatsUseCase
+import com.testscanner.core.domain.usecase.StartComparisonUseCase
 import com.testscanner.core.domain.usecase.StartScanSessionUseCase
 import com.testscanner.core.model.ScannerPlatform
 import com.testscanner.core.scanner.BarcodeScannerEngine
@@ -55,6 +56,7 @@ val domainModule: Module = module {
     factory { SetPreferredEngineUseCase(get()) }
     factory { SetScanFormatsUseCase(get()) }
     factory { StartScanSessionUseCase(get(), get()) }
+    factory { StartComparisonUseCase(get(), get()) }
     factory { DecodeImageUseCase(get(), get()) }
     factory { SaveDetectionUseCase(get()) }
     factory { ObserveScanHistoryUseCase(get()) }

@@ -43,8 +43,8 @@ backstack en un `StateFlow`, con manejo del botón atrás por plataforma.
 
 ## Revisión (Fase 2)
 
-Con la llegada del historial el grafo pasó de uno a **dos destinos**. La decisión se mantiene: dos
-destinos con una barra inferior no justifican una dependencia, y el `Navigator` sigue siendo una
+El grafo pasó de uno a **tres destinos**: escanear, comparar e historial. La decisión se mantiene:
+tres destinos con una barra inferior no justifican una dependencia, y el `Navigator` sigue siendo una
 clase de 30 líneas testeable sin Compose. Android ya le cede el botón atrás del sistema.
 
 El umbral de la revisión no cambia: **seis destinos o la primera necesidad de deep links** obligan a

@@ -17,6 +17,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.testscanner.core.designsystem.TestScannerTheme
 import com.testscanner.feature.history.HistoryScreen
 import com.testscanner.feature.scanner.ScannerScreen
+import com.testscanner.feature.scanner.comparison.ComparisonScreen
 import com.testscanner.navigation.Destination
 import com.testscanner.navigation.Navigator
 import org.koin.compose.KoinContext
@@ -57,6 +58,7 @@ fun App(navigator: Navigator = remember { Navigator() }) {
                 Column(modifier = Modifier.fillMaxSize().padding(padding)) {
                     when (current) {
                         Destination.Scanner -> ScannerScreen()
+                        Destination.Comparison -> ComparisonScreen()
                         Destination.History -> HistoryScreen()
                     }
                 }
@@ -65,9 +67,11 @@ fun App(navigator: Navigator = remember { Navigator() }) {
     }
 }
 
-private val DESTINATIONS = listOf(Destination.Scanner, Destination.History)
+private val DESTINATIONS =
+    listOf(Destination.Scanner, Destination.Comparison, Destination.History)
 
 private fun Destination.title(): String = when (this) {
     Destination.Scanner -> "Escanear"
+    Destination.Comparison -> "Comparar"
     Destination.History -> "Historial"
 }

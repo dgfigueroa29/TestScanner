@@ -44,6 +44,7 @@ con su estado real; los tests de `:core:domain` y `:core:data` pasan en CI.
 - [x] Historial persistente con Room KMP (`:core:database` + `:feature:history`)
 - [x] Navegación entre escáner e historial, con botón atrás de Android
 - [x] CI en GitHub Actions: detekt + tests + Android + Desktop + Web en cada PR, iOS en `main`
+- [x] Higiene del repo: `.editorconfig` alineado con detekt, `.idea/` fuera del control de versiones
 - [ ] Suite de contrato ejecutándose contra los motores de cámara en `androidTest`
 
 **Criterio de salida:** escaneo real en Android alternando dos motores en caliente, con fallback
@@ -87,7 +88,7 @@ recupera correctamente EAN-13 impresos sobre códigos dañados.
 
 - [x] Comparador: ejecutar varios motores sobre la misma petición (`ComparingScannerEngine`)
 - [x] Métricas de latencia y acierto por motor (`EngineScoreboard`)
-- [ ] UI de comparación lado a lado que consuma el marcador
+- [x] Pantalla "Comparar" con el marcador en vivo — **cierra G5**
 - [ ] Exportación del historial (CSV/JSON) y acciones sobre resultados
 - [ ] Play Feature Delivery para los motores pesados de Android (RNF-06)
 - [ ] Accesibilidad completa (RNF-05) y auditoría de privacidad (RNF-03)
@@ -110,5 +111,7 @@ Registrada de forma explícita para que no se olvide:
 | D5 | Strings hardcodeados en la UI, sin `composeResources` | Fase 2 |
 | D6 | La suite de contrato existe y la pasa el motor manual, pero aún no se ejecuta contra motores de cámara reales | Fase 2 |
 | D8 | El zoom se declara como capacidad y el motor lo implementa, pero no hay control de zoom en la UI | Fase 3 |
+| D10 | RF-07 (escanear desde imagen) está en el dominio y en el motor ML Kit, pero sin UI ni selector de archivos | Fase 4 |
+| D11 | La comparación necesita dos motores de cámara: hasta ZXing-cpp (Fase 3) solo es utilizable en Android | Fase 3 |
 | D9 | El historial de Web es de sesión: Room KMP no soporta wasmJs. Requiere un almacén propio sobre IndexedDB | Fase 4 |
 | D7 | `:androidApp` sin ProGuard/R8 configurado para release | Fase 2 |
