@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Tema mínimo del sistema: el aspecto real lo define TestScannerTheme en Compose, compartido
+        con iOS, Desktop y Web. Este solo evita el flash de la ventana durante el arranque.
+    -->
+    <style name="Theme.TestScanner" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

@@ -1,0 +1,51 @@
+build:
+  maxIssues: 0
+
+console-reports:
+  active: true
+
+complexity:
+  LongParameterList:
+    functionThreshold: 8
+    constructorThreshold: 10
+  TooManyFunctions:
+    # Los contratos MVI y los descriptores de motores concentran muchas funciones pequeñas.
+    thresholdInClasses: 15
+    thresholdInFiles: 20
+    ignoreAnnotatedFunctions: [ 'Composable' ]
+
+style:
+  MagicNumber:
+    ignorePropertyDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+    ignoreAnnotated: [ 'Composable' ]
+  MaxLineLength:
+    maxLineLength: 120
+  ReturnCount:
+    max: 4
+  UnusedPrivateMember:
+    active: true
+  ForbiddenComment:
+    active: true
+    values: [ 'FIXME:', 'STOPSHIP:' ]
+
+naming:
+  FunctionNaming:
+    # Los @Composable usan PascalCase por convención de Compose.
+    ignoreAnnotated: [ 'Composable' ]
+  TopLevelPropertyNaming:
+    constantPattern: '[A-Z][_A-Za-z0-9]*'
+
+exceptions:
+  TooGenericExceptionCaught:
+    active: true
+  SwallowedException:
+    active: true
+
+formatting:
+  MaximumLineLength:
+    maxLineLength: 120
+  ArgumentListWrapping:
+    active: false
+  FunctionSignature:
+    active: false
