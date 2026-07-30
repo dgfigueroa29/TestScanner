@@ -35,6 +35,7 @@ include(":core:domain")
 include(":core:data")
 include(":core:designsystem")
 include(":core:permissions")
+include(":core:scanner-testing")
 
 // Motores de escaneo — un módulo por alternativa (ver docs/ENGINES.md)
 include(":engines:manual")

@@ -14,10 +14,11 @@ import com.testscanner.core.scanner.TextInputEngine
 import com.testscanner.core.scanner.TimeProvider
 import com.testscanner.core.scanner.catalog.ScannerEngineCatalog
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.transformWhile
 
 /**
@@ -38,7 +39,16 @@ class ManualInputScannerEngine(
     private val time: TimeProvider = SystemTimeProvider,
 ) : BarcodeScannerEngine, TextInputEngine {
 
-    private val submissions = MutableSharedFlow<String>(extraBufferCapacity = SUBMISSION_BUFFER)
+    /**
+     * Los valores tecleados van por un [Channel] y no por un `MutableSharedFlow`.
+     *
+     * Con un SharedFlow había una carrera real: la sesión se suscribe *después* de emitir
+     * [ScanEvent.SessionStarted], así que un `submit()` hecho en cuanto la UI ve ese evento se
+     * emitía sin suscriptores y se perdía en silencio — la sesión quedaba esperando para siempre.
+     * Un Channel almacena el valor con independencia de si alguien está escuchando, de modo que
+     * "escribo el código nada más abrirse la pantalla" funciona siempre.
+     */
+    private val submissions = Channel<String>(capacity = SUBMISSION_BUFFER)
 
     override val id: ScannerEngineId = ScannerEngineId.ManualInput
 
@@ -48,7 +58,7 @@ class ManualInputScannerEngine(
     override suspend fun availability(): EngineAvailability = EngineAvailability.Available
 
     override suspend fun submit(value: String) {
-        submissions.emit(value)
+        submissions.send(value)
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -57,7 +67,7 @@ class ManualInputScannerEngine(
         emit(ScanEvent.SessionStarted(id))
 
         emitAll(
-            submissions.transformWhile { value ->
+            submissions.receiveAsFlow().transformWhile { value ->
                 val events = eventsFor(value, request, startedAtMillis)
                 events.forEach { emit(it) }
                 // En modo puntual la sesión termina con la primera detección válida; en modo

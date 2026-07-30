@@ -19,20 +19,17 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            // Un motor solo conoce el SPI y el modelo. Nunca el dominio, los datos ni la UI.
+            // Módulo de fixtures: `kotlin("test")` va en commonMain a propósito, porque las clases
+            // que expone son tests abstractos que otros módulos heredan desde su commonTest.
+            api(kotlin("test"))
             api(project(":core:scanner-api"))
-        }
-        commonTest.dependencies {
-            implementation(project(":core:scanner-testing"))
-            implementation(kotlin("test"))
-            implementation(libs.kotlinx.coroutines.test)
-            implementation(libs.turbine)
+            api(libs.kotlinx.coroutines.test)
         }
     }
 }
 
 android {
-    namespace = "com.testscanner.engines.manual"
+    namespace = "com.testscanner.core.scanner.testing"
     compileSdk = libs.versions.compileSdk.get().toInt()
     defaultConfig {
         minSdk = libs.versions.minSdk.get().toInt()
