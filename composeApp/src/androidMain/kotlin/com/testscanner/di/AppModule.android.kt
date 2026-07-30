@@ -1,10 +1,15 @@
 package com.testscanner.di
 
+import android.content.Context
+import com.russhwolf.settings.Settings
+import com.russhwolf.settings.SharedPreferencesSettings
+import com.testscanner.core.data.repository.SettingsScanPreferencesRepository
 import com.testscanner.core.database.DatabaseBuilderFactory
 import com.testscanner.core.database.RoomScanHistoryRepository
 import com.testscanner.core.database.ScanDatabase
 import com.testscanner.core.database.build
 import com.testscanner.core.domain.repository.ScanHistoryRepository
+import com.testscanner.core.domain.repository.ScanPreferencesRepository
 import com.testscanner.core.model.ScannerPlatform
 import com.testscanner.core.permissions.AndroidPermissionController
 import com.testscanner.core.permissions.PermissionController
@@ -50,4 +55,11 @@ actual fun platformModule(): Module = module {
     single { DatabaseBuilderFactory(androidContext()).create().build() }
     single { get<ScanDatabase>().detectionDao() }
     single<ScanHistoryRepository> { RoomScanHistoryRepository(get()) }
+
+    // Preferencias persistentes: multiplatform-settings cubre las cuatro plataformas, así que
+    // aquí no hay excepciones como sí las hay con el historial.
+    single<Settings> { SharedPreferencesSettings(
+            androidContext().getSharedPreferences("testscanner", Context.MODE_PRIVATE),
+        ) }
+    single<ScanPreferencesRepository> { SettingsScanPreferencesRepository(get()) }
 }

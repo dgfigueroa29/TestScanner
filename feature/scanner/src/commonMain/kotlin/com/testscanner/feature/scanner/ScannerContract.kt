@@ -28,6 +28,7 @@ data class ScannerState(
     val detections: List<Detection> = emptyList(),
     val manualInput: String = "",
     val torchEnabled: Boolean = false,
+    val zoomRatio: Float = 1f,
     val error: ScanError? = null,
 ) {
     val usableEngines: List<EngineStatus> get() = catalog.filter { it.isUsable }
@@ -61,6 +62,7 @@ sealed interface ScannerAction {
     data class ManualInputChanged(val value: String) : ScannerAction
     data object SubmitManualInput : ScannerAction
     data object ToggleTorch : ScannerAction
+    data class SetZoom(val ratio: Float) : ScannerAction
     data object RequestCameraPermission : ScannerAction
     data object DismissError : ScannerAction
 }

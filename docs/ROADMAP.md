@@ -45,6 +45,7 @@ con su estado real; los tests de `:core:domain` y `:core:data` pasan en CI.
 - [x] Navegación entre escáner e historial, con botón atrás de Android
 - [x] CI en GitHub Actions: detekt + tests + Android + Desktop + Web en cada PR, iOS en `main`
 - [x] Higiene del repo: `.editorconfig` alineado con detekt, `.idea/` fuera del control de versiones
+- [x] Preferencias persistentes con `multiplatform-settings` (D2) y control de zoom en la UI (D8)
 - [ ] Suite de contrato ejecutándose contra los motores de cámara en `androidTest`
 
 **Criterio de salida:** escaneo real en Android alternando dos motores en caliente, con fallback
@@ -63,7 +64,7 @@ verificable desactivando Play Services.
 - [ ] `CameraPreview` actual de iOS (`UIKitView` con `AVCaptureVideoPreviewLayer`)
 - [ ] `:engines:zxing-cpp` — mismo decodificador en Android, iOS y Desktop
 - [ ] Revisión de ADR-0005: el grafo ya tiene 2 destinos; migrar a `navigation-compose` si llega a 6 o aparecen deep links
-- [ ] Preferencias persistentes con `multiplatform-settings` (deuda D2)
+
 - [ ] CI: `linkDebugFrameworkIosSimulatorArm64` en runner macOS
 
 **Criterio de salida:** escaneo real en iOS; ZXing-cpp produce resultados comparables entre
@@ -105,12 +106,12 @@ Registrada de forma explícita para que no se olvide:
 | # | Deuda | Se salda en |
 |---|---|---|
 | ~~D1~~ | ~~Sin convention plugins: cada módulo repite su configuración KMP~~ | **Saldada**: `build-logic/` con `testscanner.kmp.library`, `.kmp.compose` y `.android.application` |
-| D2 | Preferencias en memoria, no persistidas | Fase 3 (`multiplatform-settings`) |
+| ~~D2~~ | ~~Preferencias en memoria, no persistidas~~ | **Saldada**: `multiplatform-settings` en las cuatro plataformas |
 | ~~D3~~ | ~~Historial en memoria~~ | **Saldada**: Room KMP en Android, iOS y Desktop. En Web sigue en memoria porque Room no tiene target wasmJs |
 | D4 | Navegación propia sin deep links ni restauración de estado | Fase 3 (revisión ADR-0005) |
 | D5 | Strings hardcodeados en la UI, sin `composeResources` | Fase 2 |
 | D6 | La suite de contrato existe y la pasa el motor manual, pero aún no se ejecuta contra motores de cámara reales | Fase 2 |
-| D8 | El zoom se declara como capacidad y el motor lo implementa, pero no hay control de zoom en la UI | Fase 3 |
+| ~~D8~~ | ~~El zoom se declara como capacidad pero no hay control en la UI~~ | **Saldada**: slider derivado de `canControlZoom` |
 | D10 | RF-07 (escanear desde imagen) está en el dominio y en el motor ML Kit, pero sin UI ni selector de archivos | Fase 4 |
 | D11 | La comparación necesita dos motores de cámara: hasta ZXing-cpp (Fase 3) solo es utilizable en Android | Fase 3 |
 | D9 | El historial de Web es de sesión: Room KMP no soporta wasmJs. Requiere un almacén propio sobre IndexedDB | Fase 4 |

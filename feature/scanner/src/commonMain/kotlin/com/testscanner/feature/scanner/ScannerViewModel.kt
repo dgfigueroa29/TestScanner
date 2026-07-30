@@ -72,6 +72,7 @@ class ScannerViewModel(
             is ScannerAction.ManualInputChanged -> _state.update { it.copy(manualInput = action.value) }
             ScannerAction.SubmitManualInput -> submitManualInput()
             ScannerAction.ToggleTorch -> toggleTorch()
+            is ScannerAction.SetZoom -> setZoom(action.ratio)
             ScannerAction.RequestCameraPermission -> requestCameraPermission()
             ScannerAction.DismissError -> _state.update { it.copy(error = null) }
         }
@@ -159,7 +160,12 @@ class ScannerViewModel(
         sessionJob?.cancel()
         sessionJob = null
         _state.update {
-            it.copy(sessionStatus = SessionStatus.Idle, activeEngineId = null, torchEnabled = false)
+            it.copy(
+                sessionStatus = SessionStatus.Idle,
+                activeEngineId = null,
+                torchEnabled = false,
+                zoomRatio = 1f,
+            )
         }
     }
 
@@ -219,15 +225,24 @@ class ScannerViewModel(
      */
     private fun toggleTorch() {
         viewModelScope.launch {
-            val control = _state.value.activeEngineId
-                ?.let(engineRepository::engine) as? CameraControlEngine
-                ?: return@launch
+            val control = cameraControlOfActiveEngine() ?: return@launch
 
             val enabled = !_state.value.torchEnabled
             control.setTorch(enabled)
             _state.update { it.copy(torchEnabled = enabled) }
         }
     }
+
+    private fun setZoom(ratio: Float) {
+        viewModelScope.launch {
+            val control = cameraControlOfActiveEngine() ?: return@launch
+            control.setZoomRatio(ratio)
+            _state.update { it.copy(zoomRatio = ratio) }
+        }
+    }
+
+    private fun cameraControlOfActiveEngine(): CameraControlEngine? =
+        _state.value.activeEngineId?.let(engineRepository::engine) as? CameraControlEngine
 
     /**
      * Tras conceder el permiso hay que refrescar el catálogo: la disponibilidad de los motores de

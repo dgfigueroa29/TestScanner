@@ -20,6 +20,7 @@ y Web con un único código base.
 | Motor de entrada manual | ✅ funcional en las 4 plataformas |
 | Google Code Scanner y ML Kit + CameraX (Android) | ✅ implementados, sin compilar aún |
 | Historial persistente con Room KMP | ✅ Android, iOS y Desktop (Web: en memoria) |
+| Preferencias persistentes | ✅ las cuatro plataformas |
 | CI en GitHub Actions | ✅ detekt, tests, Android, Desktop, Web y iOS |
 | Vision (iOS), ZXing-cpp, BarcodeDetector, OCR | ⏳ fases 3–4 |
 

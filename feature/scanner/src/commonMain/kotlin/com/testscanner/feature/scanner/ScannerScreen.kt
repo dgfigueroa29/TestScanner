@@ -21,6 +21,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -206,6 +207,18 @@ private fun SessionControls(state: ScannerState, onAction: (ScannerAction) -> Un
                 }
             }
 
+            if (state.canControlZoom) {
+                Text(
+                    text = "Zoom ${state.zoomRatio.toInt()}x",
+                    style = MaterialTheme.typography.labelMedium,
+                )
+                Slider(
+                    value = state.zoomRatio,
+                    onValueChange = { onAction(ScannerAction.SetZoom(it)) },
+                    valueRange = MIN_ZOOM..MAX_ZOOM,
+                )
+            }
+
             if (state.isManualEntryActive) {
                 ManualEntryField(state, onAction)
             }
@@ -317,3 +330,7 @@ private fun EngineAvailability.label(): String = when (this) {
 }
 
 private const val VIEWFINDER_ASPECT_RATIO = 3f / 4f
+
+// El rango real depende de la cámara; el motor recorta al máximo que admita el dispositivo.
+private const val MIN_ZOOM = 1f
+private const val MAX_ZOOM = 5f

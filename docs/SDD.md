@@ -589,13 +589,19 @@ inyectan (`DispatcherProvider`) para que los tests puedan sustituirlos por `Unco
 
 | Dato | Almacén | Estado |
 |---|---|---|
-| Motor preferido, filtros de formato, ajustes | en memoria hoy; `multiplatform-settings` pendiente | deuda D2 |
+| Motor preferido, filtros de formato, ajustes | **`multiplatform-settings`** en las cuatro plataformas | ✅ implementado |
 | Historial de escaneos (RF-11) | **Room KMP** en Android, iOS y Desktop; en memoria en Web | ✅ implementado |
 
 El historial se definió en la Fase 1 como **interfaz de repositorio** (`ScanHistoryRepository`) con
 una implementación en memoria detrás. Sustituirla por Room en la Fase 2 no tocó ni el dominio ni la
 UI: solo cambió el binding de Koin. Era exactamente la apuesta que justificaba definir el contrato
 antes que el almacén.
+
+Las preferencias sí cubren las cuatro plataformas — `multiplatform-settings` mapea a
+SharedPreferences, NSUserDefaults, `java.util.prefs` y `localStorage`. Su almacén es síncrono, así
+que la parte observable es un `StateFlow` hidratado al construir y escrito en cada cambio: no se usa
+la API de flujos de la librería, que sigue siendo experimental y no aporta nada mientras nadie más
+escriba en esas claves.
 
 **Room KMP no tiene target wasmJs.** Es una limitación real de la librería, no una decisión de
 diseño, y tiene dos consecuencias que conviene tener presentes:

@@ -1,7 +1,11 @@
 package com.testscanner.di
 
+import com.russhwolf.settings.Settings
+import com.russhwolf.settings.StorageSettings
 import com.testscanner.core.data.repository.InMemoryScanHistoryRepository
+import com.testscanner.core.data.repository.SettingsScanPreferencesRepository
 import com.testscanner.core.domain.repository.ScanHistoryRepository
+import com.testscanner.core.domain.repository.ScanPreferencesRepository
 import com.testscanner.core.model.ScannerPlatform
 import com.testscanner.core.permissions.AlwaysGrantedPermissionController
 import com.testscanner.core.permissions.PermissionController
@@ -24,4 +28,9 @@ actual fun platformModule(): Module = module {
     // Room KMP no tiene target wasmJs. El historial de Web es de sesión, y eso queda visible aquí
     // en lugar de escondido tras un actual que fingiera persistir.
     single<ScanHistoryRepository> { InMemoryScanHistoryRepository() }
+
+    // Preferencias persistentes: multiplatform-settings cubre las cuatro plataformas, así que
+    // aquí no hay excepciones como sí las hay con el historial.
+    single<Settings> { StorageSettings() }
+    single<ScanPreferencesRepository> { SettingsScanPreferencesRepository(get()) }
 }
