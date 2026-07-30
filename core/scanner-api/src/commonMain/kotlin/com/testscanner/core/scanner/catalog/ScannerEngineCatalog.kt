@@ -74,10 +74,15 @@ object ScannerEngineCatalog {
         plannedPhase = 3,
         requiresDependency = null,
         strength = "Nativo, rápido y sin dependencias de terceros",
-        limitation = "Solo iOS; el set de simbologías varía según la versión del sistema",
+        limitation = "Solo iOS; sin UPC-A propio (lo reporta como EAN-13) y todavía sin imagen " +
+            "estática, que llega con RF-07 usando el framework Vision",
         capabilities = ScannerCapabilities(
-            supportedFormats = LINEAR_AND_MATRIX + BarcodeFormat.DataBar + BarcodeFormat.MicroQrCode,
-            sources = setOf(ScanSource.LiveCamera, ScanSource.StaticImage),
+            // Sin UPC-A: AVFoundation no tiene ese tipo y devuelve los UPC-A como EAN-13 con un
+            // cero delante, que es lo que son. Declararlo sería prometer lo que no da.
+            supportedFormats = LINEAR_AND_MATRIX - BarcodeFormat.UpcA + BarcodeFormat.MicroQrCode,
+            // Imagen estática llega en la Fase 4 con Vision; declararlo ahora sería mentir y el
+            // selector elegiría este motor para peticiones que no puede atender.
+            sources = setOf(ScanSource.LiveCamera),
             supportsMultipleCodes = true,
             supportsContinuousScan = true,
             supportsTorch = true,

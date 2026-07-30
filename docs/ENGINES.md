@@ -11,7 +11,7 @@ esta tabla — hay un test que verifica que los IDs y las fases no divergen.
 |---|---|---|---|:---:|---|
 | `GMS_CODE_SCANNER` | Google Code Scanner | Android | Cámara (UI propia) | 2 ✅ | `com.google.android.gms:play-services-code-scanner` |
 | `MLKIT_CAMERAX` | ML Kit + CameraX | Android | Cámara | 2 ✅ | `com.google.mlkit:barcode-scanning` + `androidx.camera:*` |
-| `VISION_IOS` | Vision / AVFoundation | iOS | Cámara | 3 | Framework del sistema |
+| `VISION_IOS` | Vision / AVFoundation | iOS | Cámara | 3 ✅ | Framework del sistema |
 | `ZXING_CPP` | ZXing-cpp | Android, iOS, Desktop | Cámara + imagen | 3 | Binding KMP de zxing-cpp |
 | `BROWSER_DETECTOR` | BarcodeDetector API | Web | Cámara + imagen | 4 | API del navegador |
 | `MLKIT_OCR` | ML Kit Text Recognition | Android, iOS | Cámara + imagen | 4 | `com.google.mlkit:text-recognition` |
@@ -31,17 +31,23 @@ Leyenda: ✅ soportado · ⚠️ parcial o dependiente de versión · ❌ no sop
 | PDF417 | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ | ✅ |
 | EAN-13 | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
 | EAN-8 | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
-| UPC-A | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
+| UPC-A | ✅ | ✅ | ❌¹ | ✅ | ✅ | ⚠️ | ✅ |
 | UPC-E | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
 | Code 39 | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
 | Code 93 | ✅ | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ✅ |
 | Code 128 | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
 | Codabar | ✅ | ✅ | ⚠️ | ✅ | ⚠️ | ❌ | ✅ |
 | ITF | ✅ | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ✅ |
-| DataBar / RSS | ❌ | ❌ | ⚠️ | ✅ | ❌ | ❌ | ✅ |
+| DataBar / RSS | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ |
 | MaxiCode | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ |
-| Micro QR | ❌ | ❌ | ⚠️ | ✅ | ❌ | ❌ | ✅ |
+| Micro QR | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ |
 | rMQR | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ |
+
+¹ AVFoundation no tiene un tipo UPC-A: devuelve esos códigos como EAN-13 con un cero delante, que
+es lo que son. Declararlo como soportado sería prometer una distinción que el sistema no hace.
+
+² El motor de iOS usa `AVCaptureMetadataOutput`, que solo trabaja sobre vídeo en vivo. La imagen
+estática llegará con RF-07 usando `VNDetectBarcodesRequest` del framework Vision.
 
 Las marcas ⚠️ del OCR reflejan que el motor no decodifica la simbología: **lee el número impreso
 bajo el código** y el dominio infiere el formato validando su checksum. Solo funciona con
@@ -54,7 +60,7 @@ simbologías cuyo valor va impreso en texto (típicamente 1D de producto).
 | Capacidad | GMS | ML Kit | Vision | ZXing-cpp | Browser | OCR | Manual |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | Cámara en vivo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Imagen estática | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Imagen estática | ❌ | ✅ | ⏳² | ✅ | ✅ | ✅ | ❌ |
 | Múltiples códigos a la vez | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | Escaneo continuo | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | UI propia del motor | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |

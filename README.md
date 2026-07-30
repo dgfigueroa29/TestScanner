@@ -22,7 +22,8 @@ y Web con un único código base.
 | Historial persistente con Room KMP | ✅ Android, iOS y Desktop (Web: en memoria) |
 | Preferencias persistentes | ✅ las cuatro plataformas |
 | CI en GitHub Actions | ✅ detekt, tests, Android, Desktop, Web y iOS |
-| Vision (iOS), ZXing-cpp, BarcodeDetector, OCR | ⏳ fases 3–4 |
+| Vision / AVFoundation (iOS) | ✅ implementado, sin compilar aún |
+| ZXing-cpp, BarcodeDetector, OCR | ⏳ fases 3–4 (ZXing bloqueado por el riesgo R9) |
 
 El catálogo muestra las siete alternativas con su estado real; los motores aún no implementados se
 declaran como tales, con la fase en la que llegan. Ver `docs/ROADMAP.md`.

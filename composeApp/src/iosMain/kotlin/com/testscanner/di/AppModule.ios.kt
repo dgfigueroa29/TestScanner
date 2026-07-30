@@ -10,24 +10,27 @@ import com.testscanner.core.database.build
 import com.testscanner.core.domain.repository.ScanHistoryRepository
 import com.testscanner.core.domain.repository.ScanPreferencesRepository
 import com.testscanner.core.model.ScannerPlatform
-import com.testscanner.core.permissions.AlwaysGrantedPermissionController
+import com.testscanner.core.permissions.IosPermissionController
 import com.testscanner.core.permissions.PermissionController
 import com.testscanner.core.scanner.BarcodeScannerEngine
 import com.testscanner.engines.manual.ManualInputScannerEngine
+import com.testscanner.engines.vision.VisionScannerEngine
 import org.koin.core.module.Module
 import org.koin.dsl.module
 import platform.Foundation.NSUserDefaults
 
-/** Motores enlazados en el framework de iOS. Fase 3 añadirá aquí Vision y ZXing-cpp. */
+/** Motores enlazados en el framework de iOS. Falta ZXing-cpp, pendiente del riesgo R9 del SDD. */
 actual fun platformModule(): Module = module {
     single { ScannerPlatform.Ios }
 
+    single { VisionScannerEngine() }
+    single { ManualInputScannerEngine() }
+
     single<List<BarcodeScannerEngine>> {
-        listOf(ManualInputScannerEngine())
+        listOf(get<VisionScannerEngine>(), get<ManualInputScannerEngine>())
     }
 
-    // Fase 3: sustituir por el controlador real sobre AVCaptureDevice.
-    single<PermissionController> { AlwaysGrantedPermissionController() }
+    single<PermissionController> { IosPermissionController() }
 
     // Historial persistente: Room sobre el driver bundled, igual en las tres plataformas.
     single { DatabaseBuilderFactory().create().build() }

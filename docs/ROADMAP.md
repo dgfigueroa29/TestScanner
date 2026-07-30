@@ -60,9 +60,12 @@ verificable desactivando Play Services.
 
 ## Fase 3 — iOS
 
-- [ ] `iosApp/` — proyecto Xcode con host SwiftUI sobre `MainViewController`
-- [ ] `:engines:vision-ios` — `AVCaptureSession` + `VNDetectBarcodesRequest`
-- [ ] `CameraPreview` actual de iOS (`UIKitView` con `AVCaptureVideoPreviewLayer`)
+- [x] `:engines:vision-ios` — `AVCaptureSession` + `AVCaptureMetadataOutput`, con linterna y zoom
+- [x] Preview de iOS (`UIKitView` con `AVCaptureVideoPreviewLayer`) vía `CameraPreviewEngine`
+- [x] `IosPermissionController` sobre `AVCaptureDevice`
+- [x] `iosApp/` — fuentes Swift e `Info.plist` con `NSCameraUsageDescription`
+- [ ] `iosApp.xcodeproj` — se crea en Xcode siguiendo `iosApp/README.md` (requiere macOS)
+- [ ] Primera compilación de todo el código iOS: nada de esto se ha compilado aún
 - [ ] **Decidir el motor baseline antes de empezar** (riesgo R9 del SDD): no hay binding KMP de
       zxing-cpp publicado. Opciones: cinterop propio, `com.google.zxing:core` sin iOS, u otro motor
       portable

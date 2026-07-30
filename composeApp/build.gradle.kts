@@ -85,6 +85,8 @@ kotlin {
 
         iosMain.dependencies {
             implementation(project(":core:database"))
+            // Motor de iOS: no debe enlazarse en ningún otro binario (RNF-06).
+            implementation(project(":engines:vision-ios"))
         }
 
         desktopMain.dependencies {

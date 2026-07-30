@@ -1,33 +1,57 @@
 # iosApp — shell de iOS
 
-Este directorio alojará el proyecto Xcode que hospeda la UI compartida. Se crea en la **Fase 3**
-del roadmap, porque generar y mantener un `.xcodeproj` requiere macOS y no aporta nada hasta que
-exista el motor de Vision.
+Contiene el código Swift del host. **No incluye el `.xcodeproj`**: crearlo es un paso de dos minutos
+en Xcode y generar un `project.pbxproj` a mano, sin poder abrirlo para comprobarlo, produce un
+archivo que hay que depurar en XML — peor que crearlo desde cero.
 
-## Qué contendrá
+```
+iosApp/iosApp/
+├── iOSApp.swift      punto de entrada SwiftUI
+├── ContentView.swift envoltorio del UIViewController de Compose
+└── Info.plist        incluye NSCameraUsageDescription
+```
 
-- `iosApp.xcodeproj` — proyecto Xcode.
-- `iosApp/ContentView.swift` — host SwiftUI que envuelve el `UIViewController` de Compose:
+## Crear el proyecto (una sola vez, en macOS)
 
-  ```swift
-  import SwiftUI
-  import ComposeApp
+1. **Xcode → File → New → Project → iOS → App.** Nombre `iosApp`, interfaz **SwiftUI**, lenguaje
+   **Swift**. Guardarlo dentro de `iosApp/` de este repositorio, de modo que el `.xcodeproj` quede
+   junto a la carpeta `iosApp/iosApp/` que ya existe.
+2. Reemplazar los archivos generados por los tres de este repo (Xcode habrá creado sus propias
+   versiones de `iOSApp.swift`, `ContentView.swift` e `Info.plist`).
+3. **Build Phases → New Run Script Phase**, colocada **antes** de "Compile Sources":
 
-  struct ComposeView: UIViewControllerRepresentable {
-      func makeUIViewController(context: Context) -> UIViewController {
-          MainViewControllerKt.MainViewController()
-      }
-      func updateUIViewController(_ controller: UIViewController, context: Context) {}
-  }
-  ```
+   ```bash
+   cd "$SRCROOT/.."
+   ./gradlew :composeApp:embedAndSignAppleFrameworkForXcode
+   ```
 
-- `iosApp/Info.plist` con `NSCameraUsageDescription` — obligatorio: sin esa clave iOS mata la app
-  al abrir la cámara.
+   En "Input Files" no hace falta nada; desmarcar *"Based on dependency analysis"* para que corra
+   siempre.
+4. **Build Settings → Framework Search Paths**, añadir en modo recursivo:
 
-## Enganche con Kotlin
+   ```
+   $(SRCROOT)/../composeApp/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)
+   ```
+5. **Build Settings → Other Linker Flags**: `-framework ComposeApp`.
+6. Comprobar que `Info.plist` conserva `NSCameraUsageDescription`. **Sin esa clave iOS no deniega el
+   permiso: mata la app** en cuanto `AVCaptureDevice` pide acceso.
 
-`:composeApp` ya publica el framework `ComposeApp` (`isStatic = true`) para `iosX64`, `iosArm64` e
+Una vez creado, versionar el `.xcodeproj` y borrar esta sección.
+
+## Qué le da Kotlin
+
+`:composeApp` publica el framework `ComposeApp` (`isStatic = true`) para `iosX64`, `iosArm64` e
 `iosSimulatorArm64`, y expone `MainViewController()` en
-`composeApp/src/iosMain/kotlin/com/testscanner/MainViewController.kt`. El proyecto Xcode solo tiene
-que enlazarlo mediante una *Run Script Phase* que invoque
-`./gradlew :composeApp:embedAndSignAppleFrameworkForXcode`.
+`composeApp/src/iosMain/kotlin/com/testscanner/MainViewController.kt`. Esa función arranca Koin de
+forma idempotente y devuelve el `UIViewController` con la UI compartida.
+
+El motor de escaneo de iOS es [`:engines:vision-ios`](../engines/vision-ios): `AVCaptureSession` con
+`AVCaptureMetadataOutput`, sin dependencias externas. Aporta también su superficie de preview
+(`CameraPreviewEngine`, ver [ADR-0007](../docs/adr/ADR-0007-preview-como-capacidad-del-motor.md)).
+
+## Estado
+
+Ningún archivo Kotlin de iOS se ha compilado todavía: hace falta macOS. El `interop` con
+AVFoundation, el `NSObject` que implementa `AVCaptureMetadataOutputObjectsDelegateProtocol` y la
+subclase de `UIView` que redimensiona el `AVCaptureVideoPreviewLayer` son los puntos donde es más
+probable que aparezcan errores de compilación en el primer intento.
