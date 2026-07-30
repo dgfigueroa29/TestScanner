@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+        El permiso de cámara se declara desde la Fase 1 aunque todavía no haya motores de cámara:
+        cambiar la lista de permisos de una app publicada es visible para el usuario, y es preferible
+        que la declaración sea estable. Los motores lo solicitan en tiempo de ejecución.
+        El Google Code Scanner (Fase 2) no lo necesita: procesa fuera de la app.
+    -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+
+    <application
+        android:allowBackup="true"
+        android:label="TestScanner"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.TestScanner"
+        android:usesCleartextTraffic="false">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
+            android:theme="@style/Theme.TestScanner">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>
