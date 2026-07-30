@@ -11,6 +11,7 @@ kotlin {
         commonMain.dependencies {
             implementation(project(":core:domain"))
             implementation(project(":core:permissions"))
+            api(project(":core:scanner-ui"))
             api(project(":core:designsystem"))
 
             implementation(libs.lifecycle.viewmodel)

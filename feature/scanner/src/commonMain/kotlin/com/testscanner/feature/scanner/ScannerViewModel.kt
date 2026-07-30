@@ -11,9 +11,12 @@ import com.testscanner.core.domain.usecase.SetPreferredEngineUseCase
 import com.testscanner.core.domain.usecase.SetScanFormatsUseCase
 import com.testscanner.core.domain.usecase.StartScanSessionUseCase
 import com.testscanner.core.model.BarcodeFormat
+import com.testscanner.core.model.Permission
 import com.testscanner.core.model.ScanRequest
 import com.testscanner.core.model.ScanSource
 import com.testscanner.core.model.ScannerEngineId
+import com.testscanner.core.permissions.PermissionController
+import com.testscanner.core.scanner.CameraControlEngine
 import com.testscanner.core.scanner.ScanEvent
 import com.testscanner.core.scanner.TextInputEngine
 import kotlinx.coroutines.Job
@@ -42,6 +45,7 @@ class ScannerViewModel(
     private val saveDetection: SaveDetectionUseCase,
     private val preferencesRepository: ScanPreferencesRepository,
     private val engineRepository: ScannerEngineRepository,
+    private val permissionController: PermissionController,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ScannerState())
@@ -67,6 +71,8 @@ class ScannerViewModel(
             is ScannerAction.SetContinuous -> setContinuous(action.enabled)
             is ScannerAction.ManualInputChanged -> _state.update { it.copy(manualInput = action.value) }
             ScannerAction.SubmitManualInput -> submitManualInput()
+            ScannerAction.ToggleTorch -> toggleTorch()
+            ScannerAction.RequestCameraPermission -> requestCameraPermission()
             ScannerAction.DismissError -> _state.update { it.copy(error = null) }
         }
     }
@@ -152,7 +158,9 @@ class ScannerViewModel(
     private fun stopSession() {
         sessionJob?.cancel()
         sessionJob = null
-        _state.update { it.copy(sessionStatus = SessionStatus.Idle, activeEngineId = null) }
+        _state.update {
+            it.copy(sessionStatus = SessionStatus.Idle, activeEngineId = null, torchEnabled = false)
+        }
     }
 
     private suspend fun reduce(event: ScanEvent) {
@@ -200,6 +208,42 @@ class ScannerViewModel(
                 _state.update { it.copy(manualInput = "") }
             } else {
                 _effects.emit(ScannerEffect.ShowMessage("La entrada manual no está disponible"))
+            }
+        }
+    }
+
+    /**
+     * La linterna se pide a través de la capacidad opcional, no del motor concreto. Si el motor
+     * activo no la implementa no pasa nada: la UI ya no muestra el control, y aquí el `as?` cierra
+     * el caso sin excepciones.
+     */
+    private fun toggleTorch() {
+        viewModelScope.launch {
+            val control = _state.value.activeEngineId
+                ?.let(engineRepository::engine) as? CameraControlEngine
+                ?: return@launch
+
+            val enabled = !_state.value.torchEnabled
+            control.setTorch(enabled)
+            _state.update { it.copy(torchEnabled = enabled) }
+        }
+    }
+
+    /**
+     * Tras conceder el permiso hay que refrescar el catálogo: la disponibilidad de los motores de
+     * cámara cambia bajo los pies y el estado que la UI muestra quedaría obsoleto.
+     */
+    private fun requestCameraPermission() {
+        viewModelScope.launch {
+            val status = permissionController.request(Permission.Camera)
+            engineRepository.refresh()
+
+            if (!status.isGranted) {
+                _effects.emit(
+                    ScannerEffect.ShowMessage(
+                        "Sin permiso de cámara solo quedan disponibles los motores que no la usan",
+                    ),
+                )
             }
         }
     }

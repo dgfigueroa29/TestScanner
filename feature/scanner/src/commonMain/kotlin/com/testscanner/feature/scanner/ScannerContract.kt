@@ -27,12 +27,28 @@ data class ScannerState(
     val sessionStatus: SessionStatus = SessionStatus.Idle,
     val detections: List<Detection> = emptyList(),
     val manualInput: String = "",
+    val torchEnabled: Boolean = false,
     val error: ScanError? = null,
 ) {
     val usableEngines: List<EngineStatus> get() = catalog.filter { it.isUsable }
 
     /** La entrada manual se muestra solo si el motor activo se alimenta de texto. */
     val isManualEntryActive: Boolean get() = activeEngineId == ScannerEngineId.ManualInput
+
+    private val activeCapabilities get() =
+        catalog.firstOrNull { it.id == activeEngineId }?.descriptor?.capabilities
+
+    /**
+     * Los controles de cámara se derivan de las capacidades declaradas, no de una lista de motores
+     * que los tengan. Por eso el Google Code Scanner esconde la linterna sin que la UI lo nombre.
+     */
+    val canControlTorch: Boolean get() = activeCapabilities?.supportsTorch == true
+
+    val canControlZoom: Boolean get() = activeCapabilities?.supportsZoom == true
+
+    /** Motores que el usuario puede desbloquear concediendo un permiso o descargando un modelo. */
+    val actionableEngines: List<EngineStatus>
+        get() = catalog.filter { it.installed && it.availability.isActionable }
 }
 
 sealed interface ScannerAction {
@@ -44,6 +60,8 @@ sealed interface ScannerAction {
     data class SetContinuous(val enabled: Boolean) : ScannerAction
     data class ManualInputChanged(val value: String) : ScannerAction
     data object SubmitManualInput : ScannerAction
+    data object ToggleTorch : ScannerAction
+    data object RequestCameraPermission : ScannerAction
     data object DismissError : ScannerAction
 }
 

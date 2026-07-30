@@ -4,8 +4,8 @@
 |---|---|
 | Proyecto | TestScanner |
 | Documento | Software Design Document (SDD) |
-| Versión | 1.0 |
-| Estado | Aprobado para Fase 1 (fundaciones) |
+| Versión | 1.1 |
+| Estado | Vigente — Fase 1 cerrada, Fase 2 casi cerrada |
 | Fecha | 2026-07-30 |
 | Autor | Equipo TestScanner |
 | Alcance de esta versión | Migración de app Android monolítica a Compose Multiplatform + arquitectura de motores de escaneo intercambiables |
@@ -203,12 +203,14 @@ dominio**. Un módulo de motor depende de `:core:scanner-api` y de su SDK nativo
 ```
 TestScanner/
 ├── gradle/libs.versions.toml          # version catalog — única fuente de versiones
-├── build-logic/                       # convention plugins (Fase 2)
+├── build-logic/                       # convention plugins: kmp.library, kmp.compose, android.application
 │
 ├── core/
 │   ├── model/                         # KMP puro: Barcode, BarcodeFormat, ScanResult
 │   ├── scanner-api/                   # SPI: BarcodeScannerEngine, Capabilities, Availability
 │   │                                  #      + catálogo declarativo de los 7 motores
+│   ├── scanner-ui/                    # capacidad de UI del motor: CameraPreviewEngine (ADR-0007)
+│   ├── scanner-testing/               # suite de contrato que todo motor hereda (§13.2)
 │   ├── domain/                        # UseCases, interfaces de Repository y decoradores del SPI
 │   ├── data/                          # Registry, preferencias e historial
 │   ├── designsystem/                  # CMP: tema, tokens, componentes reutilizables
@@ -216,8 +218,8 @@ TestScanner/
 │
 ├── engines/
 │   ├── manual/                        # entrada manual — motor de referencia, 100 % common
-│   ├── gms-code-scanner/              # (Fase 2) Android
-│   ├── mlkit-camerax/                 # (Fase 2) Android
+│   ├── gms-code-scanner/              # Android — UI propia, sin permisos
+│   ├── mlkit-camerax/                 # Android — CameraX + preview + linterna/zoom
 │   ├── vision-ios/                    # (Fase 3) iOS
 │   ├── zxing-cpp/                     # (Fase 3) multiplataforma
 │   ├── browser-detector/              # (Fase 4) Wasm/JS
@@ -249,6 +251,8 @@ TestScanner/
 |---|:---:|:---:|:---:|:---:|
 | `:core:model` | ✅ | ✅ | ✅ | ✅ |
 | `:core:scanner-api` | ✅ | ✅ | ✅ | ✅ |
+| `:core:scanner-ui` | ✅ | ✅ | ✅ | ✅ |
+| `:core:scanner-testing` | ✅ | ✅ | ✅ | ✅ |
 | `:core:domain` | ✅ | ✅ | ✅ | ✅ |
 | `:core:data` | ✅ | ✅ | ✅ | ✅ |
 | `:core:designsystem` | ✅ | ✅ | ✅ | ✅ |
@@ -278,7 +282,7 @@ data class Barcode(
     val rawBytes: ByteArray?,
     val format: BarcodeFormat,
     val valueType: BarcodeValueType,   // interpretación semántica (RF-09)
-    val cornerPoints: List<Point>?,    // para dibujar el overlay
+    val cornerPoints: List<Point>?,    // normalizados a [0,1], para el overlay
     val confidence: Float?,            // 0..1, null si el motor no lo reporta
 )
 
@@ -520,15 +524,19 @@ Convención obligatoria (heredada de los estándares del equipo):
 
 ### 9.2 Preview de cámara multiplataforma
 
-El preview es el único punto donde la UI toca la plataforma:
+El preview es el único punto donde la UI toca la plataforma. **No** es un `expect @Composable` en la
+feature: es una **capacidad opcional del motor**, en la línea de `CameraControlEngine`. Ver
+[ADR-0007](adr/ADR-0007-preview-como-capacidad-del-motor.md).
 
 ```kotlin
-@Composable
-expect fun CameraPreview(
-    controller: CameraPreviewController,
-    modifier: Modifier = Modifier,
-)
+// :core:scanner-ui
+interface CameraPreviewEngine {
+    @Composable fun CameraPreview(modifier: Modifier)
+}
 ```
+
+La pantalla hace `(engine as? CameraPreviewEngine)?.CameraPreview(modifier)` y no nombra ningún
+motor, de modo que añadir el de iOS o el del navegador no toca `:feature:scanner` (RNF-07).
 
 | Target | Implementación |
 |---|---|
@@ -537,9 +545,13 @@ expect fun CameraPreview(
 | Desktop | `Canvas` alimentado por frames de webcam |
 | Web | `HtmlView` con `<video srcObject=getUserMedia()>` |
 
-El overlay (marco de encuadre, esquinas detectadas, viñeta) se dibuja **encima, en Compose común**
-sobre el preview nativo. Así el 100 % del diseño visual es compartido y solo la superficie de
-video es nativa.
+El overlay (marco de encuadre y esquinas detectadas) se dibuja **encima, en Compose común** sobre el
+preview nativo — `ScanOverlay` en `:feature:scanner`. Así el 100 % del diseño visual es compartido y
+solo la superficie de vídeo es nativa.
+
+Para que ese overlay funcione igual en las cuatro plataformas, los `cornerPoints` viajan
+**normalizados a `[0, 1]`** sobre el frame analizado: normaliza el motor, que es quien conoce el
+tamaño real del frame, y mapea la UI, que es quien sabe cómo se está escalando el preview.
 
 ### 9.3 Navegación
 
@@ -625,12 +637,14 @@ cobertura sino por casos de estado representativos.
 
 ### 13.2 Suite de contrato de motores
 
-Pieza clave de la arquitectura: una batería de tests abstracta —
-`abstract class BarcodeScannerEngineContractTest` — que verifica que *cualquier* implementación
+Pieza clave de la arquitectura, ya implementada en `:core:scanner-testing`: una batería de tests
+abstracta — `abstract class BarcodeScannerEngineContractTest` — que verifica que *cualquier* implementación
 respeta el SPI: que `availability()` es idempotente, que el `Flow` emite `SessionStarted` primero
 y `SessionEnded` siempre, que la cancelación libera la cámara, que los formatos reportados están
 dentro de los declarados en `capabilities`. Cada motor nuevo hereda la clase y aporta su factory.
-Esto convierte "añadir un motor" en un proceso con red de seguridad automática.
+Esto convierte "añadir un motor" en un proceso con red de seguridad automática. No es teórico: en su
+primer uso la suite detectó una carrera real en el motor de entrada manual, que perdía en silencio
+los valores enviados antes de que la sesión se suscribiera.
 
 ### 13.3 Análisis estático
 
@@ -658,10 +672,10 @@ Esto convierte "añadir un motor" en un proceso con red de seguridad automática
 | Fase | Contenido | Criterio de salida |
 |---|---|---|
 | **1. Fundaciones** (este entregable) | Build KMP/CMP, version catalog, estructura de módulos, modelo de dominio, SPI completo, registro, selección + fallback, UI de catálogo y escaneo, motor de entrada manual, tests de dominio | La app arranca en Android, Desktop y Web; el catálogo lista los 7 motores con su estado; los tests de selección y fallback pasan |
-| **2. Android real** | `:engines:gms-code-scanner`, `:engines:mlkit-camerax`, CameraX preview, permisos, historial con Room | Escaneo real en Android con dos motores intercambiables en caliente |
+| **2. Android real** *(casi cerrada)* | ✅ `:engines:gms-code-scanner`, ✅ `:engines:mlkit-camerax`, ✅ preview CameraX + overlay, ✅ permisos, ✅ convention plugins · pendiente: historial con Room y CI | Escaneo real en Android con dos motores intercambiables en caliente |
 | **3. iOS** | `:engines:vision-ios`, preview con `UIKitView`, shell Xcode, `:engines:zxing-cpp` | Escaneo real en iOS; ZXing-cpp comparable entre Android e iOS |
 | **4. Web y OCR** | `:engines:browser-detector`, `:engines:mlkit-ocr`, escaneo desde imagen (RF-07) | Las cuatro plataformas escanean; OCR disponible como alternativa |
-| **5. Producto** | Comparador de motores lado a lado, métricas de latencia, exportación de historial, Play Feature Delivery | G5 medible en la app |
+| **5. Producto** | ✅ `ComparingScannerEngine` + `EngineScoreboard` (adelantados) · pendiente: UI de comparación lado a lado, exportación de historial, Play Feature Delivery | G5 medible en la app |
 
 ### 14.1 Qué se elimina en la Fase 1
 
@@ -703,3 +717,4 @@ que preservar (§2.1). El historial de git conserva el estado previo.
 | [ADR-0004](adr/ADR-0004-flow-como-api-de-sesion.md) | `Flow<ScanEvent>` como API de sesión de escaneo |
 | [ADR-0005](adr/ADR-0005-navegacion-propia.md) | Navegación propia mínima en la Fase 1 |
 | [ADR-0006](adr/ADR-0006-reestructuracion-del-build.md) | Reestructurar el build de una vez en lugar de migrar incrementalmente |
+| [ADR-0007](adr/ADR-0007-preview-como-capacidad-del-motor.md) | El preview de cámara es una capacidad del motor, no de la feature |

@@ -3,6 +3,10 @@
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
+    // Este motor aporta su propia superficie de preview (CameraPreviewEngine), así que necesita
+    // Compose. Es un módulo de plataforma, no de dominio: la dependencia es asumible.
+    alias(libs.plugins.composeMultiplatform)
+    alias(libs.plugins.composeCompiler)
 }
 
 kotlin {
@@ -13,8 +17,11 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(project(":core:scanner-api"))
+            api(project(":core:scanner-ui"))
         }
         androidMain.dependencies {
+            implementation(compose.ui)
+            implementation(libs.lifecycle.runtime.compose)
             implementation(libs.mlkit.barcode.scanning)
             implementation(libs.camerax.core)
             implementation(libs.camerax.camera2)

@@ -60,7 +60,8 @@ simbologías cuyo valor va impreso en texto (típicamente 1D de producto).
 | UI propia del motor | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Linterna | ❌ | ✅ | ✅ | ✅ | ⚠️ | ✅ | ❌ |
 | Zoom | ❌ | ✅ | ✅ | ✅ | ⚠️ | ✅ | ❌ |
-| Puntos de esquina | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Puntos de esquina (normalizados) | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Superficie de preview propia | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | Confianza reportada | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | Requiere permiso de cámara | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | Requiere red | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -98,14 +99,19 @@ Excepciones de la política:
 
 1. Crear el módulo `engines/<nombre>/` con target(s) de la(s) plataforma(s) que soporte.
 2. Depender únicamente de `:core:scanner-api`, `:core:model` y del SDK correspondiente.
-3. Implementar `BarcodeScannerEngine` y, si aplica, `ImageDecodingEngine` / `CameraControlEngine`.
+3. Implementar `BarcodeScannerEngine` y, si aplica, las capacidades opcionales:
+   `ImageDecodingEngine`, `CameraControlEngine`, `TextInputEngine` y `CameraPreviewEngine`
+   (esta última si el motor aporta superficie de vídeo — ver ADR-0007).
 4. Declarar un `ScannerEngineDescriptor` honesto — las capacidades declaradas se contrastan con el
    comportamiento real en la suite de contrato.
 5. Añadir el ID a `ScannerEngineId`, la fila a este documento y la entrada a
    `ScannerEngineCatalog`.
-6. Registrarlo en el `platformEngines()` del target correspondiente en `:composeApp`.
+6. Registrarlo en el `platformModule()` del target correspondiente en `:composeApp`.
 7. Heredar `BarcodeScannerEngineContractTest` aportando la factory del motor.
 8. Añadir el módulo a `settings.gradle.kts`.
 
 Ningún paso toca `:feature:scanner` ni `:core:domain`. Si un motor nuevo obliga a modificarlos, es
 señal de que el SPI se quedó corto y hay que extenderlo de forma explícita — no a parchear la UI.
+
+El paso 7 no es opcional: la suite de contrato es lo que impide que un motor declare capacidades que
+luego no cumple, y las capacidades declaradas son de lo que dependen el selector y la UI entera.

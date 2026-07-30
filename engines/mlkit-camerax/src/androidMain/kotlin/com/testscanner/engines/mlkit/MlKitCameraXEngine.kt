@@ -7,6 +7,8 @@ import android.graphics.BitmapFactory
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageProxy
 import androidx.camera.view.LifecycleCameraController
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
@@ -29,6 +31,7 @@ import com.testscanner.core.scanner.ScannerEngineDescriptor
 import com.testscanner.core.scanner.SystemTimeProvider
 import com.testscanner.core.scanner.TimeProvider
 import com.testscanner.core.scanner.catalog.ScannerEngineCatalog
+import com.testscanner.core.scanner.ui.CameraPreviewEngine
 import java.util.concurrent.Executor
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -45,21 +48,19 @@ import kotlinx.coroutines.suspendCancellableCoroutine
  * peso del SDK — exactamente el intercambio que TestScanner existe para poner a prueba.
  *
  * ### Reparto de responsabilidades con la UI
- * El motor **no conoce el `LifecycleOwner`**: expone [cameraController] y es la capa de Compose
- * quien lo enlaza al ciclo de vida de la pantalla y lo conecta a un `PreviewView`. Si el motor
- * guardara el `LifecycleOwner`, retendría la Activity y filtraría memoria en cada rotación.
+ * El motor aporta su superficie de vídeo implementando `CameraPreviewEngine`, pero **no guarda el
+ * `LifecycleOwner`**: ese lo toma el composable del árbol y lo suelta al salir de composición. Si
+ * el motor lo retuviera, se quedaría con la Activity y filtraría memoria en cada rotación.
  *
- * ```kotlin
- * val lifecycleOwner = LocalLifecycleOwner.current
- * AndroidView(factory = { PreviewView(it).apply { controller = engine.cameraController } })
- * LaunchedEffect(Unit) { engine.cameraController.bindToLifecycle(lifecycleOwner) }
- * ```
+ * El overlay de detección no se pinta aquí: los `cornerPoints` se reportan **normalizados a
+ * [0, 1]** sobre el frame analizado, y la UI común los dibuja encima. Así el overlay es idéntico en
+ * las cuatro plataformas y comparable entre motores.
  */
 class MlKitCameraXEngine(
     private val context: Context,
     private val analysisExecutor: Executor,
     private val time: TimeProvider = SystemTimeProvider,
-) : BarcodeScannerEngine, CameraControlEngine, ImageDecodingEngine {
+) : BarcodeScannerEngine, CameraControlEngine, ImageDecodingEngine, CameraPreviewEngine {
 
     /** Controlador que la capa de Compose enlaza al ciclo de vida y al `PreviewView`. */
     val cameraController: LifecycleCameraController by lazy { LifecycleCameraController(context) }
@@ -100,6 +101,11 @@ class MlKitCameraXEngine(
         }
     }
 
+    @Composable
+    override fun CameraPreview(modifier: Modifier) {
+        RenderCameraPreview(modifier)
+    }
+
     override suspend fun setTorch(enabled: Boolean) {
         cameraController.enableTorch(enabled)
     }
@@ -117,7 +123,8 @@ class MlKitCameraXEngine(
 
         val scanner = createScanner(request)
         try {
-            scanner.awaitProcess(InputImage.fromBitmap(bitmap, 0)).map { it.toBarcode() }
+            scanner.awaitProcess(InputImage.fromBitmap(bitmap, 0))
+                .map { it.toBarcode(bitmap.width, bitmap.height) }
         } finally {
             scanner.close()
         }
@@ -159,7 +166,14 @@ class MlKitCameraXEngine(
                 } else {
                     onEvent(
                         ScanEvent.Detected(
-                            barcodes.mapNotNull { it.toDetection(now, now - startedAtMillis) },
+                            barcodes.mapNotNull {
+                        it.toDetection(
+                            nowMillis = now,
+                            latencyMillis = now - startedAtMillis,
+                            imageWidth = input.width,
+                            imageHeight = input.height,
+                        )
+                    },
                         ),
                     )
                 }
@@ -174,17 +188,29 @@ class MlKitCameraXEngine(
     private fun hasCameraPermission(): Boolean =
         context.checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
 
-    private fun MlKitBarcode.toBarcode(): Barcode = Barcode(
+    /**
+     * Los puntos se normalizan contra el tamaño del frame analizado, que es lo único que el motor
+     * conoce: la vista puede tener otro tamaño y otro recorte. Normalizar aquí deja el mapeo a
+     * coordenadas de pantalla en manos de la UI, que sí sabe cómo se está escalando el preview.
+     */
+    private fun MlKitBarcode.toBarcode(imageWidth: Int, imageHeight: Int): Barcode = Barcode(
         rawValue = rawValue.orEmpty(),
         format = MlKitFormatMapper.fromMlKit(format),
         rawBytes = rawBytes,
-        cornerPoints = cornerPoints?.map { Point(it.x.toFloat(), it.y.toFloat()) },
+        cornerPoints = cornerPoints
+            ?.takeIf { imageWidth > 0 && imageHeight > 0 }
+            ?.map { Point(it.x.toFloat() / imageWidth, it.y.toFloat() / imageHeight) },
     )
 
-    private fun MlKitBarcode.toDetection(nowMillis: Long, latencyMillis: Long): Detection? {
+    private fun MlKitBarcode.toDetection(
+        nowMillis: Long,
+        latencyMillis: Long,
+        imageWidth: Int,
+        imageHeight: Int,
+    ): Detection? {
         if (rawValue == null) return null
         return Detection.of(
-            barcode = toBarcode(),
+            barcode = toBarcode(imageWidth, imageHeight),
             engineId = id,
             detectedAtMillis = nowMillis,
             latencyMillis = latencyMillis,

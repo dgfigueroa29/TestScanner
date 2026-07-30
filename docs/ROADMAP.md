@@ -25,7 +25,7 @@ completa, aunque todavía sin motores de cámara reales.
 - [x] Suite de contrato de motores (`BarcodeScannerEngineContractTest`)
 - [x] Comparador de motores en paralelo + métricas por motor (objetivo G5)
 - [x] `build-logic/` con convention plugins
-- [x] SDD, 6 ADRs y catálogo de motores documentados
+- [x] SDD, 7 ADRs y catálogo de motores documentados
 
 **Criterio de salida:** la app arranca en Android, Desktop y Web; el catálogo lista los 7 motores
 con su estado real; los tests de `:core:domain` y `:core:data` pasan en CI.
@@ -38,14 +38,19 @@ con su estado real; los tests de `:core:domain` y `:core:data` pasan en CI.
 - [x] `:engines:mlkit-camerax` — ML Kit Barcode + CameraX, con linterna, zoom y decodificación de imagen
 - [x] `PermissionController` actual de Android + flujo de denegación permanente
 - [x] Arranque de Koin por plataforma (`initKoin`) con `Context` en Android
-- [ ] `CameraPreview` actual de Android (`PreviewView` en `AndroidView`) enlazando `cameraController`
-- [ ] Overlay de detección sobre el preview usando `cornerPoints`
+- [x] Preview de Android como capacidad del motor (`CameraPreviewEngine`, ADR-0007)
+- [x] Overlay común de detección sobre `cornerPoints` normalizados (`ScanOverlay`)
+- [x] Controles de linterna en la UI, derivados de las capacidades declaradas
 - [ ] Historial persistente con Room KMP (`:feature:history`)
-- [ ] Suite de contrato de motores ejecutándose en `androidTest`
+- [ ] Suite de contrato ejecutándose contra los motores de cámara en `androidTest`
 - [ ] CI: `assembleDebug` + lint + detekt en cada PR
 
 **Criterio de salida:** escaneo real en Android alternando dos motores en caliente, con fallback
 verificable desactivando Play Services.
+
+> Pendiente de la primera compilación con Gradle: el entorno donde se escribió esta fase no tenía
+> acceso a `dl.google.com`, así que las APIs de ML Kit y CameraX están sin compilar. El núcleo puro
+> sí está verificado (82 tests en verde con kotlinc).
 
 ---
 
@@ -78,8 +83,9 @@ recupera correctamente EAN-13 impresos sobre códigos dañados.
 
 ## Fase 5 — Producto
 
-- [ ] Comparador: ejecutar dos motores sobre el mismo stream y contrastar resultados
-- [ ] Métricas de latencia, FPS y tasa de acierto por motor (cierra G5)
+- [x] Comparador: ejecutar varios motores sobre la misma petición (`ComparingScannerEngine`)
+- [x] Métricas de latencia y acierto por motor (`EngineScoreboard`)
+- [ ] UI de comparación lado a lado que consuma el marcador
 - [ ] Exportación del historial (CSV/JSON) y acciones sobre resultados
 - [ ] Play Feature Delivery para los motores pesados de Android (RNF-06)
 - [ ] Accesibilidad completa (RNF-05) y auditoría de privacidad (RNF-03)
@@ -101,4 +107,5 @@ Registrada de forma explícita para que no se olvide:
 | D4 | Navegación propia sin deep links ni restauración de estado | Fase 3 (revisión ADR-0005) |
 | D5 | Strings hardcodeados en la UI, sin `composeResources` | Fase 2 |
 | D6 | La suite de contrato existe y la pasa el motor manual, pero aún no se ejecuta contra motores de cámara reales | Fase 2 |
+| D8 | El zoom se declara como capacidad y el motor lo implementa, pero no hay control de zoom en la UI | Fase 3 |
 | D7 | `:androidApp` sin ProGuard/R8 configurado para release | Fase 2 |

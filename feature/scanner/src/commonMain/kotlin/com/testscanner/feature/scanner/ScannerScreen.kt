@@ -1,17 +1,22 @@
 package com.testscanner.feature.scanner
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -21,21 +26,33 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.testscanner.core.designsystem.Spacing
 import com.testscanner.core.domain.model.EngineStatus
 import com.testscanner.core.model.Detection
 import com.testscanner.core.scanner.EngineAvailability
+import com.testscanner.core.scanner.ui.CameraPreviewEngine
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
- * Pantalla con estado. Solo obtiene el ViewModel y delega: toda la UI real vive en
- * [ScannerContent], que es stateless y por tanto previsualizable y testeable sin DI.
+ * Pantalla con estado. Solo obtiene el ViewModel y resuelve el preview del motor activo; toda la UI
+ * real vive en [ScannerContent], que es stateless y por tanto previsualizable y testeable sin DI.
  */
 @Composable
-fun ScannerScreen(viewModel: ScannerViewModel = koinViewModel()) {
+fun ScannerScreen(
+    viewModel: ScannerViewModel = koinViewModel(),
+    previewResolver: EnginePreviewResolver = koinInject(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    ScannerContent(state = state, onAction = viewModel::onAction)
+
+    ScannerContent(
+        state = state,
+        onAction = viewModel::onAction,
+        previewEngine = previewResolver.previewFor(state.activeEngineId),
+    )
 }
 
 @Composable
@@ -43,6 +60,7 @@ fun ScannerContent(
     state: ScannerState,
     onAction: (ScannerAction) -> Unit,
     modifier: Modifier = Modifier,
+    previewEngine: CameraPreviewEngine? = null,
 ) {
     if (state.isLoading) {
         Column(
@@ -59,6 +77,10 @@ fun ScannerContent(
         modifier = modifier.fillMaxSize().padding(Spacing.md),
         verticalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
+        if (previewEngine != null) {
+            item { CameraViewfinder(previewEngine, state) }
+        }
+
         item { SessionControls(state, onAction) }
 
         item {
@@ -88,6 +110,26 @@ fun ScannerContent(
             }
             items(state.detections, key = { it.id }) { DetectionRow(it) }
         }
+    }
+}
+
+/**
+ * Visor: superficie nativa del motor abajo, overlay de Compose común encima.
+ *
+ * La pantalla no sabe qué motor está pintando ni con qué API — solo que implementa
+ * `CameraPreviewEngine`. Añadir el motor de iOS o el del navegador no toca este archivo.
+ */
+@Composable
+private fun CameraViewfinder(previewEngine: CameraPreviewEngine, state: ScannerState) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(VIEWFINDER_ASPECT_RATIO)
+            .clip(RoundedCornerShape(Spacing.md))
+            .background(Color.Black),
+    ) {
+        previewEngine.CameraPreview(Modifier.fillMaxSize())
+        ScanOverlay(detections = state.detections)
     }
 }
 
@@ -144,6 +186,24 @@ private fun SessionControls(state: ScannerState, onAction: (ScannerAction) -> Un
                     onCheckedChange = { onAction(ScannerAction.SetContinuous(it)) },
                 )
                 Text("Escaneo continuo", style = MaterialTheme.typography.bodyMedium)
+            }
+
+            // Los controles de cámara aparecen solo si el motor activo los declara: es la razón de
+            // que `CameraControlEngine` sea una interfaz aparte y no métodos del contrato base.
+            if (state.canControlTorch) {
+                FilterChip(
+                    selected = state.torchEnabled,
+                    onClick = { onAction(ScannerAction.ToggleTorch) },
+                    label = { Text(if (state.torchEnabled) "Linterna encendida" else "Linterna") },
+                )
+            }
+
+            // Un motor bloqueado por permiso no es un error: es algo que el usuario puede
+            // desbloquear. Por eso `EngineAvailability` distingue ese caso del resto.
+            if (state.actionableEngines.isNotEmpty()) {
+                OutlinedButton(onClick = { onAction(ScannerAction.RequestCameraPermission) }) {
+                    Text("Conceder permiso de cámara")
+                }
             }
 
             if (state.isManualEntryActive) {
@@ -239,7 +299,7 @@ private fun DetectionRow(detection: Detection) {
             Text(detection.barcode.rawValue, style = MaterialTheme.typography.bodyMedium)
             Text(
                 text = "${detection.barcode.format.displayName} · ${detection.engineId.id}" +
-                    (detection.latencyMillis?.let { " · ${it} ms" } ?: ""),
+                    (detection.latencyMillis?.let { " · $it ms" } ?: ""),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -255,3 +315,5 @@ private fun EngineAvailability.label(): String = when (this) {
     is EngineAvailability.NotImplemented -> "Planificado para la fase $plannedPhase"
     is EngineAvailability.Failed -> "No se pudo comprobar"
 }
+
+private const val VIEWFINDER_ASPECT_RATIO = 3f / 4f

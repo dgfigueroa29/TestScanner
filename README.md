@@ -8,18 +8,27 @@ y Web con un único código base.
 
 ---
 
-## Estado actual — Fase 1 (fundaciones)
+## Estado actual — Fase 1 cerrada, Fase 2 casi cerrada
 
 | | |
 |---|---|
 | Arquitectura y SPI de motores | ✅ completos |
 | Catálogo de los 7 motores con capacidades | ✅ declarado |
 | Selección automática + cadena de fallback | ✅ implementados y testeados |
+| Suite de contrato que todo motor debe pasar | ✅ implementada |
+| Comparador de motores en paralelo + métricas (G5) | ✅ implementados |
 | Motor de entrada manual | ✅ funcional en las 4 plataformas |
-| Motores de cámara (GMS, ML Kit, Vision, ZXing, navegador, OCR) | ⏳ fases 2–4 |
+| Google Code Scanner y ML Kit + CameraX (Android) | ✅ implementados, sin compilar aún |
+| Vision (iOS), ZXing-cpp, BarcodeDetector, OCR | ⏳ fases 3–4 |
 
-La app arranca y el catálogo muestra las siete alternativas con su estado real; los motores aún no
-implementados se declaran como tales, con la fase en la que llegan. Ver `docs/ROADMAP.md`.
+El catálogo muestra las siete alternativas con su estado real; los motores aún no implementados se
+declaran como tales, con la fase en la que llegan. Ver `docs/ROADMAP.md`.
+
+> **Sin compilar con Gradle todavía.** El entorno donde se desarrolló no tenía acceso a
+> `dl.google.com`, así que no hubo Android SDK ni artefactos de AGP/Compose. Lo verificado son los
+> **82 tests del núcleo puro**, compilados y ejecutados con kotlinc 2.1.21. Todo lo que necesita
+> Gradle — `build-logic`, las versiones del catálogo, los dos motores de Android y el código
+> Compose — está pendiente de la primera compilación.
 
 ---
 
@@ -41,6 +50,8 @@ Lectura mínima para tocar código: **§7 del SDD** (el Scanner Engine SPI) y **
 ```
 core/model          modelo puro: Barcode, BarcodeFormat, Detection, ScanRequest
 core/scanner-api    el SPI + el catálogo declarativo de motores
+core/scanner-ui     capacidad de UI del motor: CameraPreviewEngine
+core/scanner-testing suite de contrato que todo motor hereda
 core/domain         casos de uso, políticas de selección y decoradores del SPI
 core/data           registro de motores, preferencias e historial
 core/designsystem   tema y componentes Compose compartidos
