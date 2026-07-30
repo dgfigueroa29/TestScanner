@@ -128,6 +128,7 @@ incremental y justifica reestructurar el build de una sola vez.
 | RF-12 | Reconocimiento de texto (OCR) como motor alternativo para códigos ilegibles | Could |
 | RF-13 | Acciones sobre el resultado: copiar, compartir, abrir enlace | Should |
 | RF-14 | Control de linterna y zoom cuando el motor lo soporte | Could |
+| RF-15 | La sesión puede tener un plazo máximo tras el cual se cierra sola | Could |
 
 ### 3.2 Requisitos no funcionales
 
@@ -742,6 +743,7 @@ que preservar (§2.1). El historial de git conserva el estado previo.
 | R6 | Web target sin acceso a cámara en contexto no-HTTPS | Bajo | Documentado; el motor reporta `Unsupported` con la razón |
 | R7 | Sobre-modularización ralentiza el build | Medio | Convention plugins en `build-logic` (Fase 2) y medición con `--scan` |
 | R8 | Deriva entre el catálogo documentado y el código | Bajo | `docs/ENGINES.md` es la fuente; un test verifica que el registro y la tabla coinciden en IDs |
+| R9 | **No existe un binding KMP publicado de zxing-cpp.** Solo hay `io.github.zxing-cpp:android` (Android) y `com.google.zxing:core` (Java: Android y Desktop, no iOS ni Wasm). El motor que el SDD plantea como *baseline de comparación justa* no tiene artefacto | **Alto** | Decidir antes de arrancar la Fase 3: (a) cinterop propio sobre zxing-cpp, que da las tres plataformas pero cuesta trabajo de build nativo; (b) `com.google.zxing:core` en Android y Desktop y renunciar al baseline en iOS; (c) sustituir el baseline por otro motor portable. Ver R11 del ROADMAP |
 
 ---
 

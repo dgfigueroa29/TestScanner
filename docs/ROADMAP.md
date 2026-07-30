@@ -46,6 +46,7 @@ con su estado real; los tests de `:core:domain` y `:core:data` pasan en CI.
 - [x] CI en GitHub Actions: detekt + tests + Android + Desktop + Web en cada PR, iOS en `main`
 - [x] Higiene del repo: `.editorconfig` alineado con detekt, `.idea/` fuera del control de versiones
 - [x] Preferencias persistentes con `multiplatform-settings` (D2) y control de zoom en la UI (D8)
+- [x] `ScanRequest.timeoutMillis` implementado (`DeadlineScannerEngine`): estaba en el modelo desde la Fase 1 sin que ningún código lo cumpliera
 - [ ] Suite de contrato ejecutándose contra los motores de cámara en `androidTest`
 
 **Criterio de salida:** escaneo real en Android alternando dos motores en caliente, con fallback
@@ -62,6 +63,9 @@ verificable desactivando Play Services.
 - [ ] `iosApp/` — proyecto Xcode con host SwiftUI sobre `MainViewController`
 - [ ] `:engines:vision-ios` — `AVCaptureSession` + `VNDetectBarcodesRequest`
 - [ ] `CameraPreview` actual de iOS (`UIKitView` con `AVCaptureVideoPreviewLayer`)
+- [ ] **Decidir el motor baseline antes de empezar** (riesgo R9 del SDD): no hay binding KMP de
+      zxing-cpp publicado. Opciones: cinterop propio, `com.google.zxing:core` sin iOS, u otro motor
+      portable
 - [ ] `:engines:zxing-cpp` — mismo decodificador en Android, iOS y Desktop
 - [ ] Revisión de ADR-0005: el grafo ya tiene 2 destinos; migrar a `navigation-compose` si llega a 6 o aparecen deep links
 

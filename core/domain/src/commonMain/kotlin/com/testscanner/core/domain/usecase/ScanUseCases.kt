@@ -9,6 +9,7 @@ import com.testscanner.core.domain.repository.ScannerEngineRepository
 import com.testscanner.core.domain.scan.FallbackScannerEngine
 import com.testscanner.core.domain.scan.filteringFormats
 import com.testscanner.core.domain.scan.interpretingValues
+import com.testscanner.core.domain.scan.withDeadline
 import com.testscanner.core.model.Barcode
 import com.testscanner.core.model.BarcodeFormat
 import com.testscanner.core.model.Detection
@@ -76,12 +77,15 @@ class StartScanSessionUseCase(
             return@flow
         }
 
-        // El orden de los decoradores importa: primero se filtra por formato lo que el motor
-        // reporta, y solo lo que sobrevive se interpreta semánticamente. Envolver la cadena
-        // entera — y no cada motor — haría que el fallback quedara por fuera del filtrado.
+        // El orden de los decoradores importa, y en dos niveles distintos:
+        //  - Por motor: primero se filtra por formato lo que reporta y solo lo que sobrevive se
+        //    interpreta semánticamente. Envolver la cadena entera dejaría el fallback fuera del
+        //    filtrado.
+        //  - Sobre la cadena: el plazo. Si fuera por motor, una cadena de tres tardaría el triple
+        //    de lo que el usuario pidió.
         val chain: BarcodeScannerEngine = FallbackScannerEngine(
             engines.map { engine -> engine.filteringFormats().interpretingValues() },
-        )
+        ).withDeadline()
 
         emitAll(chain.scan(request))
     }
