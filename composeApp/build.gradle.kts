@@ -46,6 +46,7 @@ kotlin {
             implementation(project(":core:permissions"))
             implementation(project(":core:designsystem"))
             implementation(project(":feature:scanner"))
+            implementation(project(":feature:history"))
 
             // Único módulo que conoce a todos los motores: es el composition root.
             implementation(project(":engines:manual"))
@@ -59,19 +60,34 @@ kotlin {
             implementation(libs.koin.compose)
         }
 
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.kotlinx.coroutines.test)
+        }
+
+        val desktopMain by getting
+
         androidMain.dependencies {
             // Los motores de Android se enlazan SOLO aquí: el binario de iOS, Desktop y Web no
             // debe cargar ML Kit ni Play Services (RNF-06).
             implementation(project(":engines:gms-code-scanner"))
             implementation(project(":engines:mlkit-camerax"))
 
+            // Room KMP no soporta wasmJs, así que la base de datos se enlaza en los tres targets
+            // que sí la admiten; Web usa el historial en memoria de :core:data.
+            implementation(project(":core:database"))
+
             implementation(libs.androidx.activity.compose)
             implementation(libs.kotlinx.coroutines.android)
             implementation(libs.koin.android)
         }
 
-        val desktopMain by getting
+        iosMain.dependencies {
+            implementation(project(":core:database"))
+        }
+
         desktopMain.dependencies {
+            implementation(project(":core:database"))
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutines.swing)
         }

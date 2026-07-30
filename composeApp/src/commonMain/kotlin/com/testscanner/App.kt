@@ -1,8 +1,24 @@
 package com.testscanner
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.testscanner.core.designsystem.TestScannerTheme
+import com.testscanner.feature.history.HistoryScreen
 import com.testscanner.feature.scanner.ScannerScreen
+import com.testscanner.navigation.Destination
+import com.testscanner.navigation.Navigator
 import org.koin.compose.KoinContext
 
 /**
@@ -12,14 +28,46 @@ import org.koin.compose.KoinContext
  * entregar su `Context` antes de que exista cualquier composable. Aquí solo se consume el grafo ya
  * montado.
  *
- * En la Fase 1 hay una sola pantalla, así que no hay navegación todavía (ver ADR-0005): el
- * navegador propio se introduce cuando el grafo tenga más de un destino real.
+ * El [Navigator] se recibe por parámetro para que Android pueda cederle el botón atrás del sistema
+ * y para que la navegación sea testeable sin Compose (ADR-0005).
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun App() {
+fun App(navigator: Navigator = remember { Navigator() }) {
     KoinContext {
         TestScannerTheme {
-            ScannerScreen()
+            val backstack by navigator.backstack.collectAsStateWithLifecycle()
+            val current = backstack.last()
+
+            Scaffold(
+                topBar = { TopAppBar(title = { Text(current.title()) }) },
+                bottomBar = {
+                    NavigationBar {
+                        DESTINATIONS.forEach { destination ->
+                            NavigationBarItem(
+                                selected = current == destination,
+                                onClick = { navigator.navigateTo(destination) },
+                                icon = {},
+                                label = { Text(destination.title()) },
+                            )
+                        }
+                    }
+                },
+            ) { padding ->
+                Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+                    when (current) {
+                        Destination.Scanner -> ScannerScreen()
+                        Destination.History -> HistoryScreen()
+                    }
+                }
+            }
         }
     }
+}
+
+private val DESTINATIONS = listOf(Destination.Scanner, Destination.History)
+
+private fun Destination.title(): String = when (this) {
+    Destination.Scanner -> "Escanear"
+    Destination.History -> "Historial"
 }

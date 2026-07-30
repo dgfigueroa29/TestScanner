@@ -1,5 +1,7 @@
 package com.testscanner.di
 
+import com.testscanner.core.data.repository.InMemoryScanHistoryRepository
+import com.testscanner.core.domain.repository.ScanHistoryRepository
 import com.testscanner.core.model.ScannerPlatform
 import com.testscanner.core.permissions.AlwaysGrantedPermissionController
 import com.testscanner.core.permissions.PermissionController
@@ -18,4 +20,8 @@ actual fun platformModule(): Module = module {
 
     // En web el permiso es implícito en getUserMedia(); se modelará al llegar el motor de cámara.
     single<PermissionController> { AlwaysGrantedPermissionController() }
+
+    // Room KMP no tiene target wasmJs. El historial de Web es de sesión, y eso queda visible aquí
+    // en lugar de escondido tras un actual que fingiera persistir.
+    single<ScanHistoryRepository> { InMemoryScanHistoryRepository() }
 }

@@ -22,6 +22,11 @@ lifecycle = "2.9.0"
 # DI
 koin = "4.0.4"
 
+# Persistencia
+room = "2.7.2"
+sqlite = "2.5.2"
+ksp = "2.1.21-2.0.1"
+
 # Test
 turbine = "1.2.0"
 
@@ -55,6 +60,10 @@ koin-android = { module = "io.insert-koin:koin-android" }
 koin-compose = { module = "io.insert-koin:koin-compose" }
 koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel" }
 
+room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
+
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 
 detekt-formatting = { module = "io.gitlab.arturbosch.detekt:detekt-formatting", version.ref = "detekt" }
@@ -83,3 +92,5 @@ composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMul
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 androidLibrary = { id = "com.android.library", version.ref = "agp" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+room = { id = "androidx.room", version.ref = "room" }

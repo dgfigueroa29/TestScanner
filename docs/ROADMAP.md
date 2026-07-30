@@ -32,7 +32,7 @@ con su estado real; los tests de `:core:domain` y `:core:data` pasan en CI.
 
 ---
 
-## Fase 2 — Android real (en curso)
+## Fase 2 — Android real ✅
 
 - [x] `:engines:gms-code-scanner` — Google Code Scanner, sin permisos
 - [x] `:engines:mlkit-camerax` — ML Kit Barcode + CameraX, con linterna, zoom y decodificación de imagen
@@ -41,9 +41,10 @@ con su estado real; los tests de `:core:domain` y `:core:data` pasan en CI.
 - [x] Preview de Android como capacidad del motor (`CameraPreviewEngine`, ADR-0007)
 - [x] Overlay común de detección sobre `cornerPoints` normalizados (`ScanOverlay`)
 - [x] Controles de linterna en la UI, derivados de las capacidades declaradas
-- [ ] Historial persistente con Room KMP (`:feature:history`)
+- [x] Historial persistente con Room KMP (`:core:database` + `:feature:history`)
+- [x] Navegación entre escáner e historial, con botón atrás de Android
+- [x] CI en GitHub Actions: detekt + tests + Android + Desktop + Web en cada PR, iOS en `main`
 - [ ] Suite de contrato ejecutándose contra los motores de cámara en `androidTest`
-- [ ] CI: `assembleDebug` + lint + detekt en cada PR
 
 **Criterio de salida:** escaneo real en Android alternando dos motores en caliente, con fallback
 verificable desactivando Play Services.
@@ -60,7 +61,8 @@ verificable desactivando Play Services.
 - [ ] `:engines:vision-ios` — `AVCaptureSession` + `VNDetectBarcodesRequest`
 - [ ] `CameraPreview` actual de iOS (`UIKitView` con `AVCaptureVideoPreviewLayer`)
 - [ ] `:engines:zxing-cpp` — mismo decodificador en Android, iOS y Desktop
-- [ ] Revisión de ADR-0005: migrar a `navigation-compose` multiplataforma si el grafo lo justifica
+- [ ] Revisión de ADR-0005: el grafo ya tiene 2 destinos; migrar a `navigation-compose` si llega a 6 o aparecen deep links
+- [ ] Preferencias persistentes con `multiplatform-settings` (deuda D2)
 - [ ] CI: `linkDebugFrameworkIosSimulatorArm64` en runner macOS
 
 **Criterio de salida:** escaneo real en iOS; ZXing-cpp produce resultados comparables entre
@@ -102,10 +104,11 @@ Registrada de forma explícita para que no se olvide:
 | # | Deuda | Se salda en |
 |---|---|---|
 | ~~D1~~ | ~~Sin convention plugins: cada módulo repite su configuración KMP~~ | **Saldada**: `build-logic/` con `testscanner.kmp.library`, `.kmp.compose` y `.android.application` |
-| D2 | Preferencias en memoria, no persistidas | Fase 2 (`multiplatform-settings`) |
-| D3 | Historial en memoria | Fase 2 (Room KMP) |
+| D2 | Preferencias en memoria, no persistidas | Fase 3 (`multiplatform-settings`) |
+| ~~D3~~ | ~~Historial en memoria~~ | **Saldada**: Room KMP en Android, iOS y Desktop. En Web sigue en memoria porque Room no tiene target wasmJs |
 | D4 | Navegación propia sin deep links ni restauración de estado | Fase 3 (revisión ADR-0005) |
 | D5 | Strings hardcodeados en la UI, sin `composeResources` | Fase 2 |
 | D6 | La suite de contrato existe y la pasa el motor manual, pero aún no se ejecuta contra motores de cámara reales | Fase 2 |
 | D8 | El zoom se declara como capacidad y el motor lo implementa, pero no hay control de zoom en la UI | Fase 3 |
+| D9 | El historial de Web es de sesión: Room KMP no soporta wasmJs. Requiere un almacén propio sobre IndexedDB | Fase 4 |
 | D7 | `:androidApp` sin ProGuard/R8 configurado para release | Fase 2 |

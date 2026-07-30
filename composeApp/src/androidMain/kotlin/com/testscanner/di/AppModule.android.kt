@@ -1,5 +1,10 @@
 package com.testscanner.di
 
+import com.testscanner.core.database.DatabaseBuilderFactory
+import com.testscanner.core.database.RoomScanHistoryRepository
+import com.testscanner.core.database.ScanDatabase
+import com.testscanner.core.database.build
+import com.testscanner.core.domain.repository.ScanHistoryRepository
 import com.testscanner.core.model.ScannerPlatform
 import com.testscanner.core.permissions.AndroidPermissionController
 import com.testscanner.core.permissions.PermissionController
@@ -40,4 +45,9 @@ actual fun platformModule(): Module = module {
 
     single { AndroidPermissionController(androidContext()) }
     single<PermissionController> { get<AndroidPermissionController>() }
+
+    // Historial persistente: Room sobre el driver bundled, igual en las tres plataformas.
+    single { DatabaseBuilderFactory(androidContext()).create().build() }
+    single { get<ScanDatabase>().detectionDao() }
+    single<ScanHistoryRepository> { RoomScanHistoryRepository(get()) }
 }

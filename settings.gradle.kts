@@ -40,6 +40,7 @@ include(":core:designsystem")
 include(":core:permissions")
 include(":core:scanner-testing")
 include(":core:scanner-ui")
+include(":core:database")
 
 // Motores de escaneo — un módulo por alternativa (ver docs/ENGINES.md)
 include(":engines:manual")
@@ -52,6 +53,7 @@ include(":engines:mlkit-camerax")
 
 // Features
 include(":feature:scanner")
+include(":feature:history")
 
 // Aplicaciones
 include(":composeApp")

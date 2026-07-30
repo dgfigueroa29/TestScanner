@@ -19,12 +19,16 @@ y Web con un único código base.
 | Comparador de motores en paralelo + métricas (G5) | ✅ implementados |
 | Motor de entrada manual | ✅ funcional en las 4 plataformas |
 | Google Code Scanner y ML Kit + CameraX (Android) | ✅ implementados, sin compilar aún |
+| Historial persistente con Room KMP | ✅ Android, iOS y Desktop (Web: en memoria) |
+| CI en GitHub Actions | ✅ detekt, tests, Android, Desktop, Web y iOS |
 | Vision (iOS), ZXing-cpp, BarcodeDetector, OCR | ⏳ fases 3–4 |
 
 El catálogo muestra las siete alternativas con su estado real; los motores aún no implementados se
 declaran como tales, con la fase en la que llegan. Ver `docs/ROADMAP.md`.
 
-> **Sin compilar con Gradle todavía.** El entorno donde se desarrolló no tenía acceso a
+> **Sin compilar con Gradle todavía.** El CI de `.github/workflows/verify.yml` es lo que dará el
+> primer veredicto completo en cuanto se abra un PR.
+> El entorno donde se desarrolló no tenía acceso a
 > `dl.google.com`, así que no hubo Android SDK ni artefactos de AGP/Compose. Lo verificado son los
 > **82 tests del núcleo puro**, compilados y ejecutados con kotlinc 2.1.21. Todo lo que necesita
 > Gradle — `build-logic`, las versiones del catálogo, los dos motores de Android y el código
@@ -56,8 +60,10 @@ core/domain         casos de uso, políticas de selección y decoradores del SPI
 core/data           registro de motores, preferencias e historial
 core/designsystem   tema y componentes Compose compartidos
 core/permissions    abstracción de permisos por plataforma
+core/database       Room KMP: historial persistente (sin target wasmJs)
 engines/*           un módulo por alternativa de escaneo
 feature/scanner     MVI + pantalla de escaneo
+feature/history     historial filtrable por motor
 composeApp          raíz Compose Multiplatform y composition root de la DI
 androidApp          shell de Android
 iosApp              shell de iOS (Xcode)
@@ -74,6 +80,7 @@ y de su SDK nativo. Nunca de `:feature:*`, ni de `:core:data`, ni de otro motor.
 ./gradlew :androidApp:assembleDebug                  # Android
 ./gradlew :composeApp:run                            # Desktop
 ./gradlew :composeApp:wasmJsBrowserDevelopmentRun    # Web
+./gradlew detekt                                     # análisis estático
 ./gradlew check                                      # tests + detekt
 ```
 
