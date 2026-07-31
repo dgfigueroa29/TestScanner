@@ -85,10 +85,11 @@ class ZXingJavaEngine : BarcodeScannerEngine, ImageDecodingEngine {
             } else {
                 listOf(reader.decode(bitmap, hints))
             }
-        } catch (notFound: NotFoundException) {
-            // No haber encontrado nada no es un fallo del motor: es la respuesta. Convertirlo en
-            // `Result.failure` haría que el caso de uso siguiera probando motores y acabara
-            // informando de un error donde solo hay una imagen sin código.
+        } catch (@Suppress("SwallowedException") notFound: NotFoundException) {
+            // La excepción se descarta a conciencia: `NotFoundException` no lleva información útil
+            // —solo dice que no había código— y aquí eso no es un fallo del motor sino la
+            // respuesta. Convertirlo en `Result.failure` haría que el caso de uso siguiera
+            // probando motores y acabara enseñando un error donde solo hay una imagen sin código.
             emptyList()
         }.map(ZXingResult::toBarcode)
     }

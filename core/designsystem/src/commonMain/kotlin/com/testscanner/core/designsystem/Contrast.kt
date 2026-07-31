@@ -33,8 +33,8 @@ object Contrast {
 
     /** Luminancia relativa de un ARGB, tal como la define WCAG 2.1. */
     fun relativeLuminance(color: Int): Double {
-        val red = channel((color shr 16) and BYTE)
-        val green = channel((color shr 8) and BYTE)
+        val red = channel((color shr RED_SHIFT) and BYTE)
+        val green = channel((color shr GREEN_SHIFT) and BYTE)
         val blue = channel(color and BYTE)
         return RED_WEIGHT * red + GREEN_WEIGHT * green + BLUE_WEIGHT * blue
     }
@@ -53,6 +53,8 @@ object Contrast {
         }
     }
 
+    private const val RED_SHIFT = 16
+    private const val GREEN_SHIFT = 8
     private const val BYTE = 0xFF
     private const val MAX_CHANNEL = 255.0
     private const val OFFSET = 0.05

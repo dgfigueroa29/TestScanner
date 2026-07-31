@@ -38,6 +38,16 @@ allprojects {
     }
 
     tasks.withType<Detekt>().configureEach {
+        // Sin esto, detekt no analizaba **ni un solo archivo**. Su fuente por defecto es
+        // `src/main/kotlin` y `src/test/kotlin`, que son los directorios de un proyecto JVM
+        // clásico; en un proyecto KMP el código vive en `src/commonMain/kotlin`,
+        // `src/androidMain/kotlin` y demás. El resultado era un análisis estático que pasaba
+        // siempre en verde porque no miraba nada, que es peor que no tenerlo: daba por revisado
+        // lo que nadie había revisado.
+        setSource(files("src"))
+        include("**/*.kt", "**/*.kts")
+        exclude("**/build/**", "**/resources/**")
+
         reports {
             html.required.set(true)
             xml.required.set(true)

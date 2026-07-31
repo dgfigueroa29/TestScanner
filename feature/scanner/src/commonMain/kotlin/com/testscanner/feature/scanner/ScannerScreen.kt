@@ -657,9 +657,10 @@ private const val MAX_ZOOM = 5f
 private fun ShareableContent.asText(): String = when (this) {
     is ShareableContent.Raw -> value
 
-    is ShareableContent.Wifi -> password
-        ?.let { stringResource(Res.string.share_wifi_with_password, ssid, it) }
-        ?: stringResource(Res.string.share_wifi, ssid)
+    is ShareableContent.Wifi ->
+        password
+            ?.let { stringResource(Res.string.share_wifi_with_password, ssid, it) }
+            ?: stringResource(Res.string.share_wifi, ssid)
 
     is ShareableContent.Contact -> parts.joinToString(stringResource(Res.string.share_separator))
 }

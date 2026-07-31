@@ -55,4 +55,4 @@ internal fun CVPixelBufferRef.toLumaImageView(): ImageView? {
 }
 
 /** `size_t` en el binding: el índice del plano de luminancia dentro del buffer YUV. */
-private val LUMA_PLANE: ULong = 0uL
+private const val LUMA_PLANE: ULong = 0uL

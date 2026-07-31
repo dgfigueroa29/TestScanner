@@ -7,7 +7,6 @@ import com.testscanner.core.domain.export.HistoryExporter
 import com.testscanner.core.domain.scan.ResultAction
 import com.testscanner.core.domain.usecase.ClearScanHistoryUseCase
 import com.testscanner.core.domain.usecase.ObserveScanHistoryUseCase
-import com.testscanner.core.model.Detection
 import com.testscanner.core.model.ScannerEngineId
 import com.testscanner.core.platform.FileSaver
 import com.testscanner.core.platform.PlatformActions

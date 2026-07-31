@@ -828,6 +828,14 @@ quien la implementa es el motor de dentro. De ahí salió `DecoratingScannerEngi
 
 - **Detekt** con `detekt-formatting` (ktlint embebido), configuración compartida en
   `config/detekt/detekt.yml`, ejecutado sobre todos los módulos. Build falla ante nuevos issues.
+
+  Hasta el primer CI real **no analizaba ni un archivo**: la fuente por defecto de la tarea es
+  `src/main/kotlin`, que es el layout de un proyecto JVM, y aquí el código vive en
+  `src/commonMain/kotlin` y sus hermanos. Pasaba en verde porque no miraba nada, que es peor que no
+  tenerlo. Ahora la tarea apunta a `src` entero. Al encenderlo aparecieron 105 hallazgos, todos
+  resueltos: los umbrales **no** se subieron hasta que cupiera lo que había —eso deja la regla
+  midiendo siempre lo que sea que haya—, sino que las cuatro excepciones legítimas llevan
+  `@Suppress` en su sitio con el motivo al lado del código.
 - **Reglas de arquitectura** verificadas en CI: `:core:domain` no puede depender de Compose ni de
   Android; `:engines:*` no puede depender de `:feature:*`.
 - **SonarCloud** para deuda técnica y duplicación; sin regresión permitida en PR.

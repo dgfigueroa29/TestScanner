@@ -75,20 +75,6 @@ class ResultActionsIntegrationTest {
         detectedAtMillis = 1,
     )
 
-    private fun wifiDetection() = Detection.of(
-        barcode = Barcode(
-            rawValue = "WIFI:T:WPA;S:MiRed;P:clave;;",
-            format = BarcodeFormat.QrCode,
-            valueType = BarcodeValueType.Wifi(
-                ssid = "MiRed",
-                password = "clave",
-                encryption = BarcodeValueType.WifiEncryption.WPA,
-            ),
-        ),
-        engineId = ScannerEngineId.ManualInput,
-        detectedAtMillis = 1,
-    )
-
     @Test
     fun `copiar manda el valor al portapapeles`() = runTest {
         val viewModel = viewModel()

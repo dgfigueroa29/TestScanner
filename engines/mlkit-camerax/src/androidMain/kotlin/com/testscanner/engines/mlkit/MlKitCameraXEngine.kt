@@ -1,3 +1,7 @@
+// El `*` sobre un array es obligado: la API del SDK recibe `vararg` y no hay sobrecarga
+// que acepte una colección. La copia que señala detekt la impone la firma ajena.
+@file:Suppress("SpreadOperator")
+
 package com.testscanner.engines.mlkit
 
 import android.Manifest
@@ -167,13 +171,13 @@ class MlKitCameraXEngine(
                     onEvent(
                         ScanEvent.Detected(
                             barcodes.mapNotNull {
-                        it.toDetection(
-                            nowMillis = now,
-                            latencyMillis = now - startedAtMillis,
-                            imageWidth = input.width,
-                            imageHeight = input.height,
-                        )
-                    },
+                                it.toDetection(
+                                    nowMillis = now,
+                                    latencyMillis = now - startedAtMillis,
+                                    imageWidth = input.width,
+                                    imageHeight = input.height,
+                                )
+                            },
                         ),
                     )
                 }

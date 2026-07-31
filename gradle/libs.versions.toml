@@ -24,7 +24,15 @@ composeMultiplatform = "1.11.1"
 jvmTarget = "17"
 
 # Android SDK
-compileSdk = "35"
+#
+# `compileSdk` a 36 porque lo exigen las dependencias que arrastra Compose Multiplatform 1.11.1
+# —`androidx.lifecycle` y `androidx.navigationevent`, entre otras—: el lint de release fallaba con
+# "requires libraries and applications that depend on it to compile against version 36 or later".
+#
+# `targetSdk` se queda en 35 a propósito. Son cosas distintas: `compileSdk` dice contra qué APIs se
+# compila y `targetSdk` a qué comportamientos de runtime se acoge la app. Subir el segundo activa
+# cambios de comportamiento del sistema que nadie ha pedido ni puede probar aquí.
+compileSdk = "36"
 minSdk = "24"
 targetSdk = "35"
 

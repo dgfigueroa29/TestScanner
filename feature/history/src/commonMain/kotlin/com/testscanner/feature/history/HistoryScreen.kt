@@ -250,9 +250,10 @@ private suspend fun resolve(message: HistoryMessage): String = when (message) {
 
     // iOS y el navegador no revelan dónde acabó el archivo, así que hay dos mensajes: uno que dice
     // el destino y otro que solo confirma. Fingir una ruta sería peor que no darla.
-    is HistoryMessage.Exported -> message.location
-        ?.let { getString(Res.string.message_exported_to, it) }
-        ?: getString(Res.string.message_exported)
+    is HistoryMessage.Exported ->
+        message.location
+            ?.let { getString(Res.string.message_exported_to, it) }
+            ?: getString(Res.string.message_exported)
 
     is HistoryMessage.ExportFailed -> message.reason
 }
@@ -273,9 +274,10 @@ private fun ExportFormat.labelResource(): StringResource = when (this) {
 private fun ShareableContent.asText(): String = when (this) {
     is ShareableContent.Raw -> value
 
-    is ShareableContent.Wifi -> password
-        ?.let { stringResource(Res.string.share_wifi_with_password, ssid, it) }
-        ?: stringResource(Res.string.share_wifi, ssid)
+    is ShareableContent.Wifi ->
+        password
+            ?.let { stringResource(Res.string.share_wifi_with_password, ssid, it) }
+            ?: stringResource(Res.string.share_wifi, ssid)
 
     is ShareableContent.Contact -> parts.joinToString(stringResource(Res.string.share_separator))
 }
