@@ -19,7 +19,7 @@ class ManualInputEngineContractTest : BarcodeScannerEngineContractTest() {
 
     override fun request(): ScanRequest = ScanRequest(source = ScanSource.ManualInput)
 
-    override val canTriggerDetection: Boolean = true
+    override val producesDetection: Boolean = true
 
     override suspend fun triggerDetection(engine: BarcodeScannerEngine) {
         (engine as TextInputEngine).submit("4006381333931")

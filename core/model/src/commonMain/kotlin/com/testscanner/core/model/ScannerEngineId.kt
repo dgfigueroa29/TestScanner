@@ -19,8 +19,17 @@ enum class ScannerEngineId(val id: String) {
     /** Vision / AVFoundation. iOS nativo. */
     VisionIos("vision_ios"),
 
-    /** ZXing-cpp. Mismo decodificador en Android, iOS y Desktop: baseline de comparación. */
+    /** ZXing-cpp. Mismo decodificador en Android e iOS: baseline de comparación. */
     ZXingCpp("zxing_cpp"),
+
+    /**
+     * ZXing en Java puro. Escritorio.
+     *
+     * Motor distinto de [ZXingCpp] pese al parecido del nombre, y por eso tiene id propio: es el
+     * proyecto original en Java, no el port a C++. Comparten linaje y no implementación, así que
+     * atribuirle las lecturas del otro falsearía justo la comparación que la app existe para hacer.
+     */
+    ZXingJava("zxing_java"),
 
     /** `BarcodeDetector` del navegador. Web. */
     BrowserDetector("browser_detector"),

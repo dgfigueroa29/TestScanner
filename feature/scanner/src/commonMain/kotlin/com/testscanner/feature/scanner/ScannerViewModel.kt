@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.testscanner.core.domain.repository.ScanPreferencesRepository
 import com.testscanner.core.domain.repository.ScannerEngineRepository
+import com.testscanner.core.domain.scan.ResultAction
+import com.testscanner.core.domain.usecase.DecodeImageUseCase
 import com.testscanner.core.domain.usecase.ObserveEngineCatalogUseCase
 import com.testscanner.core.domain.usecase.ObserveScanPreferencesUseCase
 import com.testscanner.core.domain.usecase.SaveDetectionUseCase
@@ -11,14 +13,20 @@ import com.testscanner.core.domain.usecase.SetPreferredEngineUseCase
 import com.testscanner.core.domain.usecase.SetScanFormatsUseCase
 import com.testscanner.core.domain.usecase.StartScanSessionUseCase
 import com.testscanner.core.model.BarcodeFormat
+import com.testscanner.core.model.Detection
 import com.testscanner.core.model.Permission
+import com.testscanner.core.model.ScanImage
 import com.testscanner.core.model.ScanRequest
 import com.testscanner.core.model.ScanSource
 import com.testscanner.core.model.ScannerEngineId
 import com.testscanner.core.permissions.PermissionController
+import com.testscanner.core.platform.ImagePicker
+import com.testscanner.core.platform.PickImageResult
+import com.testscanner.core.platform.PlatformActions
 import com.testscanner.core.scanner.CameraControlEngine
 import com.testscanner.core.scanner.ScanEvent
 import com.testscanner.core.scanner.TextInputEngine
+import com.testscanner.core.scanner.capability
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,12 +51,15 @@ class ScannerViewModel(
     private val setScanFormats: SetScanFormatsUseCase,
     private val startScanSession: StartScanSessionUseCase,
     private val saveDetection: SaveDetectionUseCase,
+    private val decodeImage: DecodeImageUseCase,
     private val preferencesRepository: ScanPreferencesRepository,
     private val engineRepository: ScannerEngineRepository,
     private val permissionController: PermissionController,
+    private val platformActions: PlatformActions,
+    private val imagePicker: ImagePicker,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(ScannerState())
+    private val _state = MutableStateFlow(ScannerState(canShare = platformActions.canShare))
     val state: StateFlow<ScannerState> = _state.asStateFlow()
 
     private val _effects = MutableSharedFlow<ScannerEffect>()
@@ -71,6 +82,8 @@ class ScannerViewModel(
             is ScannerAction.SetContinuous -> setContinuous(action.enabled)
             is ScannerAction.ManualInputChanged -> _state.update { it.copy(manualInput = action.value) }
             ScannerAction.SubmitManualInput -> submitManualInput()
+            ScannerAction.ScanFromImage -> scanFromImage()
+            is ScannerAction.RunResultAction -> runResultAction(action.action, action.text)
             ScannerAction.ToggleTorch -> toggleTorch()
             is ScannerAction.SetZoom -> setZoom(action.ratio)
             ScannerAction.RequestCameraPermission -> requestCameraPermission()
@@ -182,11 +195,7 @@ class ScannerViewModel(
 
             is ScanEvent.EngineSwitched -> {
                 _state.update { it.copy(switchedFrom = event.from, activeEngineId = event.to) }
-                _effects.emit(
-                    ScannerEffect.ShowMessage(
-                        "Se cambió a otro motor porque el anterior no pudo continuar",
-                    ),
-                )
+                _effects.emit(ScannerEffect.ShowMessage(ScannerMessage.EngineSwitched))
             }
 
             is ScanEvent.Failed -> if (event.error.isFatal) {
@@ -209,12 +218,111 @@ class ScannerViewModel(
 
         viewModelScope.launch {
             val engine = engineRepository.engine(ScannerEngineId.ManualInput)
-            if (engine is TextInputEngine) {
+                ?.capability<TextInputEngine>()
+
+            if (engine != null) {
                 engine.submit(value)
                 _state.update { it.copy(manualInput = "") }
             } else {
-                _effects.emit(ScannerEffect.ShowMessage("La entrada manual no está disponible"))
+                _effects.emit(ScannerEffect.ShowMessage(ScannerMessage.ManualInputUnavailable))
             }
+        }
+    }
+
+    /**
+     * Escanea una imagen elegida por el usuario (RF-07).
+     *
+     * Detiene la sesión en vivo antes de abrir el selector: en Android la cámara y el selector del
+     * sistema compiten por la pantalla, y dejarla corriendo detrás gastaría batería mientras el
+     * usuario busca la foto.
+     *
+     * No pide permiso de galería a propósito. El selector moderno de cada plataforma —el *photo
+     * picker* de Android, `PHPicker` en iOS, el diálogo de archivos en escritorio y web— corre
+     * fuera de la app y devuelve solo lo que el usuario elige, así que **no hay nada que pedir**.
+     * Es la misma ventaja que hace que el Google Code Scanner encabece la cadena en Android.
+     */
+    private fun scanFromImage() {
+        if (_state.value.isDecodingImage) return
+
+        stopSession()
+        _state.update { it.copy(isDecodingImage = true, error = null) }
+
+        viewModelScope.launch {
+            try {
+                when (val picked = imagePicker.pickImage()) {
+                    is PickImageResult.Cancelled -> Unit
+
+                    is PickImageResult.Failed ->
+                        _effects.emit(ScannerEffect.ShowMessage(ScannerMessage.Raw(picked.reason)))
+
+                    is PickImageResult.Picked -> decodePickedImage(picked.image)
+                }
+            } finally {
+                _state.update { it.copy(isDecodingImage = false) }
+            }
+        }
+    }
+
+    private suspend fun decodePickedImage(image: ScanImage) {
+        val preferences = preferencesRepository.current()
+        val request = ScanRequest(
+            formats = preferences.formats,
+            source = ScanSource.StaticImage,
+            allowMultiple = true,
+        )
+
+        decodeImage(image, request, preferences.preferredEngineId)
+            .onSuccess { detections ->
+                if (detections.isEmpty()) {
+                    _effects.emit(ScannerEffect.ShowMessage(ScannerMessage.NoCodeInImage))
+                    return@onSuccess
+                }
+                // La imagen es una sesión puntual: sus resultados sustituyen a los anteriores, igual
+                // que al arrancar una sesión de cámara.
+                _state.update {
+                    it.copy(
+                        detections = detections,
+                        activeEngineId = detections.first().engineId,
+                        sessionStatus = SessionStatus.Finished,
+                    )
+                }
+                detections.forEach { saveDetection(it) }
+            }
+            .onFailure { failure ->
+                val reason = failure.message?.let(ScannerMessage::Raw) ?: ScannerMessage.NoCodeInImage
+                _effects.emit(ScannerEffect.ShowMessage(reason))
+            }
+    }
+
+    /**
+     * Ejecuta una acción sobre un resultado (RF-13).
+     *
+     * El dominio decide **qué** se puede hacer con el código, la pantalla lo **redacta** y la
+     * plataforma lo **ejecuta**; el ViewModel une las tres partes y avisa si la acción no prosperó
+     * — el portapapeles puede estar bloqueado y no abrirse ninguna app para un esquema.
+     */
+    private fun runResultAction(action: ResultAction, text: String) {
+        viewModelScope.launch {
+            val (succeeded, failure) = when (action) {
+                ResultAction.Copy ->
+                    platformActions.copyToClipboard(text) to ScannerMessage.CopyFailed
+
+                ResultAction.Share ->
+                    platformActions.share(text) to ScannerMessage.ShareFailed
+
+                is ResultAction.Open ->
+                    platformActions.openUrl(action.uri) to ScannerMessage.OpenFailed
+            }
+
+            // Compartir y abrir son visibles por sí mismos: aparece una hoja o cambia de app.
+            // Copiar no muestra nada, así que es la única que necesita confirmación.
+            val message: ScannerMessage? = when {
+                !succeeded -> failure
+                action == ResultAction.Copy -> ScannerMessage.Copied
+                else -> null
+            }
+
+            message?.let { _effects.emit(ScannerEffect.ShowMessage(it)) }
         }
     }
 
@@ -242,7 +350,9 @@ class ScannerViewModel(
     }
 
     private fun cameraControlOfActiveEngine(): CameraControlEngine? =
-        _state.value.activeEngineId?.let(engineRepository::engine) as? CameraControlEngine
+        _state.value.activeEngineId
+            ?.let(engineRepository::engine)
+            ?.capability<CameraControlEngine>()
 
     /**
      * Tras conceder el permiso hay que refrescar el catálogo: la disponibilidad de los motores de
@@ -254,11 +364,7 @@ class ScannerViewModel(
             engineRepository.refresh()
 
             if (!status.isGranted) {
-                _effects.emit(
-                    ScannerEffect.ShowMessage(
-                        "Sin permiso de cámara solo quedan disponibles los motores que no la usan",
-                    ),
-                )
+                _effects.emit(ScannerEffect.ShowMessage(ScannerMessage.CameraPermissionDenied))
             }
         }
     }

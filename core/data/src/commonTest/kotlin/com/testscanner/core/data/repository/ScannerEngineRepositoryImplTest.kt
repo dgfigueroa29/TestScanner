@@ -47,7 +47,7 @@ class ScannerEngineRepositoryImplTest {
     ) = ScannerEngineRepositoryImpl(platform = platform, installedEngines = engines)
 
     @Test
-    fun `el catalogo siempre lista los siete motores, esten instalados o no`() = runTest {
+    fun `el catalogo siempre lista todos los motores, esten instalados o no`() = runTest {
         val catalog = repository(engines = listOf(StubEngine(ScannerEngineId.ManualInput)))
             .observeCatalog().first()
 

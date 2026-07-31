@@ -76,10 +76,23 @@ jobs:
       - name: Lint
         run: ./gradlew :androidApp:lintDebug
 
+      # Es lo único que ejecuta R8 de verdad. Sin este paso, activar `minify` sería configuración
+      # que nadie comprueba: los fallos de ofuscación no aparecen en la build de debug.
+      - name: Ensamblar release (R8)
+        run: ./gradlew :androidApp:assembleRelease
+
       - uses: actions/upload-artifact@v4
         with:
           name: apk-debug
           path: androidApp/build/outputs/apk/debug/*.apk
+          if-no-files-found: warn
+
+      # El mapping es lo que hace legible una traza de release. Sin él, un fallo en producción es
+      # una pila de nombres de una letra.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r8-mapping
+          path: androidApp/build/outputs/mapping/release/mapping.txt
           if-no-files-found: warn
 
   desktop:

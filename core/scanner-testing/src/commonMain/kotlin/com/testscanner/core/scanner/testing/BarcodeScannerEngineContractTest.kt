@@ -1,9 +1,14 @@
 package com.testscanner.core.scanner.testing
 
 import com.testscanner.core.model.ScanRequest
+import com.testscanner.core.model.ScanSource
 import com.testscanner.core.scanner.BarcodeScannerEngine
+import com.testscanner.core.scanner.CameraControlEngine
 import com.testscanner.core.scanner.EngineAvailability
+import com.testscanner.core.scanner.ImageDecodingEngine
 import com.testscanner.core.scanner.ScanEvent
+import com.testscanner.core.scanner.TextInputEngine
+import com.testscanner.core.scanner.capability
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
@@ -19,8 +24,13 @@ import kotlin.test.assertTrue
  * vida de la sesión y que la cancelación libera recursos. Sin esto, las capacidades declarativas
  * — de las que dependen el selector y la UI entera — serían una promesa sin comprobar (ADR-0002).
  *
- * Los motores con cámara real la heredan desde `androidTest`/`iosTest`; los que son `commonMain`
- * puro, desde `commonTest`.
+ * La heredan desde `commonTest` los motores que se pueden instanciar sin dispositivo —el de entrada
+ * manual— y **todos los decoradores del dominio**, incluida la cadena completa que llega al
+ * ViewModel.
+ *
+ * Los motores de cámara no la heredan, y es una decisión y no un olvido: exigirían un emulador en
+ * CI, y un test que nunca se ejecuta da una red de seguridad falsa. Lo que los cubre sin dispositivo
+ * está en `docs/ROADMAP.md`.
  */
 abstract class BarcodeScannerEngineContractTest {
 
@@ -31,18 +41,22 @@ abstract class BarcodeScannerEngineContractTest {
     open fun request(): ScanRequest = ScanRequest()
 
     /**
-     * Si el motor puede forzarse a detectar desde un test unitario.
+     * Si una sesión de este motor produce al menos una detección dentro de un test unitario.
      *
      * Es `false` por defecto porque un motor de cámara necesita hardware. Los que sí pueden
-     * — entrada manual, decodificación de imagen — lo ponen a `true` y sobrescriben
-     * [triggerDetection]; entonces los asertos sobre [ScanEvent.Detected] se ejecutan de verdad en
-     * lugar de saltarse.
+     * — entrada manual, decodificación de imagen, decoradores sobre un motor falso — lo ponen a
+     * `true`; entonces los asertos sobre [ScanEvent.Detected] se ejecutan de verdad en lugar de
+     * saltarse.
      */
-    open val canTriggerDetection: Boolean = false
+    open val producesDetection: Boolean = false
 
-    /** Provoca al menos una detección en el motor, ya arrancado. Ver [canTriggerDetection]. */
-    open suspend fun triggerDetection(engine: BarcodeScannerEngine): Unit =
-        error("El motor declara canTriggerDetection = true pero no implementa triggerDetection()")
+    /**
+     * Empuja al motor para que detecte, si lo necesita.
+     *
+     * Por defecto no hace nada: hay motores que producen la detección solos en cuanto arranca la
+     * sesión. El de entrada manual, en cambio, espera a que alguien le entregue un valor.
+     */
+    open suspend fun triggerDetection(engine: BarcodeScannerEngine) = Unit
 
     @Test
     fun `el id del motor coincide con el de su descriptor`() {
@@ -71,6 +85,48 @@ abstract class BarcodeScannerEngineContractTest {
         if (capabilities.providesOwnUi) {
             assertTrue(!capabilities.supportsTorch, "UI propia y linterna a la vez")
             assertTrue(!capabilities.supportsZoom, "UI propia y zoom a la vez")
+        }
+    }
+
+    @Test
+    fun `si declara linterna o zoom, alguien en la cadena los implementa`() {
+        // Es la clase de fallo que más veces ha aparecido en este proyecto: algo declarado que
+        // ningún código cumple. La UI muestra el control leyendo el descriptor, así que un motor
+        // que promete linterna sin implementarla pinta un botón que no hace nada.
+        val engine = createEngine()
+        val capabilities = engine.descriptor.capabilities
+
+        if (capabilities.supportsTorch || capabilities.supportsZoom) {
+            assertTrue(
+                engine.capability<CameraControlEngine>() != null,
+                "${engine.id} declara controles de cámara pero no implementa CameraControlEngine",
+            )
+        }
+    }
+
+    @Test
+    fun `si declara imagen estatica, alguien en la cadena sabe decodificarla`() {
+        // Sin esto, el selector elegiría el motor para una petición de imagen y el caso de uso lo
+        // descartaría después por no ser `ImageDecodingEngine`: una elección que no lleva a nada.
+        val engine = createEngine()
+
+        if (ScanSource.StaticImage in engine.descriptor.capabilities.sources) {
+            assertTrue(
+                engine.capability<ImageDecodingEngine>() != null,
+                "${engine.id} declara la fuente imagen pero no implementa ImageDecodingEngine",
+            )
+        }
+    }
+
+    @Test
+    fun `si declara entrada manual, alguien en la cadena la acepta`() {
+        val engine = createEngine()
+
+        if (ScanSource.ManualInput in engine.descriptor.capabilities.sources) {
+            assertTrue(
+                engine.capability<TextInputEngine>() != null,
+                "${engine.id} declara entrada manual pero no implementa TextInputEngine",
+            )
         }
     }
 
@@ -147,7 +203,7 @@ abstract class BarcodeScannerEngineContractTest {
     private suspend fun collectSessionWithDetection(
         engine: BarcodeScannerEngine,
     ): List<ScanEvent>? {
-        if (!canTriggerDetection) return null
+        if (!producesDetection) return null
 
         val events = mutableListOf<ScanEvent>()
         var triggered = false

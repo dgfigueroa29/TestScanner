@@ -21,6 +21,15 @@ data class EngineMetrics(
     /** Latencia media de detección, o `null` si el motor aún no detectó nada con latencia medida. */
     val averageLatencyMillis: Long?
         get() = if (latencySamples == 0) null else totalLatencyMillis / latencySamples
+
+    /**
+     * Frames analizados por cada código distinto leído, o `null` si aún no leyó ninguno.
+     *
+     * Es la medida de eficiencia que hace interesante la comparación: dos motores pueden leer lo
+     * mismo, pero el que necesita 3 frames es mejor que el que necesita 90.
+     */
+    val framesPerDetection: Int?
+        get() = if (uniqueValues == 0) null else framesAnalyzed / uniqueValues
 }
 
 /**
@@ -29,6 +38,11 @@ data class EngineMetrics(
  * Es una función pura sobre eventos, no un observador con estado escondido: alimentarlo con la
  * misma secuencia produce siempre el mismo marcador. Eso es lo que hace que la comparación entre
  * motores sea reproducible y testeable sin dispositivo.
+ *
+ * La atribución sale del propio evento ([ScanEvent.engineId]). Antes había una sobrecarga que
+ * recibía el motor por parámetro, porque `FrameAnalyzed` y `Failed` no lo llevaban: el resultado
+ * era que en el comparador — donde nadie puede saber de quién viene cada evento de un stream
+ * fusionado — los contadores de frames y de fallos quedaban siempre en cero.
  */
 class EngineScoreboard private constructor(
     private val metrics: Map<ScannerEngineId, EngineMetrics>,
@@ -48,32 +62,34 @@ class EngineScoreboard private constructor(
 
     fun reduce(event: ScanEvent): EngineScoreboard = when (event) {
         is ScanEvent.Detected -> reduceDetected(event)
-        is ScanEvent.FrameAnalyzed -> this
-        is ScanEvent.Failed -> this
-        is ScanEvent.EngineSwitched -> this
-        is ScanEvent.SessionStarted -> withEntry(event.engineId) { it }
-        is ScanEvent.SessionEnded -> this
-    }
 
-    /**
-     * Los eventos que no llevan motor —[ScanEvent.Failed], [ScanEvent.FrameAnalyzed]— se atribuyen
-     * explícitamente. En una comparación en paralelo no hay forma de deducir de quién vienen, y
-     * adivinarlo falsearía el marcador.
-     */
-    fun reduce(event: ScanEvent, attributedTo: ScannerEngineId): EngineScoreboard = when (event) {
-        is ScanEvent.FrameAnalyzed -> withEntry(attributedTo) {
+        is ScanEvent.FrameAnalyzed -> withEntry(event.engineId) {
             it.copy(framesAnalyzed = it.framesAnalyzed + 1)
         }
 
-        is ScanEvent.Failed -> withEntry(attributedTo) {
+        is ScanEvent.Failed -> reduceFailed(event)
+
+        // Un cambio de motor no es mérito ni demérito de ninguno: lo que importa es lo que cada
+        // uno leyó, y eso ya viene en sus propios eventos.
+        is ScanEvent.EngineSwitched -> this
+
+        is ScanEvent.SessionStarted -> withEntry(event.engineId) { it }
+
+        is ScanEvent.SessionEnded -> this
+    }
+
+    private fun reduceFailed(event: ScanEvent.Failed): EngineScoreboard {
+        // Un fallo sin motor es de la sesión entera — no hay ninguno disponible, o venció el plazo
+        // de la cadena — y repartirlo entre los participantes falsearía el marcador.
+        val engineId = event.engineId ?: return this
+
+        return withEntry(engineId) {
             if (event.error.isFatal) {
                 it.copy(fatalFailures = it.fatalFailures + 1)
             } else {
                 it.copy(transientFailures = it.transientFailures + 1)
             }
         }
-
-        else -> reduce(event)
     }
 
     private fun reduceDetected(event: ScanEvent.Detected): EngineScoreboard =

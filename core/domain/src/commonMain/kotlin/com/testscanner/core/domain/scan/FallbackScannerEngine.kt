@@ -4,6 +4,7 @@ import com.testscanner.core.model.ScanError
 import com.testscanner.core.model.ScanRequest
 import com.testscanner.core.model.ScannerEngineId
 import com.testscanner.core.scanner.BarcodeScannerEngine
+import com.testscanner.core.scanner.DecoratingScannerEngine
 import com.testscanner.core.scanner.EngineAvailability
 import com.testscanner.core.scanner.ScanEvent
 import com.testscanner.core.scanner.ScannerEngineDescriptor
@@ -26,13 +27,27 @@ import kotlinx.coroutines.flow.flow
  */
 class FallbackScannerEngine(
     private val engines: List<BarcodeScannerEngine>,
-) : BarcodeScannerEngine {
+) : DecoratingScannerEngine {
 
     init {
         require(engines.isNotEmpty()) { "La cadena de fallback necesita al menos un motor" }
     }
 
     private val primary: BarcodeScannerEngine = engines.first()
+
+    /**
+     * La cadena expone las capacidades del **primer motor**, igual que ya expone su descriptor.
+     *
+     * Lo destapó la suite de contrato al aplicarse a los decoradores: la cadena declaraba linterna
+     * —heredada del descriptor del primero— y un `as? CameraControlEngine` sobre ella devolvía
+     * `null`, porque quien la implementa es el motor de dentro. Declarar algo que nadie sirve es
+     * justo lo que el contrato existe para impedir.
+     *
+     * Si la cadena degrada a otro motor, esto sigue apuntando al primero — la misma simplificación
+     * que ya hace `descriptor`. No es un problema en la práctica porque la UI lee las capacidades
+     * del motor **activo**, que conoce por `EngineSwitched`, no de la cadena.
+     */
+    override val delegate: BarcodeScannerEngine = primary
 
     override val id: ScannerEngineId = primary.id
 
@@ -85,7 +100,7 @@ class FallbackScannerEngine(
             }
         }
 
-        emit(ScanEvent.Failed(lastError))
+        emit(ScanEvent.Failed(lastError, engineId = engines.last().id))
         emit(ScanEvent.SessionEnded(engines.last().id))
     }
 }

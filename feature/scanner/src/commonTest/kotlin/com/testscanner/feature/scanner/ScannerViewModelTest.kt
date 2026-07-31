@@ -1,5 +1,6 @@
 package com.testscanner.feature.scanner
 
+import com.testscanner.core.domain.usecase.DecodeImageUseCase
 import com.testscanner.core.domain.usecase.ObserveEngineCatalogUseCase
 import com.testscanner.core.domain.usecase.ObserveScanPreferencesUseCase
 import com.testscanner.core.domain.usecase.SaveDetectionUseCase
@@ -10,6 +11,7 @@ import com.testscanner.core.domain.usecase.StartScanSessionUseCase
 import com.testscanner.core.model.BarcodeFormat
 import com.testscanner.core.model.ScanError
 import com.testscanner.core.model.ScannerEngineId
+import com.testscanner.core.platform.NoOpPlatformActions
 import com.testscanner.core.scanner.EngineAvailability
 import com.testscanner.core.scanner.ScanEvent
 import kotlinx.coroutines.Dispatchers
@@ -57,9 +59,12 @@ class ScannerViewModelTest {
             setScanFormats = SetScanFormatsUseCase(preferences),
             startScanSession = StartScanSessionUseCase(engines, select),
             saveDetection = SaveDetectionUseCase(history),
+            decodeImage = DecodeImageUseCase(engines, select),
             preferencesRepository = preferences,
             engineRepository = engines,
             permissionController = permissions,
+            platformActions = NoOpPlatformActions(),
+            imagePicker = FakeImagePicker(),
         )
     }
 

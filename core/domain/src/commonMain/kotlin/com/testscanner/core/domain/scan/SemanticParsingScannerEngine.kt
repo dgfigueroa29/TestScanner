@@ -4,6 +4,7 @@ import com.testscanner.core.model.BarcodeValueType
 import com.testscanner.core.model.ScanRequest
 import com.testscanner.core.model.ScannerEngineId
 import com.testscanner.core.scanner.BarcodeScannerEngine
+import com.testscanner.core.scanner.DecoratingScannerEngine
 import com.testscanner.core.scanner.EngineAvailability
 import com.testscanner.core.scanner.ScanEvent
 import com.testscanner.core.scanner.ScannerEngineDescriptor
@@ -20,8 +21,8 @@ import kotlinx.coroutines.flow.map
  * motores dejaría de ser justa.
  */
 class SemanticParsingScannerEngine(
-    private val delegate: BarcodeScannerEngine,
-) : BarcodeScannerEngine {
+    override val delegate: BarcodeScannerEngine,
+) : DecoratingScannerEngine {
 
     override val id: ScannerEngineId = delegate.id
 

@@ -55,20 +55,61 @@ class EngineScoreboardTest {
     }
 
     @Test
-    fun `los fallos se atribuyen explicitamente y se separan por gravedad`() {
+    fun `los fallos se atribuyen a su motor y se separan por gravedad`() {
         val scoreboard = EngineScoreboard.Empty
             .reduce(
-                ScanEvent.Failed(ScanError.DecodeFailed("frame borroso")),
-                attributedTo = ScannerEngineId.ZXingCpp,
+                ScanEvent.Failed(ScanError.DecodeFailed("frame borroso"), ScannerEngineId.ZXingCpp),
             )
             .reduce(
-                ScanEvent.Failed(ScanError.CameraUnavailable("ocupada")),
-                attributedTo = ScannerEngineId.ZXingCpp,
+                ScanEvent.Failed(ScanError.CameraUnavailable("ocupada"), ScannerEngineId.ZXingCpp),
             )
 
         val metrics = scoreboard[ScannerEngineId.ZXingCpp]!!
         assertEquals(1, metrics.transientFailures)
         assertEquals(1, metrics.fatalFailures)
+    }
+
+    @Test
+    fun `un fallo sin motor no se reparte entre los participantes`() {
+        // Que venza el plazo de la sesión no es culpa de ningún motor en particular.
+        val scoreboard = EngineScoreboard.Empty
+            .reduce(detected(ScannerEngineId.ZXingCpp, "a", 10))
+            .reduce(ScanEvent.Failed(ScanError.Timeout))
+
+        assertEquals(0, scoreboard[ScannerEngineId.ZXingCpp]!!.fatalFailures)
+    }
+
+    @Test
+    fun `los frames analizados se cuentan por motor`() {
+        val scoreboard = EngineScoreboard.Empty
+            .reduce(ScanEvent.FrameAnalyzed(ScannerEngineId.MlKitCameraX, 1))
+            .reduce(ScanEvent.FrameAnalyzed(ScannerEngineId.MlKitCameraX, 2))
+            .reduce(ScanEvent.FrameAnalyzed(ScannerEngineId.ZXingCpp, 3))
+
+        assertEquals(2, scoreboard[ScannerEngineId.MlKitCameraX]!!.framesAnalyzed)
+        assertEquals(1, scoreboard[ScannerEngineId.ZXingCpp]!!.framesAnalyzed)
+    }
+
+    @Test
+    fun `frames por lectura mide la eficiencia de cada motor`() {
+        // Dos motores que leen lo mismo no son iguales si uno necesita 30 veces más frames.
+        val scoreboard = listOf(
+            ScanEvent.FrameAnalyzed(ScannerEngineId.MlKitCameraX, 1),
+            ScanEvent.FrameAnalyzed(ScannerEngineId.MlKitCameraX, 2),
+            ScanEvent.FrameAnalyzed(ScannerEngineId.MlKitCameraX, 3),
+            ScanEvent.FrameAnalyzed(ScannerEngineId.MlKitCameraX, 4),
+            detected(ScannerEngineId.MlKitCameraX, "a", 10),
+        ).fold(EngineScoreboard.Empty) { acc, event -> acc.reduce(event) }
+
+        assertEquals(4, scoreboard[ScannerEngineId.MlKitCameraX]!!.framesPerDetection)
+    }
+
+    @Test
+    fun `sin lecturas no hay frames por lectura que calcular`() {
+        val scoreboard = EngineScoreboard.Empty
+            .reduce(ScanEvent.FrameAnalyzed(ScannerEngineId.ZXingCpp, 1))
+
+        assertNull(scoreboard[ScannerEngineId.ZXingCpp]!!.framesPerDetection)
     }
 
     @Test

@@ -10,24 +10,39 @@ import com.testscanner.core.database.build
 import com.testscanner.core.domain.repository.ScanHistoryRepository
 import com.testscanner.core.domain.repository.ScanPreferencesRepository
 import com.testscanner.core.model.ScannerPlatform
-import com.testscanner.core.permissions.AlwaysGrantedPermissionController
+import com.testscanner.core.permissions.IosPermissionController
 import com.testscanner.core.permissions.PermissionController
+import com.testscanner.core.platform.FileSaver
+import com.testscanner.core.platform.ImagePicker
+import com.testscanner.core.platform.PlatformActions
 import com.testscanner.core.scanner.BarcodeScannerEngine
 import com.testscanner.engines.manual.ManualInputScannerEngine
+import com.testscanner.engines.vision.VisionScannerEngine
+import com.testscanner.engines.zxing.ZXingCppEngine
+import com.testscanner.platform.IosFileSaver
+import com.testscanner.platform.IosImagePicker
+import com.testscanner.platform.IosPlatformActions
 import org.koin.core.module.Module
 import org.koin.dsl.module
 import platform.Foundation.NSUserDefaults
 
-/** Motores enlazados en el framework de iOS. Fase 3 añadirá aquí Vision y ZXing-cpp. */
+/** Motores enlazados en el framework de iOS. */
 actual fun platformModule(): Module = module {
     single { ScannerPlatform.Ios }
 
+    single { VisionScannerEngine() }
+    single { ZXingCppEngine() }
+    single { ManualInputScannerEngine() }
+
     single<List<BarcodeScannerEngine>> {
-        listOf(ManualInputScannerEngine())
+        listOf(
+            get<VisionScannerEngine>(),
+            get<ZXingCppEngine>(),
+            get<ManualInputScannerEngine>(),
+        )
     }
 
-    // Fase 3: sustituir por el controlador real sobre AVCaptureDevice.
-    single<PermissionController> { AlwaysGrantedPermissionController() }
+    single<PermissionController> { IosPermissionController() }
 
     // Historial persistente: Room sobre el driver bundled, igual en las tres plataformas.
     single { DatabaseBuilderFactory().create().build() }
@@ -38,4 +53,13 @@ actual fun platformModule(): Module = module {
     // aquí no hay excepciones como sí las hay con el historial.
     single<Settings> { NSUserDefaultsSettings(NSUserDefaults.standardUserDefaults) }
     single<ScanPreferencesRepository> { SettingsScanPreferencesRepository(get()) }
+
+    // Acciones sobre el resultado (RF-13): copiar, compartir y abrir.
+    single<PlatformActions> { IosPlatformActions() }
+
+    // Escaneo desde imagen (RF-07).
+    single<ImagePicker> { IosImagePicker() }
+
+    // Exportar el historial (RF-11).
+    single<FileSaver> { IosFileSaver() }
 }

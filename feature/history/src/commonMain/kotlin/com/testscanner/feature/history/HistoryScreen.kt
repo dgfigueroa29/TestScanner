@@ -15,17 +15,67 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.testscanner.core.designsystem.LocalSnackbarHostState
 import com.testscanner.core.designsystem.Spacing
+import com.testscanner.core.domain.export.ExportFormat
+import com.testscanner.core.domain.scan.OpenKind
+import com.testscanner.core.domain.scan.ResultAction
+import com.testscanner.core.domain.scan.ResultActionsFactory
+import com.testscanner.core.domain.scan.ShareableContent
 import com.testscanner.core.model.Detection
+import com.testscanner.feature.history.resources.Res
+import com.testscanner.feature.history.resources.a11y_copy_value
+import com.testscanner.feature.history.resources.a11y_open_value
+import com.testscanner.feature.history.resources.a11y_share_value
+import com.testscanner.feature.history.resources.history_clear
+import com.testscanner.feature.history.resources.history_empty
+import com.testscanner.feature.history.resources.history_export_csv
+import com.testscanner.feature.history.resources.history_export_json
+import com.testscanner.feature.history.resources.history_filter_all
+import com.testscanner.feature.history.resources.history_row_latency
+import com.testscanner.feature.history.resources.history_row_meta
+import com.testscanner.feature.history.resources.message_copied
+import com.testscanner.feature.history.resources.message_copy_failed
+import com.testscanner.feature.history.resources.message_exported
+import com.testscanner.feature.history.resources.message_exported_to
+import com.testscanner.feature.history.resources.message_nothing_to_export
+import com.testscanner.feature.history.resources.message_open_failed
+import com.testscanner.feature.history.resources.message_share_failed
+import com.testscanner.feature.history.resources.result_copy
+import com.testscanner.feature.history.resources.result_open_email
+import com.testscanner.feature.history.resources.result_open_link
+import com.testscanner.feature.history.resources.result_open_map
+import com.testscanner.feature.history.resources.result_open_phone
+import com.testscanner.feature.history.resources.result_open_sms
+import com.testscanner.feature.history.resources.result_share
+import com.testscanner.feature.history.resources.share_separator
+import com.testscanner.feature.history.resources.share_wifi
+import com.testscanner.feature.history.resources.share_wifi_with_password
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun HistoryScreen(viewModel: HistoryViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val snackbarHostState = LocalSnackbarHostState.current
+
+    LaunchedEffect(viewModel) {
+        viewModel.effects.collect { effect ->
+            when (effect) {
+                is HistoryEffect.ShowMessage -> snackbarHostState.showSnackbar(resolve(effect.message))
+            }
+        }
+    }
+
     HistoryContent(state = state, onAction = viewModel::onAction)
 }
 
@@ -40,7 +90,7 @@ fun HistoryContent(
 
         state.isEmpty -> Centered(modifier) {
             Text(
-                text = "Todavía no escaneaste nada",
+                text = stringResource(Res.string.history_empty),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -50,7 +100,9 @@ fun HistoryContent(
             EngineFilters(state, onAction)
 
             LazyColumn(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                items(state.visible, key = { it.id }) { HistoryRow(it) }
+                items(state.visible, key = { it.id }) { detection ->
+                    HistoryRow(detection, canShare = state.canShare, onAction = onAction)
+                }
             }
         }
     }
@@ -72,7 +124,7 @@ private fun EngineFilters(state: HistoryState, onAction: (HistoryAction) -> Unit
                 FilterChip(
                     selected = state.engineFilter == null,
                     onClick = { onAction(HistoryAction.FilterByEngine(null)) },
-                    label = { Text("Todos") },
+                    label = { Text(stringResource(Res.string.history_filter_all)) },
                 )
             }
             items(state.presentEngines, key = { it.id }) { engineId ->
@@ -84,25 +136,68 @@ private fun EngineFilters(state: HistoryState, onAction: (HistoryAction) -> Unit
             }
         }
 
-        OutlinedButton(onClick = { onAction(HistoryAction.Clear) }) { Text("Borrar") }
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            // Exportar lo que se está viendo, no todo: el archivo debe parecerse a la pantalla.
+            ExportFormat.entries.forEach { format ->
+                OutlinedButton(
+                    onClick = { onAction(HistoryAction.Export(format)) },
+                    enabled = !state.isExporting,
+                ) {
+                    Text(stringResource(format.labelResource()))
+                }
+            }
+            OutlinedButton(onClick = { onAction(HistoryAction.Clear) }) {
+                Text(stringResource(Res.string.history_clear))
+            }
+        }
     }
 }
 
 @Composable
-private fun HistoryRow(detection: Detection) {
+private fun HistoryRow(
+    detection: Detection,
+    canShare: Boolean,
+    onAction: (HistoryAction) -> Unit,
+) {
+    val actions = ResultActionsFactory.actionsFor(detection.barcode, canShare)
+    val shareable = ResultActionsFactory.shareableContent(detection.barcode).asText()
+
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(Spacing.md)) {
+        Column(
+            modifier = Modifier.padding(Spacing.md),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+        ) {
             Text(detection.barcode.rawValue, style = MaterialTheme.typography.bodyMedium)
             Text(
                 text = buildString {
-                    append(detection.barcode.format.displayName)
-                    append(" · ")
-                    append(detection.engineId.id)
-                    detection.latencyMillis?.let { append(" · $it ms") }
+                    append(
+                        stringResource(
+                            Res.string.history_row_meta,
+                            detection.barcode.format.displayName,
+                            detection.engineId.id,
+                        ),
+                    )
+                    detection.latencyMillis?.let {
+                        append(stringResource(Res.string.history_row_latency, it))
+                    }
                 },
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                actions.forEach { action ->
+                    // El historial es una lista larga de botones que se llaman igual. Sin el valor
+                    // dentro de la descripción, un lector de pantalla los hace indistinguibles.
+                    val spoken = stringResource(action.spokenResource(), detection.barcode.rawValue)
+                    TextButton(
+                        onClick = { onAction(HistoryAction.RunResultAction(action, shareable)) },
+                        modifier = Modifier.semantics { contentDescription = spoken },
+                    ) {
+                        Text(stringResource(action.labelResource()))
+                    }
+                }
+            }
         }
     }
 }
@@ -116,4 +211,65 @@ private fun Centered(modifier: Modifier, content: @Composable () -> Unit) {
     ) {
         content()
     }
+}
+
+/** Cómo la anuncia un lector de pantalla, con el valor dentro para distinguir un botón de otro. */
+private fun ResultAction.spokenResource(): StringResource = when (this) {
+    ResultAction.Copy -> Res.string.a11y_copy_value
+    ResultAction.Share -> Res.string.a11y_share_value
+    is ResultAction.Open -> Res.string.a11y_open_value
+}
+
+/** Cómo se llama en pantalla cada acción sobre el resultado (RF-13). */
+private fun ResultAction.labelResource(): StringResource = when (this) {
+    ResultAction.Copy -> Res.string.result_copy
+    ResultAction.Share -> Res.string.result_share
+    is ResultAction.Open -> when (kind) {
+        OpenKind.Link -> Res.string.result_open_link
+        OpenKind.Email -> Res.string.result_open_email
+        OpenKind.Phone -> Res.string.result_open_phone
+        OpenKind.Sms -> Res.string.result_open_sms
+        OpenKind.Map -> Res.string.result_open_map
+    }
+}
+
+/** El ViewModel dice qué pasó; aquí se le pone nombre. */
+@Composable
+private fun resolve(message: HistoryMessage): String = when (message) {
+    HistoryMessage.Copied -> stringResource(Res.string.message_copied)
+    HistoryMessage.CopyFailed -> stringResource(Res.string.message_copy_failed)
+    HistoryMessage.ShareFailed -> stringResource(Res.string.message_share_failed)
+    HistoryMessage.OpenFailed -> stringResource(Res.string.message_open_failed)
+    HistoryMessage.NothingToExport -> stringResource(Res.string.message_nothing_to_export)
+
+    // iOS y el navegador no revelan dónde acabó el archivo, así que hay dos mensajes: uno que dice
+    // el destino y otro que solo confirma. Fingir una ruta sería peor que no darla.
+    is HistoryMessage.Exported -> message.location
+        ?.let { stringResource(Res.string.message_exported_to, it) }
+        ?: stringResource(Res.string.message_exported)
+
+    is HistoryMessage.ExportFailed -> message.reason
+}
+
+private fun ExportFormat.labelResource(): StringResource = when (this) {
+    ExportFormat.Csv -> Res.string.history_export_csv
+    ExportFormat.Json -> Res.string.history_export_json
+}
+
+/**
+ * Redacta lo que se copia o se comparte.
+ *
+ * El dominio dice qué datos son relevantes; el texto se arma aquí, donde están los recursos
+ * traducibles. Antes la frase se componía en `ResultActionsFactory`, que era español dentro del
+ * dominio (deuda D15).
+ */
+@Composable
+private fun ShareableContent.asText(): String = when (this) {
+    is ShareableContent.Raw -> value
+
+    is ShareableContent.Wifi -> password
+        ?.let { stringResource(Res.string.share_wifi_with_password, ssid, it) }
+        ?: stringResource(Res.string.share_wifi, ssid)
+
+    is ShareableContent.Contact -> parts.joinToString(stringResource(Res.string.share_separator))
 }

@@ -1,5 +1,7 @@
 plugins {
     id("testscanner.kmp.library")
+    // Para el historial persistente de Web: se guarda como JSON en el almacén de la plataforma.
+    alias(libs.plugins.kotlinSerialization)
 }
 
 android {
@@ -13,6 +15,7 @@ kotlin {
             implementation(project.dependencies.platform(libs.koin.bom))
             implementation(libs.koin.core)
             api(libs.multiplatform.settings)
+            implementation(libs.kotlinx.serialization.json)
         }
         commonTest.dependencies {
             implementation(libs.multiplatform.settings.test)

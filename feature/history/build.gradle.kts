@@ -6,11 +6,20 @@ android {
     namespace = "com.testscanner.feature.history"
 }
 
+compose.resources {
+    publicResClass = true
+    packageOfResClass = "com.testscanner.feature.history.resources"
+    generateResClass = always
+}
+
 kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(project(":core:domain"))
+            implementation(project(":core:platform"))
             api(project(":core:designsystem"))
+
+            implementation(compose.components.resources)
 
             implementation(libs.lifecycle.viewmodel)
             implementation(libs.lifecycle.viewmodel.compose)

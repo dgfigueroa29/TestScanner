@@ -6,11 +6,15 @@ import com.testscanner.core.domain.repository.ScanHistoryRepository
 import com.testscanner.core.domain.repository.ScanPreferences
 import com.testscanner.core.domain.repository.ScanPreferencesRepository
 import com.testscanner.core.domain.repository.ScannerEngineRepository
+import com.testscanner.core.domain.scan.BarcodeValueParser
 import com.testscanner.core.domain.scan.FallbackScannerEngine
+import com.testscanner.core.domain.scan.enforcingRequestLimits
 import com.testscanner.core.domain.scan.filteringFormats
 import com.testscanner.core.domain.scan.interpretingValues
+import com.testscanner.core.domain.scan.withDeadline
 import com.testscanner.core.model.Barcode
 import com.testscanner.core.model.BarcodeFormat
+import com.testscanner.core.model.BarcodeValueType
 import com.testscanner.core.model.Detection
 import com.testscanner.core.model.ScanError
 import com.testscanner.core.model.ScanImage
@@ -19,6 +23,9 @@ import com.testscanner.core.model.ScannerEngineId
 import com.testscanner.core.scanner.BarcodeScannerEngine
 import com.testscanner.core.scanner.ImageDecodingEngine
 import com.testscanner.core.scanner.ScanEvent
+import com.testscanner.core.scanner.SystemTimeProvider
+import com.testscanner.core.scanner.TimeProvider
+import com.testscanner.core.scanner.capability
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
@@ -76,12 +83,18 @@ class StartScanSessionUseCase(
             return@flow
         }
 
-        // El orden de los decoradores importa: primero se filtra por formato lo que el motor
-        // reporta, y solo lo que sobrevive se interpreta semánticamente. Envolver la cadena
-        // entera — y no cada motor — haría que el fallback quedara por fuera del filtrado.
+        // El orden de los decoradores importa, y en dos niveles distintos:
+        //  - Por motor: primero se filtra por formato lo que reporta, después se aplican los
+        //    límites del request (cuántos códigos y si la sesión sigue), y solo lo que sobrevive se
+        //    interpreta semánticamente. Envolver la cadena entera dejaría el fallback fuera del
+        //    filtrado.
+        //  - Sobre la cadena: el plazo. Si fuera por motor, una cadena de tres tardaría el triple
+        //    de lo que el usuario pidió.
         val chain: BarcodeScannerEngine = FallbackScannerEngine(
-            engines.map { engine -> engine.filteringFormats().interpretingValues() },
-        )
+            engines.map { engine ->
+                engine.filteringFormats().enforcingRequestLimits().interpretingValues()
+            },
+        ).withDeadline()
 
         emitAll(chain.scan(request))
     }
@@ -96,28 +109,84 @@ class StartScanSessionUseCase(
     }
 }
 
-/** Decodifica una imagen ya capturada con el primer motor de la cadena que sepa hacerlo (RF-07). */
+/**
+ * Decodifica una imagen ya capturada, recorriendo la cadena de motores hasta que uno lea algo
+ * (RF-07).
+ *
+ * ### Por qué recorre la cadena y no se queda con el primero
+ * Es el mismo compromiso que [FallbackScannerEngine] hace con la cámara (G4): que el motor
+ * preferido no sepa leer *esta* imagen no es motivo para rendirse. Y aquí importa más que en vivo,
+ * porque es justo el caso del OCR — un código dañado que ML Kit no decodifica y cuyo número
+ * impreso sí es legible. Sin fallback, ese motor no llegaría a ejecutarse nunca.
+ *
+ * ### Por qué devuelve `Detection` y no `Barcode`
+ * Porque **qué motor lo leyó es el dato que este producto existe para dar**. Devolver códigos
+ * sueltos obligaba a quien llamara a inventar la atribución, y el historial acabaría mintiendo.
+ */
 class DecodeImageUseCase(
     private val engineRepository: ScannerEngineRepository,
     private val selectEngine: SelectScannerEngineUseCase,
+    private val time: TimeProvider = SystemTimeProvider,
 ) {
 
     suspend operator fun invoke(
         image: ScanImage,
         request: ScanRequest,
         preferredEngineId: ScannerEngineId? = null,
-    ): Result<List<Barcode>> {
-        val selection = selectEngine(request, preferredEngineId)
-        val decoder = selection.chain
+    ): Result<List<Detection>> {
+        val decoders = selectEngine(request, preferredEngineId).chain
             .mapNotNull(engineRepository::engine)
-            .filterIsInstance<ImageDecodingEngine>()
-            .firstOrNull()
-            ?: return Result.failure(
+            .mapNotNull { it.capability<ImageDecodingEngine>() }
+
+        if (decoders.isEmpty()) {
+            return Result.failure(
                 IllegalStateException("Ningún motor disponible sabe decodificar imágenes"),
             )
+        }
 
-        return decoder.decode(image, request)
-            .map { barcodes -> barcodes.filter { it.format in request.formats } }
+        val startedAtMillis = time.nowMillis()
+        var lastFailure: Throwable? = null
+
+        decoders.forEach { decoder ->
+            val engineId = (decoder as BarcodeScannerEngine).id
+            val decoded = decoder.decode(image, request)
+                .map { barcodes -> barcodes.toDetections(engineId, startedAtMillis, request) }
+
+            decoded
+                .onSuccess { detections -> if (detections.isNotEmpty()) return Result.success(detections) }
+                .onFailure { lastFailure = it }
+        }
+
+        // Ningún motor falló pero tampoco leyó nada: la imagen no tiene un código reconocible, que
+        // no es un error sino una respuesta.
+        return lastFailure?.let { Result.failure(it) } ?: Result.success(emptyList())
+    }
+
+    /**
+     * Aplica el mismo filtrado por formato y la misma interpretación semántica que la sesión en
+     * vivo. Sin esto, un QR con una URL escaneado desde una foto no ofrecería "Abrir enlace" y el
+     * mismo código daría resultados distintos según de dónde viniera.
+     */
+    private fun List<Barcode>.toDetections(
+        engineId: ScannerEngineId,
+        startedAtMillis: Long,
+        request: ScanRequest,
+    ): List<Detection> {
+        val now = time.nowMillis()
+        return filter { it.format in request.formats }
+            .map { barcode ->
+                val interpreted = if (barcode.valueType is BarcodeValueType.Text) {
+                    barcode.copy(valueType = BarcodeValueParser.parse(barcode.rawValue, barcode.format))
+                } else {
+                    barcode
+                }
+                Detection.of(
+                    barcode = interpreted,
+                    engineId = engineId,
+                    detectedAtMillis = now,
+                    latencyMillis = now - startedAtMillis,
+                )
+            }
     }
 }
 

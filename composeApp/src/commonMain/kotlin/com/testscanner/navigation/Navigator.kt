@@ -7,9 +7,33 @@ import kotlinx.coroutines.flow.update
 
 /** Destinos de la app. Ver ADR-0005 para por qué la navegación es propia en esta fase. */
 sealed interface Destination {
-    data object Scanner : Destination
-    data object Comparison : Destination
-    data object History : Destination
+
+    /**
+     * Identificador estable, para guardar y restaurar el backstack.
+     *
+     * Escrito a mano y no derivado del nombre de la clase, por lo mismo que en `BarcodeValueType`:
+     * `::class.simpleName` devuelve el nombre ofuscado en una build con R8, así que restaurar
+     * dejaría de encontrar el destino justo en release.
+     */
+    val id: String
+
+    data object Scanner : Destination {
+        override val id: String get() = "scanner"
+    }
+
+    data object Comparison : Destination {
+        override val id: String get() = "comparison"
+    }
+
+    data object History : Destination {
+        override val id: String get() = "history"
+    }
+
+    companion object {
+        private val all = listOf(Scanner, Comparison, History)
+
+        fun fromId(id: String): Destination? = all.firstOrNull { it.id == id }
+    }
 }
 
 /**
@@ -40,5 +64,27 @@ class Navigator(initial: Destination = Destination.Scanner) {
         if (!canGoBack) return false
         _backstack.update { it.dropLast(1) }
         return true
+    }
+
+    /**
+     * Backstack como ids, para que la plataforma lo guarde donde sepa (parte de la deuda D4).
+     *
+     * Sin esto, cualquier recreación devolvía al usuario a la pantalla de escaneo: el backstack
+     * vivía solo en memoria. No es un problema de la navegación propia —`navigation-compose`
+     * tampoco lo resuelve solo— sino de no haberlo guardado nunca.
+     */
+    fun saveState(): List<String> = _backstack.value.map { it.id }
+
+    /**
+     * Restaura un backstack guardado. Ignora lo que no reconozca.
+     *
+     * Un id desconocido significa que la app cambió de versión con el estado ya guardado; quedarse
+     * con lo que sí existe es mejor que descartarlo todo, y mucho mejor que reventar al arrancar.
+     * Si no queda nada utilizable, se deja el backstack como estaba.
+     */
+    fun restoreState(ids: List<String>) {
+        val restored = ids.mapNotNull(Destination::fromId)
+        if (restored.isEmpty()) return
+        _backstack.value = restored
     }
 }

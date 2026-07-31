@@ -1,6 +1,8 @@
 package com.testscanner.core.domain.model
 
 import com.testscanner.core.model.BarcodeFormat
+import com.testscanner.core.model.Permission
+import com.testscanner.core.model.ScanSource
 import com.testscanner.core.model.ScannerEngineId
 import com.testscanner.core.scanner.EngineAvailability
 import com.testscanner.core.scanner.ScannerEngineDescriptor
@@ -18,7 +20,26 @@ data class EngineStatus(
 ) {
     val id: ScannerEngineId get() = descriptor.id
     val isUsable: Boolean get() = installed && availability.isUsable
+
+    /**
+     * Si sirve para decodificar una imagen ya capturada (RF-07).
+     *
+     * Un motor bloqueado por el **permiso de cámara** sigue valiendo para esto: el archivo ya está
+     * en el dispositivo y no hay cámara que abrir. La excepción no es un detalle — escanear desde
+     * foto es precisamente la salida cuando el usuario niega la cámara, y sin ella la app la
+     * escondería justo en el momento en que hace falta.
+     *
+     * Cualquier otra indisponibilidad —modelo sin descargar, plataforma no soportada, motor de una
+     * fase futura— sí bloquea, porque ahí no hay nada que ejecutar.
+     */
+    val canDecodeImages: Boolean
+        get() = installed &&
+            ScanSource.StaticImage in descriptor.capabilities.sources &&
+            (availability.isUsable || availability.isBlockedOnlyByCameraPermission)
 }
+
+private val EngineAvailability.isBlockedOnlyByCameraPermission: Boolean
+    get() = this is EngineAvailability.RequiresPermission && permission == Permission.Camera
 
 /** Motor descartado por el selector, con el motivo. La UI lo usa para explicar la decisión. */
 data class RejectedEngine(

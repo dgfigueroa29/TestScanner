@@ -3,7 +3,6 @@ package com.testscanner.engines.gms
 import android.content.Context
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
-import com.google.mlkit.vision.barcode.common.Barcode as MlKitBarcode
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import com.testscanner.core.model.Barcode
@@ -18,11 +17,12 @@ import com.testscanner.core.scanner.ScannerEngineDescriptor
 import com.testscanner.core.scanner.SystemTimeProvider
 import com.testscanner.core.scanner.TimeProvider
 import com.testscanner.core.scanner.catalog.ScannerEngineCatalog
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import com.google.mlkit.vision.barcode.common.Barcode as MlKitBarcode
 
 /**
  * Escáner del sistema (Google Play Services).
@@ -73,7 +73,7 @@ class GmsCodeScannerEngine(
             .onSuccess { mlKitBarcode ->
                 val detection = mlKitBarcode?.toDetection(startedAtMillis)
                 if (detection == null) {
-                    emit(ScanEvent.Failed(ScanError.Cancelled))
+                    emit(ScanEvent.Failed(ScanError.Cancelled, engineId = id))
                 } else {
                     emit(ScanEvent.Detected(listOf(detection)))
                 }
@@ -81,10 +81,11 @@ class GmsCodeScannerEngine(
             .onFailure { throwable ->
                 emit(
                     ScanEvent.Failed(
-                        ScanError.EngineUnavailable(
+                        error = ScanError.EngineUnavailable(
                             engineId = id,
                             reason = throwable.message ?: "El escáner del sistema falló",
                         ),
+                        engineId = id,
                     ),
                 )
             }

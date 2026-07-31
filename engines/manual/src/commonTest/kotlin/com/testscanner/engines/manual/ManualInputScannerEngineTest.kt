@@ -1,5 +1,6 @@
 package com.testscanner.engines.manual
 
+import app.cash.turbine.test
 import com.testscanner.core.model.BarcodeFormat
 import com.testscanner.core.model.ScanRequest
 import com.testscanner.core.model.ScanSource
@@ -8,7 +9,6 @@ import com.testscanner.core.scanner.EngineAvailability
 import com.testscanner.core.scanner.FakeTimeProvider
 import com.testscanner.core.scanner.ScanEvent
 import kotlinx.coroutines.test.runTest
-import app.cash.turbine.test
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs

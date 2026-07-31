@@ -68,3 +68,38 @@ interface TextInputEngine {
     /** Entrega un valor tecleado a la sesión activa. */
     suspend fun submit(value: String)
 }
+
+/**
+ * Un motor que **envuelve a otro** para modificar su comportamiento sin cambiar lo que declara.
+ *
+ * Los decoradores del dominio —filtrar formatos, aplicar límites, interpretar valores, poner un
+ * plazo— copian el descriptor del motor que envuelven. Eso es correcto: no le quitan capacidades.
+ * Pero deja una trampa: el descriptor de un motor decorado dice "sé encender la linterna" y un
+ * `as? CameraControlEngine` sobre él falla, porque quien la implementa es el motor de dentro.
+ *
+ * Exponer el delegado permite que [capability] atraviese la cadena y encuentre a quien de verdad
+ * sabe hacerlo. La alternativa —que cada decorador implementara las tres capacidades opcionales y
+ * delegara— obligaría a prometerlas siempre, que es justo lo que ADR-0002 evita.
+ *
+ * `ComparingScannerEngine` deliberadamente **no** lo implementa: envuelve a varios motores a la vez
+ * y no hay un delegado del que heredar capacidades.
+ */
+interface DecoratingScannerEngine : BarcodeScannerEngine {
+    val delegate: BarcodeScannerEngine
+}
+
+/**
+ * Busca una capacidad opcional atravesando los decoradores que haya por medio.
+ *
+ * Sustituye al `as? CameraControlEngine` directo: sobre un motor sin decorar hace exactamente lo
+ * mismo, y sobre una cadena decorada encuentra al motor que sí la implementa en lugar de devolver
+ * `null` por accidente.
+ */
+inline fun <reified T : Any> BarcodeScannerEngine.capability(): T? {
+    var current: BarcodeScannerEngine? = this
+    while (current != null) {
+        if (current is T) return current
+        current = (current as? DecoratingScannerEngine)?.delegate
+    }
+    return null
+}

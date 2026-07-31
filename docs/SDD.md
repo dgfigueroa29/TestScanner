@@ -4,9 +4,9 @@
 |---|---|
 | Proyecto | TestScanner |
 | Documento | Software Design Document (SDD) |
-| Versión | 1.1 |
-| Estado | Vigente — Fase 1 cerrada, Fase 2 casi cerrada |
-| Fecha | 2026-07-30 |
+| Versión | 1.3 |
+| Estado | Vigente — Fases 1, 2, 4 y 5 cerradas en código salvo lo listado como pendiente; la 3 (iOS) escrita pero despriorizada por falta de dispositivos. Todo pendiente de la primera compilación con Gradle |
+| Fecha | 2026-07-31 |
 | Autor | Equipo TestScanner |
 | Alcance de esta versión | Migración de app Android monolítica a Compose Multiplatform + arquitectura de motores de escaneo intercambiables |
 
@@ -128,6 +128,13 @@ incremental y justifica reestructurar el build de una sola vez.
 | RF-12 | Reconocimiento de texto (OCR) como motor alternativo para códigos ilegibles | Could |
 | RF-13 | Acciones sobre el resultado: copiar, compartir, abrir enlace | Should |
 | RF-14 | Control de linterna y zoom cuando el motor lo soporte | Could |
+| RF-15 | La sesión puede tener un plazo máximo tras el cual se cierra sola | Could |
+
+Los límites del `ScanRequest` — formatos, cuántos códigos por frame, si la sesión sigue tras la
+primera lectura y el plazo máximo — los hacen cumplir **decoradores del dominio**, no cada motor.
+Los motores son desiguales en esto: el de entrada manual respeta el modo continuo porque lo
+implementa a mano, mientras que ML Kit y Vision dejan la cámara corriendo hasta que el consumidor
+cancele. Centralizarlo es lo que garantiza el mismo comportamiento observable en los ocho.
 
 ### 3.2 Requisitos no funcionales
 
@@ -208,23 +215,26 @@ TestScanner/
 ├── core/
 │   ├── model/                         # KMP puro: Barcode, BarcodeFormat, ScanResult
 │   ├── scanner-api/                   # SPI: BarcodeScannerEngine, Capabilities, Availability
-│   │                                  #      + catálogo declarativo de los 7 motores
+│   │                                  #      + catálogo declarativo de los 8 motores
 │   ├── scanner-ui/                    # capacidad de UI del motor: CameraPreviewEngine (ADR-0007)
 │   ├── scanner-testing/               # suite de contrato que todo motor hereda (§13.2)
 │   ├── database/                      # Room KMP: historial persistente (sin target wasmJs)
 │   ├── domain/                        # UseCases, interfaces de Repository y decoradores del SPI
 │   ├── data/                          # Registry, preferencias e historial
 │   ├── designsystem/                  # CMP: tema, tokens, componentes reutilizables
-│   └── permissions/                   # expect/actual: permiso de cámara
+│   ├── permissions/                   # expect/actual: permiso de cámara
+│   └── platform/                      # servicios del sistema: portapapeles, compartir, abrir
+│                                      #   enlace, selector de imágenes y guardado de archivos
 │
 ├── engines/
 │   ├── manual/                        # entrada manual — motor de referencia, 100 % common
 │   ├── gms-code-scanner/              # Android — UI propia, sin permisos
 │   ├── mlkit-camerax/                 # Android — CameraX + preview + linterna/zoom
-│   ├── vision-ios/                    # (Fase 3) iOS
-│   ├── zxing-cpp/                     # (Fase 3) multiplataforma
-│   ├── browser-detector/              # (Fase 4) Wasm/JS
-│   └── mlkit-ocr/                     # (Fase 4) Android + iOS
+│   ├── vision-ios/                    # iOS — AVFoundation
+│   ├── zxing-cpp/                     # Android + iOS — baseline de comparación (ADR-0008)
+│   ├── zxing-java/                    # Desktop — com.google.zxing:core, solo imagen (D13)
+│   ├── browser-detector/              # Wasm/JS — BarcodeDetector del navegador
+│   └── mlkit-ocr/                     # Android — lee el número impreso bajo el código
 │
 ├── feature/
 │   ├── scanner/                       # pantalla de escaneo, selector de motor y comparador
@@ -259,12 +269,15 @@ TestScanner/
 | `:core:data` | ✅ | ✅ | ✅ | ✅ |
 | `:core:designsystem` | ✅ | ✅ | ✅ | ✅ |
 | `:core:permissions` | ✅ | ✅ | ✅ | ✅ |
+| `:core:platform` | ✅ | ✅ | ✅ | ✅ |
 | `:engines:manual` | ✅ | ✅ | ✅ | ✅ |
 | `:engines:gms-code-scanner` | ✅ | — | — | — |
 | `:engines:mlkit-camerax` | ✅ | — | — | — |
 | `:engines:vision-ios` | — | ✅ | — | — |
-| `:engines:zxing-cpp` | ✅ | ✅ | ✅ | — |
+| `:engines:zxing-cpp` | ✅ | ✅ | — | — |
+| `:engines:zxing-java` | — | — | ✅ | — |
 | `:engines:browser-detector` | — | — | — | ✅ |
+| `:engines:mlkit-ocr` | ✅ | — | — | — |
 | `:feature:scanner` | ✅ | ✅ | ✅ | ✅ |
 | `:feature:history` | ✅ | ✅ | ✅ | ✅ |
 | `:composeApp` | ✅ | ✅ | ✅ | ✅ |
@@ -414,6 +427,9 @@ forma cuando un motor se implementa — solo cambia su respuesta de `availabilit
 
 ```kotlin
 sealed interface ScanEvent {
+    /** Todo evento sabe de qué motor viene; `null` solo si no lo produjo ninguno en concreto. */
+    val engineId: ScannerEngineId?
+
     data object SessionStarted : ScanEvent
     data class Detected(val detections: List<Detection>) : ScanEvent
     data class FrameAnalyzed(val analyzedAtMillis: Long) : ScanEvent  // telemetría/FPS
@@ -421,6 +437,10 @@ sealed interface ScanEvent {
     data object SessionEnded : ScanEvent
 }
 ```
+
+Todos los eventos llevan el motor que los produjo. En una sesión normal es obvio — hay uno solo —
+pero el comparador (§9.4) fusiona los streams de varios motores, y ahí un evento sin autor es un
+dato perdido: las métricas de frames y de fallos por motor no se podían calcular.
 
 `Failed` es un evento, no una excepción lanzada: un fallo transitorio (un frame corrupto) no debe
 matar la sesión, y un fallo fatal se sigue de `SessionEnded`. Los errores del dominio se modelan
@@ -457,8 +477,15 @@ falsos, sin cámara, sin dispositivo y sin Compose.
 
 Cada motor es un módulo Gradle propio y se agrega desde el *source set* correspondiente de
 `:composeApp`. Un target no enlaza SDKs que no puede usar: el binario de Desktop no contiene ML
-Kit, el de iOS no contiene Google Play Services. Para Android, los motores pesados (ML Kit
-*bundled*) se documentan como candidatos a **Play Feature Delivery** en la Fase 5.
+Kit, el de iOS no contiene Google Play Services.
+
+**Dentro de Android, en cambio, no se cumple**: el APK enlaza los cuatro motores de la plataforma
+aunque el usuario use uno solo, y R8 no puede quitarlos porque están registrados explícitamente en
+el grafo de Koin. Play Feature Delivery era la salida prevista y **se aplaza a conciencia**
+([ADR-0009](adr/ADR-0009-play-feature-delivery-aplazado.md)): un módulo de característica dinámica
+no puede ser un módulo KMP, el mecanismo solo se ejecuta distribuyendo por Play, y no hay ninguna
+medición del APK con la que decidir qué conviene partir. Se retoma cuando haya distribución y
+medición; hasta entonces el incumplimiento queda escrito y acotado en lugar de darse por resuelto.
 
 ---
 
@@ -560,10 +587,31 @@ tamaño real del frame, y mapea la UI, que es quien sabe cómo se está escaland
 
 Navegador propio mínimo (`sealed interface Destination` + backstack en un `StateFlow`), sin
 dependencia externa. El grafo tiene tres destinos — escanear, comparar e historial; Android le cede
-el botón atrás del sistema y todas las plataformas usan la barra inferior. Razón: la navegación multiplataforma de Jetpack está aún
-en versiones alpha/beta y no queremos que su ciclo de releases bloquee el nuestro en la fase de
-fundaciones. La migración a `navigation-compose` multiplataforma está prevista para la Fase 3,
-cuando el grafo tenga suficientes destinos como para justificarla. Ver `docs/adr/ADR-0005`.
+el botón atrás del sistema y todas las plataformas usan la barra inferior. Razón: la navegación
+multiplataforma de Jetpack está aún en versiones alpha/beta y no queremos que su ciclo de releases
+bloquee el nuestro en la fase de fundaciones.
+
+La revisión prevista se hizo y **la decisión se mantiene**: tres destinos y ningún deep link no
+alcanzan el umbral de migración, que sigue siendo seis destinos o el primer deep link. Ver
+`docs/adr/ADR-0005`.
+
+El backstack sí se guarda y se restaura, que era la mitad de la deuda que sí resultó ser un defecto:
+
+```kotlin
+fun saveState(): List<String> = backstack.value.map { it.id }
+fun restoreState(ids: List<String>)   // ignora lo que no reconoce
+```
+
+`Destination.id` está **escrito a mano**, no derivado del nombre de la clase. La razón es la misma
+que en `BarcodeValueType.id`: R8 ofusca `::class.simpleName`, así que restaurar funcionaría en debug
+y fallaría en release — el peor sitio donde descubrirlo. `MainActivity` lo guarda en
+`onSaveInstanceState`; viaja como ids y no como objetos, con lo que `Destination` no necesita ser
+`Parcelable` y el estado guardado no queda atado a su representación interna.
+
+El caso que cubre no es la rotación: la Activity declara `configChanges` para orientación y tamaño
+—a propósito, para no reiniciar la cámara al girar— así que rotar nunca la recreó. Cubre la muerte
+del proceso en segundo plano y los cambios de configuración que la Activity no declara, como el
+tamaño de letra o el idioma del sistema.
 
 ---
 
@@ -590,7 +638,7 @@ inyectan (`DispatcherProvider`) para que los tests puedan sustituirlos por `Unco
 | Dato | Almacén | Estado |
 |---|---|---|
 | Motor preferido, filtros de formato, ajustes | **`multiplatform-settings`** en las cuatro plataformas | ✅ implementado |
-| Historial de escaneos (RF-11) | **Room KMP** en Android, iOS y Desktop; en memoria en Web | ✅ implementado |
+| Historial de escaneos (RF-11) | **Room KMP** en Android, iOS y Desktop; JSON en `localStorage` en Web | ✅ implementado |
 
 El historial se definió en la Fase 1 como **interfaz de repositorio** (`ScanHistoryRepository`) con
 una implementación en memoria detrás. Sustituirla por Room en la Fase 2 no tocó ni el dominio ni la
@@ -607,10 +655,19 @@ escriba en esas claves.
 diseño, y tiene dos consecuencias que conviene tener presentes:
 
 - `:core:database` declara tres targets en lugar de cuatro.
-- `ScanHistoryRepository` **no** se declara en `dataModule`: lo aporta cada `platformModule`. Android,
-  iOS y Desktop persisten; en Web el historial es de sesión. La diferencia queda visible en el
-  wiring en lugar de escondida tras un `expect/actual` que fingiera que todas las plataformas hacen
-  lo mismo.
+- `ScanHistoryRepository` **no** se declara en `dataModule`: lo aporta cada `platformModule`. La
+  diferencia queda visible en el wiring en lugar de escondida tras un `expect/actual` que fingiera
+  que todas las plataformas hacen lo mismo.
+
+En Web lo aporta `SettingsScanHistoryRepository`, que serializa la lista a JSON en el mismo almacén
+que las preferencias — `localStorage`. No es Room, pero tampoco es memoria: recargar la página ya no
+pierde el historial. La alternativa ortodoxa era IndexedDB y se descartó a conciencia: unos cientos
+de filas de texto ocupan decenas de kilobytes frente a los megabytes de cuota, este repositorio no
+hace consultas —lee la lista entera y filtra en memoria— y la interop de IndexedDB serían cien líneas
+de callbacks que ningún test de `commonTest` puede ejercitar. Así corre con `MapSettings`. Lo que sí
+exige el almacén es techo (500 entradas) y tolerancia a que la escritura falle por cuota: una
+detección que no cabe se sigue mostrando en pantalla, porque convertir "no cabe" en un escaneo
+fallido sería peor.
 
 Decisiones del esquema:
 
@@ -650,6 +707,68 @@ Garantías de privacidad (RNF-03), verificables en revisión de código:
 - El caso `RequiresDownload` (ML Kit) se comunica explícitamente al usuario antes de descargar.
 - La app declara `android:usesCleartextTraffic="false"` y no incluye SDK de analítica de terceros.
 
+#### Auditoría, con lo que se comprobó y lo que salió
+
+No basta con enumerar garantías: lo que sigue es el resultado de buscarlas en el código, incluidos
+los dos hallazgos.
+
+| Se comprobó | Resultado |
+|---|---|
+| Ninguna traza escribe lo escaneado | No hay una sola llamada a `println`, `Log`, `console.log` ni `printStackTrace` en todo el repositorio |
+| Ningún cliente HTTP | No hay Ktor, OkHttp, Retrofit ni `URLConnection`; el catálogo de versiones tampoco los declara |
+| Ninguna analítica | Sin Firebase, Crashlytics ni equivalentes, ni en código ni en el catálogo |
+| Permisos declarados | Solo `CAMERA`, con `uses-feature` no obligatorio. **No se declara `INTERNET`**, que es la garantía más fuerte: aunque alguien añadiera una llamada de red, en Android no saldría |
+| Lo que se persiste | La tabla de Room y el DTO de Web guardan valor, formato, motor, fuente, instante y latencia. No hay campo donde quepa un píxel |
+| Lo que sale del dispositivo | Solo por acción explícita del usuario: compartir, abrir un enlace o exportar el historial a un archivo que él elige |
+
+**Hallazgo 1 — `fetch` en el motor de Web.** El decodificador del navegador llama a `fetch`, que es
+exactamente lo que una auditoría busca. Resultó ser sobre un **data URL** construido en el momento a
+partir de los bytes que ya están en memoria: `createImageBitmap` necesita un `Blob` y esa es la vía
+sin arrastrar `kotlinx-browser`. No sale nada del dispositivo. Aun así se añadió un guardia que
+rechaza cualquier URL que no empiece por `data:`, para que la propiedad se compruebe leyendo cuatro
+líneas en vez de razonando sobre el llamante.
+
+**Hallazgo 2 — falta declarar la ausencia de red.** No declarar `INTERNET` ya impide la salida en
+Android, pero es una garantía silenciosa: no aparece en ninguna parte y el próximo que añada una
+dependencia puede reintroducirla sin darse cuenta. Queda anotado aquí como la invariante que hay que
+defender.
+
+---
+
+### 12.1 Accesibilidad (RNF-05)
+
+El requisito pedía tres cosas: contraste AA, objetivos táctiles ≥ 48 dp y lectores de pantalla en
+los resultados. Estado de cada una:
+
+**Contraste.** Deja de ser una intención y pasa a ser un test. La paleta vive en `ScannerPalette`,
+que **no depende de Compose**, y `Contrast` implementa la fórmula de WCAG 2.1; `ContrastTest` mide
+todos los pares y falla por debajo de 4.5:1. Corre en `commonTest`, sin renderizar y sin
+dispositivo. Se miden además los pares que **la UI usa de hecho** —`primary`, `tertiary` y `error`
+como color de texto sobre la tarjeta—, que ninguna convención de Material cubre.
+
+Al extraer la paleta apareció un defecto que el contraste no habría detectado: solo se declaraban
+`primary`, `secondary` y `tertiary`, así que todos los roles `on*` se quedaban en los valores por
+defecto de Material —de una paleta morada que no es esta—. El texto de un botón primario en modo
+oscuro salía morado. Ahora se declaran los catorce.
+
+**Lectores de pantalla.** Cuatro arreglos, todos por el mismo motivo: había información que solo
+existía como posición o como color.
+
+- El **visor** no producía semántica alguna: ni la superficie nativa ni el `Canvas` del overlay. Se
+  describe con cuántos códigos hay dentro.
+- El **estado de la sesión** es una región viva (`liveRegion`), así que arrancar, degradar de motor
+  y terminar se anuncian solos. La degradación es justo lo que el objetivo G4 quiere hacer visible.
+- Los **botones de acción** repetían etiqueta en cada resultado: con cinco lecturas en pantalla, un
+  lector decía "Copiar" cinco veces sin decir qué. Ahora la descripción lleva el valor dentro.
+- El **interruptor de escaneo continuo** y su etiqueta se fusionan en un nodo; por separado, el
+  lector enfocaba el `Switch` y decía "activado" sin decir activado qué. El **slider de zoom** gana
+  nombre y estado, para que lea "Zoom de la cámara, 3×" en lugar de un porcentaje suelto.
+
+**Objetivos táctiles.** Todo lo pulsable son componentes de Material 3, que aplican
+`minimumInteractiveComponentSize` (48 dp) por su cuenta; no hay ni un `Modifier.clickable` propio en
+el repositorio, que es donde se rompería. No está medido sobre un dispositivo, y eso no cambia
+mientras no haya emulador.
+
 ---
 
 ## 13. Estrategia de calidad
@@ -660,12 +779,18 @@ Garantías de privacidad (RNF-03), verificables en revisión de código:
 |---|---|---|---|
 | Unitario de dominio | `commonTest` | UseCases, política de selección, fallback, parser semántico, mappers de formato | kotlin-test, Turbine |
 | Unitario de presentación | `commonTest` | Reducers de ViewModel: acción → estado esperado | kotlin-test, Turbine, dispatcher de test |
-| Contrato de motor | `commonTest` + `androidTest`/`iosTest` | **Suite compartida** que todo motor debe pasar (§13.2) | kotlin-test |
-| UI | `androidTest` / `desktopTest` | `XContent` stateless con estados representativos | Compose UI Test |
-| Integración de motor | por plataforma | Decodificación sobre imágenes de referencia | Recursos de test versionados |
+| Contrato de motor | `commonTest` | **Suite compartida** que todo motor debe pasar (§13.2), aplicada a lo instanciable sin dispositivo: el motor manual, los decoradores y la cadena completa | kotlin-test |
+| Coherencia del catálogo | `commonTest` | Que los ocho descriptores sean válidos y no prometan lo que nadie implementa | kotlin-test |
+| Decodificación real | `jvmTest` | ZXing (Java) decodificando imágenes que el propio ZXing genera en el test | kotlin-test |
 
 Objetivo de cobertura: **≥ 80 % en `:core:domain` y `:core:data`**; la UI no se persigue por
 cobertura sino por casos de estado representativos.
+
+**No hay tests instrumentados, y es una decisión, no una omisión.** No va a haber emulador en CI, así
+que un test que exija dispositivo es un test que nunca se ejecuta: no aporta seguridad y sí una falsa
+sensación de tenerla. El hueco que esto deja —que ningún test comprueba que un motor de cámara lea un
+código de verdad— está escrito con todas las letras en el ROADMAP, junto a lo que sí queda cubierto
+sin dispositivo.
 
 ### 13.2 Suite de contrato de motores
 
@@ -677,6 +802,27 @@ dentro de los declarados en `capabilities`. Cada motor nuevo hereda la clase y a
 Esto convierte "añadir un motor" en un proceso con red de seguridad automática. No es teórico: en su
 primer uso la suite detectó una carrera real en el motor de entrada manual, que perdía en silencio
 los valores enviados antes de que la sesión se suscribiera.
+
+#### Se aplica también a los decoradores
+
+Un decorador **es** un motor, así que pasa el mismo contrato. Y es donde más falta hace: los tres
+fallos de contrato que ha tenido este proyecto estaban en decoradores y no en motores — un
+`awaitClose` que impedía terminar el `Flow`, la supresión de `SessionEnded` en la cadena de fallback
+y unos límites de petición que dejaban la sesión abierta para siempre. Los motores de cámara
+necesitan un dispositivo para ejercitarse; los decoradores corren en `commonTest`, incluida **la
+cadena completa** que monta `StartScanSessionUseCase`, que es la que llega de verdad al ViewModel.
+
+#### Lo declarado tiene que tener quien lo cumpla
+
+La suite comprueba que una capacidad declarada en el descriptor la implemente alguien: si dice
+linterna, alguien es `CameraControlEngine`; si dice imagen estática, alguien es `ImageDecodingEngine`.
+Es la clase de fallo que más veces ha aparecido aquí —algo declarado que ningún código sirve— y la
+UI depende directamente de ello: dibuja el control leyendo el descriptor.
+
+Al aplicarla a los decoradores apareció el caso real: la cadena de fallback copia el descriptor del
+primer motor —linterna incluida— pero un `as? CameraControlEngine` sobre ella daba `null`, porque
+quien la implementa es el motor de dentro. De ahí salió `DecoratingScannerEngine` y la función
+`capability()`, que atraviesa la cadena en lugar de hacer un cast sobre la capa de fuera.
 
 ### 13.3 Análisis estático
 
@@ -694,7 +840,7 @@ Implementado en `.github/workflows/verify.yml`:
 | Job | Dispara | Contenido |
 |---|---|---|
 | `checks` | cada PR | `detekt` + tests JVM de núcleo y features. Es el primero y el más barato: si falla, no se pagan los builds de plataforma |
-| `android` | cada PR | `assembleDebug` + `lintDebug`, publica el APK |
+| `android` | cada PR | `assembleDebug` + `lintDebug` + `assembleRelease`, publica el APK y el `mapping.txt` |
 | `desktop` | cada PR | `desktopJar` |
 | `web` | cada PR | `wasmJsBrowserDistribution` |
 | `ios` | solo `main` | `linkDebugFrameworkIosSimulatorArm64` en runner macOS |
@@ -703,17 +849,21 @@ Implementado en `.github/workflows/verify.yml`:
 y el enlazado de Kotlin/Native es lento (riesgo R4). Los PR ya cubren los otros tres targets, y el
 código de iOS es mayoritariamente `commonMain` compilado en ellos.
 
+`assembleRelease` está en cada PR y no solo al publicar por una razón concreta: R8 solo rompe cosas
+cuando se ejecuta, y los fallos que produce —una clase eliminada, un nombre ofuscado que alguien
+esperaba leer— no aparecen en debug. Descubrirlos al preparar una release es tarde.
+
 ---
 
 ## 14. Plan de migración
 
 | Fase | Contenido | Criterio de salida |
 |---|---|---|
-| **1. Fundaciones** (este entregable) | Build KMP/CMP, version catalog, estructura de módulos, modelo de dominio, SPI completo, registro, selección + fallback, UI de catálogo y escaneo, motor de entrada manual, tests de dominio | La app arranca en Android, Desktop y Web; el catálogo lista los 7 motores con su estado; los tests de selección y fallback pasan |
+| **1. Fundaciones** (este entregable) | Build KMP/CMP, version catalog, estructura de módulos, modelo de dominio, SPI completo, registro, selección + fallback, UI de catálogo y escaneo, motor de entrada manual, tests de dominio | La app arranca en Android, Desktop y Web; el catálogo lista los 8 motores con su estado; los tests de selección y fallback pasan |
 | **2. Android real** ✅ | `:engines:gms-code-scanner`, `:engines:mlkit-camerax`, preview CameraX + overlay, permisos, convention plugins, historial con Room, CI en GitHub Actions | Escaneo real en Android con dos motores intercambiables en caliente |
-| **3. iOS** | `:engines:vision-ios`, preview con `UIKitView`, shell Xcode, `:engines:zxing-cpp` | Escaneo real en iOS; ZXing-cpp comparable entre Android e iOS |
-| **4. Web y OCR** | `:engines:browser-detector`, `:engines:mlkit-ocr`, escaneo desde imagen (RF-07) | Las cuatro plataformas escanean; OCR disponible como alternativa |
-| **5. Producto** | ✅ `ComparingScannerEngine`, `EngineScoreboard` y pantalla de comparación (adelantados) · pendiente: exportación de historial, Play Feature Delivery, accesibilidad | G5 medible en la app |
+| **3. iOS** ⏸️ | Escrito: `:engines:vision-ios`, preview con `UIKitView`, shell Xcode, `:engines:zxing-cpp`, revisión de ADR-0005 · **despriorizada**: sin dispositivos Apple no se puede compilar ni verificar nada | Escaneo real en iOS; ZXing-cpp comparable entre Android e iOS |
+| **4. Web y OCR** | ✅ `:engines:browser-detector`, `:engines:mlkit-ocr` (Android), preview de Web (D14) y escaneo desde imagen (RF-07) en las cuatro plataformas · pendiente: OCR en iOS con Vision | Las cuatro plataformas escanean; OCR disponible como alternativa |
+| **5. Producto** | ✅ `ComparingScannerEngine`, `EngineScoreboard`, pantalla de comparación, acciones sobre el resultado (RF-13), exportación del historial a CSV/JSON y build de release con R8 · pendiente: Play Feature Delivery, accesibilidad y auditoría de privacidad | G5 medible en la app |
 
 ### 14.1 Qué se elimina en la Fase 1
 
@@ -736,12 +886,15 @@ que preservar (§2.1). El historial de git conserva el estado previo.
 |---|---|---|---|
 | R1 | Divergencia de simbologías soportadas entre motores | Medio | `supportedFormats` declarativo + la UI advierte si el filtro pedido excede lo que el motor cubre |
 | R2 | El GMS Code Scanner no permite overlay ni linterna | Bajo | `providesOwnUi = true`; la UI oculta sus propios controles para ese motor |
-| R3 | `BarcodeDetector` no disponible en Safari/Firefox | Medio | Fallback automático a ZXing-cpp compilado a Wasm en la Fase 4 |
+| R3 | `BarcodeDetector` no disponible en Safari/Firefox | Medio | El motor lo comprueba en `availability()` y reporta `Unsupported` con la razón; la cadena cae a entrada manual. El fallback a ZXing-cpp en Wasm que se planteaba aquí no es viable: no existe publicación wasmJs (ADR-0008) |
 | R4 | Kotlin/Native + CMP para iOS: tiempos de build largos | Medio | Cachés de Gradle en CI, build de iOS solo en `main`, no en cada PR |
 | R5 | ML Kit *unbundled* requiere descarga en primer uso | Bajo | Estado `RequiresDownload` modelado en el SPI y comunicado en la UI |
 | R6 | Web target sin acceso a cámara en contexto no-HTTPS | Bajo | Documentado; el motor reporta `Unsupported` con la razón |
 | R7 | Sobre-modularización ralentiza el build | Medio | Convention plugins en `build-logic` (Fase 2) y medición con `--scan` |
+| R11 | Room 2.7.2 y AGP 8.9.2 no se pudieron contrastar con Kotlin 2.3.20 y KSP 2.3.10: ambos se publican solo en el maven de Google, inalcanzable desde el entorno donde se hizo el bump | Medio | Es lo primero que dirá el CI. Si Room no compila con KSP 2.3.10, subirlo es un cambio de una línea en el catálogo |
 | R8 | Deriva entre el catálogo documentado y el código | Bajo | `docs/ENGINES.md` es la fuente; un test verifica que el registro y la tabla coinciden en IDs |
+| ~~R9~~ | ~~No existe un binding KMP publicado de zxing-cpp~~ | — | **Cerrado por ADR-0008.** El inventario era incompleto: `io.github.zxing-cpp:kotlin-native:3.1.1` publica los tres targets de iOS con el cinterop hecho, y `:android:3.1.1` cubre Android. Se consumen los artefactos, sin cinterop propio. Deriva en R10 y en la deuda D13 |
+| ~~R10~~ | ~~Los klibs de `kotlin-native` están compilados con Kotlin 2.2.0 y el proyecto está en 2.1.21~~ | — | **Cerrado**: toolchain en Kotlin 2.3.20, CMP 1.11.1, KSP 2.3.10, Gradle 8.14.5 |
 
 ---
 
@@ -761,6 +914,130 @@ comparación de cámara, porque no es un decodificador y contrastarla no mide na
 
 ---
 
+### 9.5 Acciones sobre el resultado (RF-13)
+
+Escanear un QR con una URL y no poder abrirla deja el resultado en un callejón sin salida. RF-13
+cierra el ciclo con tres acciones: **copiar**, **compartir** y **abrir**.
+
+El reparto de responsabilidades es lo que hace que esto no se repita cuatro veces:
+
+| Quién | Qué decide |
+|---|---|
+| `:core:domain` — `ResultActionsFactory` | **Qué** acciones tiene sentido ofrecer y **con qué texto** |
+| `:core:platform` — `PlatformActions` | **Cómo** las ejecuta cada sistema operativo |
+| ViewModel | Une las dos mitades y avisa si la acción no prosperó |
+
+Las acciones se derivan de `BarcodeValueType` (§6.3), **no** del formato: un QR con una URL ofrece
+"Abrir enlace"; el mismo QR con texto plano, no. `Email`, `Phone`, `Sms` y `GeoPoint` se traducen a
+sus esquemas (`mailto:`, `tel:`, `sms:`, `geo:`); `Product` no ofrece abrir porque un EAN no apunta
+a ningún sitio: elegir un buscador sería una decisión de producto disfrazada de detalle técnico.
+
+Copiar tampoco usa el valor crudo cuando hay algo mejor: `shareableText` de un QR de WiFi devuelve
+`Red: X · Clave: Y`, porque pegarle a alguien `WIFI:T:WPA;S:…;;` no le sirve de nada.
+
+`PlatformActions` es **una sola interfaz**, no tres segregadas como las capacidades de los motores
+(§7.2). La diferencia es real: un motor puede implementar unas capacidades y otras no, y la UI
+necesita distinguirlo en tiempo de compilación; la plataforma, en cambio, es una sola y siempre está
+presente. Lo único desigual es compartir — **en escritorio no existe una hoja de compartir** — y eso
+se resuelve con la bandera `canShare`, que llega al estado y hace que el botón simplemente no se
+ofrezca. Los métodos devuelven `Boolean` en lugar de lanzar porque fallar al copiar no es
+excepcional: el portapapeles puede estar bloqueado y el navegador puede negar el permiso.
+
+Compromiso registrado en Web: `copyToClipboard` y `share` devuelven `true` en cuanto la llamada
+arranca, sin esperar la promesa. Esperarla exigiría puentear promesas de JS a corrutinas para un
+`Boolean` cuyo único uso es decidir si mostrar un aviso.
+
+---
+
+### 9.6 Textos de la interfaz
+
+Los textos viven en `composeResources` **por módulo**: cada feature tiene su `strings.xml` y no hay
+un fichero global que crezca sin dueño.
+
+Lo que no es evidente es qué pasa con los textos que no nace en un `@Composable`. Un ViewModel que
+emite `"Copiado"` ata la lógica al idioma y, peor, obliga a los tests a afirmar sobre una frase: una
+coma de más rompe un test que no verificaba nada sobre la coma. Por eso los efectos llevan un
+**mensaje semántico** (`ScannerMessage`, `HistoryMessage`) y la pantalla lo traduce. Queda una
+puerta abierta —`Raw`— para el texto que produce la plataforma, como el motivo que devuelve el
+selector de imágenes del sistema: sustituirlo por un mensaje genérico perdería la única pista útil.
+
+Por el mismo motivo `ResultAction` dejó de traer `label`. El dominio decide **qué** acciones tienen
+sentido y de qué clase es cada una (`OpenKind.Phone` y no `"Llamar"`); cómo se llaman en pantalla es
+de la UI. Antes una decisión de dominio venía con el idioma pegado.
+
+### 9.7 Exportación del historial
+
+El historial sale a **CSV** o **JSON**, y el reparto es el de siempre: `:core:domain` decide qué
+contiene el archivo y `:core:platform` (`FileSaver`) dónde acaba. Es el tercer servicio del sistema
+del módulo — [PlatformActions] son acciones instantáneas, `ImagePicker` trae algo de fuera y esto
+lleva algo hacia fuera.
+
+Se exporta **lo que se está viendo**, no todo el historial: si el usuario filtró por un motor, un
+archivo con el conjunto entero no se parecería a la pantalla que tiene delante.
+
+#### El dominio no redacta frases
+
+`shareableContent()` devuelve **la estructura** de lo que se va a copiar —una red WiFi con su clave,
+los campos de una vCard, o el valor crudo— y la pantalla la redacta con sus recursos. Antes componía
+aquí `"Red: X · Clave: Y"`, que era español dentro del dominio y no había forma de traducirlo sin
+tocar esa clase.
+
+La consecuencia visible es que la acción del ViewModel lleva el texto ya hecho: el dominio dice qué
+datos importan, la pantalla los escribe y la plataforma los ejecuta.
+
+#### Una celda de CSV puede ser código
+
+Excel, Numbers y Sheets ejecutan como fórmula cualquier celda que empiece por `=`, `+`, `-` o `@`.
+El contenido de un código escaneado **viene de fuera**, así que un QR con `=HYPERLINK(...)` dentro
+se convertiría en código corriendo en la máquina de quien abra el archivo. El exportador antepone
+una comilla simple a esos valores; el precio es que en esos casos el CSV no es byte a byte lo
+escaneado, y por eso el JSON —donde no hay nada que ejecutar— lo conserva intacto.
+
+El resto del CSV sigue RFC 4180: se entrecomilla cuando el valor lleva comas, comillas o saltos de
+línea, y las comillas internas se duplican. No es teórico: una vCard leída de un QR trae las tres
+cosas.
+
+Los nombres de columna y las claves JSON están en inglés y en `snake_case` aunque la app esté en
+español. No es interfaz: es un archivo que abre una hoja de cálculo o consume un script, y traducir
+la app no debería romper lo que alguien tenga montado encima.
+
+### 9.8 Escaneo desde imagen (RF-07)
+
+Escanear una foto no es una variante menor de escanear con la cámara: es la salida cuando el código
+está en una captura de pantalla, en un PDF, en un correo — o cuando el usuario ha negado el permiso
+de cámara.
+
+El reparto es el mismo que en RF-13: `:core:platform` expone `ImagePicker` —**cómo** se elige el
+archivo— y `:core:domain` decide **qué** hacer con él. `PickImageResult` distingue tres salidas, y
+la distinción no es cosmética: *cancelar* es la salida más frecuente de un selector de archivos, y
+tratarla como error haría que la app mostrara un fallo cada vez que el usuario cambia de idea.
+
+**Ningún selector pide permisos.** El *photo picker* de Android, `UIImagePickerController` en iOS,
+el diálogo de archivos de escritorio y el `<input type=file>` del navegador corren todos **fuera del
+proceso de la app** y devuelven únicamente lo que el usuario elige. Pedir `READ_MEDIA_IMAGES` daría
+acceso a la galería entera para leer una sola foto.
+
+`DecodeImageUseCase` recorre la cadena de motores igual que `FallbackScannerEngine` hace en vivo, y
+aquí importa más: el caso de uso natural del OCR es una etiqueta dañada que el decodificador no ve y
+cuyo número impreso sí es legible. Sin cadena, ese motor no llegaría a ejecutarse nunca.
+
+Devuelve `Detection` y no `Barcode` porque **qué motor lo leyó es el dato que este producto existe
+para dar**, y aplica el mismo filtrado por formato y la misma interpretación semántica que la sesión
+en vivo: un QR con una URL debe ofrecer "Abrir enlace" venga de donde venga.
+
+#### Una excepción con nombre
+
+`EngineStatus.canDecodeImages` deja pasar a los motores bloqueados **solo** por el permiso de
+cámara. El archivo ya está en el dispositivo y no hay cámara que abrir, así que negar el permiso no
+debería cerrar también esta vía — que es justo la alternativa que le queda al usuario. La excepción
+es estrecha a propósito: un modelo sin descargar o un motor de una fase futura sí bloquean, porque
+ahí no hay nada que ejecutar.
+
+La regla vive en el dominio y no en la pantalla para que el selector de motores y la UI apliquen
+exactamente la misma: si divergieran, el botón aparecería y no encontraría decodificador.
+
+---
+
 ## 16. Anexo — Decisiones registradas
 
 | ADR | Decisión |
@@ -769,6 +1046,8 @@ comparación de cámara, porque no es un decodificador y contrastarla no mide na
 | [ADR-0002](adr/ADR-0002-scanner-engine-spi.md) | Modelar los motores como un SPI con capacidades declarativas |
 | [ADR-0003](adr/ADR-0003-koin-como-di.md) | Koin como contenedor de DI en lugar de Hilt |
 | [ADR-0004](adr/ADR-0004-flow-como-api-de-sesion.md) | `Flow<ScanEvent>` como API de sesión de escaneo |
-| [ADR-0005](adr/ADR-0005-navegacion-propia.md) | Navegación propia mínima en la Fase 1 |
+| [ADR-0005](adr/ADR-0005-navegacion-propia.md) | Navegación propia mínima en la Fase 1 — revisada en la Fase 3: se mantiene, y se añade restauración de estado |
 | [ADR-0006](adr/ADR-0006-reestructuracion-del-build.md) | Reestructurar el build de una vez en lugar de migrar incrementalmente |
 | [ADR-0007](adr/ADR-0007-preview-como-capacidad-del-motor.md) | El preview de cámara es una capacidad del motor, no de la feature |
+| [ADR-0008](adr/ADR-0008-baseline-zxing-cpp.md) | El baseline de comparación es zxing-cpp desde artefactos publicados, en Android e iOS |
+| [ADR-0009](adr/ADR-0009-play-feature-delivery-aplazado.md) | Play Feature Delivery se aplaza: incompatible con KMP, exige Play Store y no hay medición |

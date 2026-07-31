@@ -1,7 +1,7 @@
 package com.testscanner.engines.gms
 
-import com.google.mlkit.vision.barcode.common.Barcode as MlKitBarcode
 import com.testscanner.core.model.BarcodeFormat
+import com.google.mlkit.vision.barcode.common.Barcode as MlKitBarcode
 
 /**
  * Traducción entre las constantes de ML Kit y [BarcodeFormat].
@@ -40,7 +40,7 @@ internal object MlKitFormatMapper {
      *
      * Devuelve `null` cuando la petición incluye formatos que ML Kit no conoce: en ese caso se
      * deja el detector en modo "todos" y el filtrado fino lo hace `FormatFilteringScannerEngine`
-     * en el dominio, que es quien garantiza el mismo comportamiento en los siete motores.
+     * en el dominio, que es quien garantiza el mismo comportamiento en los ocho motores.
      */
     fun toMlKitFormats(formats: Set<BarcodeFormat>): IntArray? {
         val mapped = formats.mapNotNull { toMlKit[it] }

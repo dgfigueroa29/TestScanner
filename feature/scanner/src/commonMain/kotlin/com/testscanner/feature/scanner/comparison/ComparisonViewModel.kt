@@ -93,17 +93,28 @@ class ComparisonViewModel(
         _state.update { it.copy(scoreboard = EngineScoreboard.Empty, error = null) }
     }
 
+    /**
+     * Todos los eventos alimentan el marcador, incluidos los frames analizados y los fallos: desde
+     * que [ScanEvent] lleva el motor, el marcador sabe a quién atribuir cada uno sin adivinar.
+     *
+     * Un fallo se refleja además en el estado para que la UI lo muestre, pero solo detiene la
+     * comparación si es fatal: que un motor se caiga no invalida lo que midieron los demás.
+     */
     private fun reduce(event: ScanEvent) {
-        when (event) {
-            is ScanEvent.Failed -> _state.update {
-                it.copy(error = event.error, isRunning = if (event.error.isFatal) false else it.isRunning)
+        _state.update { state ->
+            val scoreboard = state.scoreboard.reduce(event)
+
+            when (event) {
+                is ScanEvent.Failed -> state.copy(
+                    scoreboard = scoreboard,
+                    error = event.error,
+                    isRunning = if (event.error.isFatal) false else state.isRunning,
+                )
+
+                is ScanEvent.SessionEnded -> state.copy(scoreboard = scoreboard, isRunning = false)
+
+                else -> state.copy(scoreboard = scoreboard)
             }
-
-            is ScanEvent.SessionEnded -> _state.update { it.copy(isRunning = false) }
-
-            // Los eventos sin motor identificable no se atribuyen: en una comparación en paralelo
-            // adivinar de quién vienen falsearía el marcador (ver EngineScoreboard).
-            else -> _state.update { it.copy(scoreboard = it.scoreboard.reduce(event)) }
         }
     }
 

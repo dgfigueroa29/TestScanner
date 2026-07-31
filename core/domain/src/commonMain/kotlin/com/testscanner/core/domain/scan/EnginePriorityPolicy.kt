@@ -28,13 +28,17 @@ object EnginePriorityPolicy {
             ScannerEngineId.MlKitOcr,
             ScannerEngineId.ManualInput,
         ),
+        // ZXing en Java, no el port a C++: zxing-cpp no publica artefacto JVM (ADR-0008). Solo
+        // decodifica archivos, así que ante una petición de cámara en vivo el selector lo descarta
+        // por capacidades y la cadena cae sola a la entrada manual.
         ScannerPlatform.Desktop to listOf(
-            ScannerEngineId.ZXingCpp,
+            ScannerEngineId.ZXingJava,
             ScannerEngineId.ManualInput,
         ),
+        // Tampoco hay artefacto wasmJs de zxing-cpp; en Web el respaldo del BarcodeDetector es la
+        // entrada manual, no otro decodificador.
         ScannerPlatform.Web to listOf(
             ScannerEngineId.BrowserDetector,
-            ScannerEngineId.ZXingCpp,
             ScannerEngineId.ManualInput,
         ),
     )

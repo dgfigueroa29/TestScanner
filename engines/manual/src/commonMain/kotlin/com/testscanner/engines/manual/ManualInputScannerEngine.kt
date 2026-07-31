@@ -85,10 +85,10 @@ class ManualInputScannerEngine(
         startedAtMillis: Long,
     ): List<ScanEvent> {
         val barcode = ManualCodeInterpreter.interpret(value)
-            ?: return listOf(ScanEvent.Failed(ScanError.DecodeFailed("El valor está vacío")))
+            ?: return listOf(ScanEvent.Failed(ScanError.DecodeFailed("El valor está vacío"), engineId = id))
 
         if (barcode.format !in request.formats) {
-            return listOf(ScanEvent.Failed(ScanError.FormatRejected(barcode.format)))
+            return listOf(ScanEvent.Failed(ScanError.FormatRejected(barcode.format), engineId = id))
         }
 
         val now = time.nowMillis()

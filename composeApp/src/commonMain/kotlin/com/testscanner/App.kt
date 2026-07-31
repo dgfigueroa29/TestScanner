@@ -7,19 +7,28 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.testscanner.core.designsystem.LocalSnackbarHostState
 import com.testscanner.core.designsystem.TestScannerTheme
 import com.testscanner.feature.history.HistoryScreen
 import com.testscanner.feature.scanner.ScannerScreen
 import com.testscanner.feature.scanner.comparison.ComparisonScreen
 import com.testscanner.navigation.Destination
 import com.testscanner.navigation.Navigator
+import com.testscanner.resources.Res
+import com.testscanner.resources.destination_comparison
+import com.testscanner.resources.destination_history
+import com.testscanner.resources.destination_scanner
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.KoinContext
 
 /**
@@ -39,9 +48,11 @@ fun App(navigator: Navigator = remember { Navigator() }) {
         TestScannerTheme {
             val backstack by navigator.backstack.collectAsStateWithLifecycle()
             val current = backstack.last()
+            val snackbarHostState = remember { SnackbarHostState() }
 
             Scaffold(
                 topBar = { TopAppBar(title = { Text(current.title()) }) },
+                snackbarHost = { SnackbarHost(snackbarHostState) },
                 bottomBar = {
                     NavigationBar {
                         DESTINATIONS.forEach { destination ->
@@ -55,11 +66,13 @@ fun App(navigator: Navigator = remember { Navigator() }) {
                     }
                 },
             ) { padding ->
-                Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-                    when (current) {
-                        Destination.Scanner -> ScannerScreen()
-                        Destination.Comparison -> ComparisonScreen()
-                        Destination.History -> HistoryScreen()
+                CompositionLocalProvider(LocalSnackbarHostState provides snackbarHostState) {
+                    Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+                        when (current) {
+                            Destination.Scanner -> ScannerScreen()
+                            Destination.Comparison -> ComparisonScreen()
+                            Destination.History -> HistoryScreen()
+                        }
                     }
                 }
             }
@@ -70,8 +83,9 @@ fun App(navigator: Navigator = remember { Navigator() }) {
 private val DESTINATIONS =
     listOf(Destination.Scanner, Destination.Comparison, Destination.History)
 
+@Composable
 private fun Destination.title(): String = when (this) {
-    Destination.Scanner -> "Escanear"
-    Destination.Comparison -> "Comparar"
-    Destination.History -> "Historial"
+    Destination.Scanner -> stringResource(Res.string.destination_scanner)
+    Destination.Comparison -> stringResource(Res.string.destination_comparison)
+    Destination.History -> stringResource(Res.string.destination_history)
 }

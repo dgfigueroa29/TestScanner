@@ -13,8 +13,12 @@ android {
 
     buildTypes {
         release {
-            // Fase 2 (deuda D7): activar minify y afinar las reglas de R8.
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+
+            // Encoger recursos exige encoger código. No toca `assets/`, que es donde Compose
+            // Multiplatform empaqueta los `composeResources`: los textos siguen ahí.
+            isShrinkResources = true
+
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
