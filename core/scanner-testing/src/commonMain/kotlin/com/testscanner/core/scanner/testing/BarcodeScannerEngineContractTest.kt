@@ -9,12 +9,12 @@ import com.testscanner.core.scanner.ImageDecodingEngine
 import com.testscanner.core.scanner.ScanEvent
 import com.testscanner.core.scanner.TextInputEngine
 import com.testscanner.core.scanner.capability
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * Batería que **todo** motor debe pasar. Cada implementación hereda esta clase y aporta su factory.

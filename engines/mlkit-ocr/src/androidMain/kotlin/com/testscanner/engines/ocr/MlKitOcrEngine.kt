@@ -32,13 +32,13 @@ import com.testscanner.core.scanner.SystemTimeProvider
 import com.testscanner.core.scanner.TimeProvider
 import com.testscanner.core.scanner.catalog.ScannerEngineCatalog
 import com.testscanner.core.scanner.ui.CameraPreviewEngine
-import java.util.concurrent.Executor
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.util.concurrent.Executor
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 /**
  * Último recurso de la cadena de fallback: lee el número impreso bajo el código (RF-12).

@@ -12,7 +12,6 @@ import androidx.compose.ui.Modifier
 import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.barcode.common.Barcode as MlKitBarcode
 import com.google.mlkit.vision.common.InputImage
 import com.testscanner.core.model.Barcode
 import com.testscanner.core.model.Detection
@@ -32,13 +31,14 @@ import com.testscanner.core.scanner.SystemTimeProvider
 import com.testscanner.core.scanner.TimeProvider
 import com.testscanner.core.scanner.catalog.ScannerEngineCatalog
 import com.testscanner.core.scanner.ui.CameraPreviewEngine
-import java.util.concurrent.Executor
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.util.concurrent.Executor
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import com.google.mlkit.vision.barcode.common.Barcode as MlKitBarcode
 
 /**
  * Análisis de frames de CameraX con el detector de códigos de ML Kit.

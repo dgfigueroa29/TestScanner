@@ -4,8 +4,8 @@
 |---|---|
 | Proyecto | TestScanner |
 | Documento | Software Design Document (SDD) |
-| Versión | 1.2 |
-| Estado | Vigente — Fases 1 a 4 cerradas en código; todo pendiente de la primera compilación |
+| Versión | 1.3 |
+| Estado | Vigente — Fases 1, 2, 4 y 5 cerradas en código salvo lo listado como pendiente; la 3 (iOS) escrita pero despriorizada por falta de dispositivos. Todo pendiente de la primera compilación con Gradle |
 | Fecha | 2026-07-31 |
 | Autor | Equipo TestScanner |
 | Alcance de esta versión | Migración de app Android monolítica a Compose Multiplatform + arquitectura de motores de escaneo intercambiables |
@@ -231,7 +231,7 @@ TestScanner/
 │   ├── gms-code-scanner/              # Android — UI propia, sin permisos
 │   ├── mlkit-camerax/                 # Android — CameraX + preview + linterna/zoom
 │   ├── vision-ios/                    # iOS — AVFoundation
-│   ├── zxing-cpp/                     # (Fase 3) Android + iOS — baseline de comparación
+│   ├── zxing-cpp/                     # Android + iOS — baseline de comparación (ADR-0008)
 │   ├── browser-detector/              # Wasm/JS — BarcodeDetector del navegador
 │   └── mlkit-ocr/                     # Android — lee el número impreso bajo el código
 │
@@ -578,10 +578,26 @@ tamaño real del frame, y mapea la UI, que es quien sabe cómo se está escaland
 
 Navegador propio mínimo (`sealed interface Destination` + backstack en un `StateFlow`), sin
 dependencia externa. El grafo tiene tres destinos — escanear, comparar e historial; Android le cede
-el botón atrás del sistema y todas las plataformas usan la barra inferior. Razón: la navegación multiplataforma de Jetpack está aún
-en versiones alpha/beta y no queremos que su ciclo de releases bloquee el nuestro en la fase de
-fundaciones. La migración a `navigation-compose` multiplataforma está prevista para la Fase 3,
-cuando el grafo tenga suficientes destinos como para justificarla. Ver `docs/adr/ADR-0005`.
+el botón atrás del sistema y todas las plataformas usan la barra inferior. Razón: la navegación
+multiplataforma de Jetpack está aún en versiones alpha/beta y no queremos que su ciclo de releases
+bloquee el nuestro en la fase de fundaciones.
+
+La revisión prevista se hizo y **la decisión se mantiene**: tres destinos y ningún deep link no
+alcanzan el umbral de migración, que sigue siendo seis destinos o el primer deep link. Ver
+`docs/adr/ADR-0005`.
+
+El backstack sí se guarda y se restaura, que era la mitad de la deuda que sí resultó ser un defecto:
+
+```kotlin
+fun saveState(): List<String> = backstack.value.map { it.id }
+fun restoreState(ids: List<String>)   // ignora lo que no reconoce
+```
+
+`Destination.id` está **escrito a mano**, no derivado del nombre de la clase. La razón es la misma
+que en `BarcodeValueType.id`: R8 ofusca `::class.simpleName`, así que restaurar funcionaría en debug
+y fallaría en release — el peor sitio donde descubrirlo. `MainActivity` lo guarda en
+`onSaveInstanceState`; viaja como ids y no como objetos, con lo que `Destination` no necesita ser
+`Parcelable` y el estado guardado no queda atado a su representación interna.
 
 ---
 
@@ -608,7 +624,7 @@ inyectan (`DispatcherProvider`) para que los tests puedan sustituirlos por `Unco
 | Dato | Almacén | Estado |
 |---|---|---|
 | Motor preferido, filtros de formato, ajustes | **`multiplatform-settings`** en las cuatro plataformas | ✅ implementado |
-| Historial de escaneos (RF-11) | **Room KMP** en Android, iOS y Desktop; en memoria en Web | ✅ implementado |
+| Historial de escaneos (RF-11) | **Room KMP** en Android, iOS y Desktop; JSON en `localStorage` en Web | ✅ implementado |
 
 El historial se definió en la Fase 1 como **interfaz de repositorio** (`ScanHistoryRepository`) con
 una implementación en memoria detrás. Sustituirla por Room en la Fase 2 no tocó ni el dominio ni la
@@ -625,10 +641,19 @@ escriba en esas claves.
 diseño, y tiene dos consecuencias que conviene tener presentes:
 
 - `:core:database` declara tres targets en lugar de cuatro.
-- `ScanHistoryRepository` **no** se declara en `dataModule`: lo aporta cada `platformModule`. Android,
-  iOS y Desktop persisten; en Web el historial es de sesión. La diferencia queda visible en el
-  wiring en lugar de escondida tras un `expect/actual` que fingiera que todas las plataformas hacen
-  lo mismo.
+- `ScanHistoryRepository` **no** se declara en `dataModule`: lo aporta cada `platformModule`. La
+  diferencia queda visible en el wiring en lugar de escondida tras un `expect/actual` que fingiera
+  que todas las plataformas hacen lo mismo.
+
+En Web lo aporta `SettingsScanHistoryRepository`, que serializa la lista a JSON en el mismo almacén
+que las preferencias — `localStorage`. No es Room, pero tampoco es memoria: recargar la página ya no
+pierde el historial. La alternativa ortodoxa era IndexedDB y se descartó a conciencia: unos cientos
+de filas de texto ocupan decenas de kilobytes frente a los megabytes de cuota, este repositorio no
+hace consultas —lee la lista entera y filtra en memoria— y la interop de IndexedDB serían cien líneas
+de callbacks que ningún test de `commonTest` puede ejercitar. Así corre con `MapSettings`. Lo que sí
+exige el almacén es techo (500 entradas) y tolerancia a que la escritura falle por cuota: una
+detección que no cabe se sigue mostrando en pantalla, porque convertir "no cabe" en un escaneo
+fallido sería peor.
 
 Decisiones del esquema:
 
@@ -678,12 +703,17 @@ Garantías de privacidad (RNF-03), verificables en revisión de código:
 |---|---|---|---|
 | Unitario de dominio | `commonTest` | UseCases, política de selección, fallback, parser semántico, mappers de formato | kotlin-test, Turbine |
 | Unitario de presentación | `commonTest` | Reducers de ViewModel: acción → estado esperado | kotlin-test, Turbine, dispatcher de test |
-| Contrato de motor | `commonTest` + `androidTest`/`iosTest` | **Suite compartida** que todo motor debe pasar (§13.2) | kotlin-test |
-| UI | `androidTest` / `desktopTest` | `XContent` stateless con estados representativos | Compose UI Test |
-| Integración de motor | por plataforma | Decodificación sobre imágenes de referencia | Recursos de test versionados |
+| Contrato de motor | `commonTest` | **Suite compartida** que todo motor debe pasar (§13.2), aplicada a lo instanciable sin dispositivo: el motor manual, los decoradores y la cadena completa | kotlin-test |
+| Coherencia del catálogo | `commonTest` | Que los siete descriptores sean válidos y no prometan lo que nadie implementa | kotlin-test |
 
 Objetivo de cobertura: **≥ 80 % en `:core:domain` y `:core:data`**; la UI no se persigue por
 cobertura sino por casos de estado representativos.
+
+**No hay tests instrumentados, y es una decisión, no una omisión.** No va a haber emulador en CI, así
+que un test que exija dispositivo es un test que nunca se ejecuta: no aporta seguridad y sí una falsa
+sensación de tenerla. El hueco que esto deja —que ningún test comprueba que un motor de cámara lea un
+código de verdad— está escrito con todas las letras en el ROADMAP, junto a lo que sí queda cubierto
+sin dispositivo.
 
 ### 13.2 Suite de contrato de motores
 
@@ -733,7 +763,7 @@ Implementado en `.github/workflows/verify.yml`:
 | Job | Dispara | Contenido |
 |---|---|---|
 | `checks` | cada PR | `detekt` + tests JVM de núcleo y features. Es el primero y el más barato: si falla, no se pagan los builds de plataforma |
-| `android` | cada PR | `assembleDebug` + `lintDebug`, publica el APK |
+| `android` | cada PR | `assembleDebug` + `lintDebug` + `assembleRelease`, publica el APK y el `mapping.txt` |
 | `desktop` | cada PR | `desktopJar` |
 | `web` | cada PR | `wasmJsBrowserDistribution` |
 | `ios` | solo `main` | `linkDebugFrameworkIosSimulatorArm64` en runner macOS |
@@ -741,6 +771,10 @@ Implementado en `.github/workflows/verify.yml`:
 `ios` no corre en los PR a propósito: un runner de macOS cuesta unas diez veces más que uno de Linux
 y el enlazado de Kotlin/Native es lento (riesgo R4). Los PR ya cubren los otros tres targets, y el
 código de iOS es mayoritariamente `commonMain` compilado en ellos.
+
+`assembleRelease` está en cada PR y no solo al publicar por una razón concreta: R8 solo rompe cosas
+cuando se ejecuta, y los fallos que produce —una clase eliminada, un nombre ofuscado que alguien
+esperaba leer— no aparecen en debug. Descubrirlos al preparar una release es tarde.
 
 ---
 
@@ -750,9 +784,9 @@ código de iOS es mayoritariamente `commonMain` compilado en ellos.
 |---|---|---|
 | **1. Fundaciones** (este entregable) | Build KMP/CMP, version catalog, estructura de módulos, modelo de dominio, SPI completo, registro, selección + fallback, UI de catálogo y escaneo, motor de entrada manual, tests de dominio | La app arranca en Android, Desktop y Web; el catálogo lista los 7 motores con su estado; los tests de selección y fallback pasan |
 | **2. Android real** ✅ | `:engines:gms-code-scanner`, `:engines:mlkit-camerax`, preview CameraX + overlay, permisos, convention plugins, historial con Room, CI en GitHub Actions | Escaneo real en Android con dos motores intercambiables en caliente |
-| **3. iOS** | `:engines:vision-ios`, preview con `UIKitView`, shell Xcode, `:engines:zxing-cpp` | Escaneo real en iOS; ZXing-cpp comparable entre Android e iOS |
-| **4. Web y OCR** | ✅ `:engines:browser-detector` y `:engines:mlkit-ocr` (Android) · pendiente: preview de Web (D14), OCR en iOS con Vision, escaneo desde imagen (RF-07) | Las cuatro plataformas escanean; OCR disponible como alternativa |
-| **5. Producto** | ✅ `ComparingScannerEngine`, `EngineScoreboard`, pantalla de comparación y acciones sobre el resultado (RF-13), adelantados · pendiente: exportación de historial, Play Feature Delivery, accesibilidad | G5 medible en la app |
+| **3. iOS** ⏸️ | Escrito: `:engines:vision-ios`, preview con `UIKitView`, shell Xcode, `:engines:zxing-cpp`, revisión de ADR-0005 · **despriorizada**: sin dispositivos Apple no se puede compilar ni verificar nada | Escaneo real en iOS; ZXing-cpp comparable entre Android e iOS |
+| **4. Web y OCR** | ✅ `:engines:browser-detector`, `:engines:mlkit-ocr` (Android), preview de Web (D14) y escaneo desde imagen (RF-07) en las cuatro plataformas · pendiente: OCR en iOS con Vision | Las cuatro plataformas escanean; OCR disponible como alternativa |
+| **5. Producto** | ✅ `ComparingScannerEngine`, `EngineScoreboard`, pantalla de comparación, acciones sobre el resultado (RF-13), exportación del historial a CSV/JSON y build de release con R8 · pendiente: Play Feature Delivery, accesibilidad y auditoría de privacidad | G5 medible en la app |
 
 ### 14.1 Qué se elimina en la Fase 1
 
@@ -935,7 +969,7 @@ exactamente la misma: si divergieran, el botón aparecería y no encontraría de
 | [ADR-0002](adr/ADR-0002-scanner-engine-spi.md) | Modelar los motores como un SPI con capacidades declarativas |
 | [ADR-0003](adr/ADR-0003-koin-como-di.md) | Koin como contenedor de DI en lugar de Hilt |
 | [ADR-0004](adr/ADR-0004-flow-como-api-de-sesion.md) | `Flow<ScanEvent>` como API de sesión de escaneo |
-| [ADR-0005](adr/ADR-0005-navegacion-propia.md) | Navegación propia mínima en la Fase 1 |
+| [ADR-0005](adr/ADR-0005-navegacion-propia.md) | Navegación propia mínima en la Fase 1 — revisada en la Fase 3: se mantiene, y se añade restauración de estado |
 | [ADR-0006](adr/ADR-0006-reestructuracion-del-build.md) | Reestructurar el build de una vez en lugar de migrar incrementalmente |
 | [ADR-0007](adr/ADR-0007-preview-como-capacidad-del-motor.md) | El preview de cámara es una capacidad del motor, no de la feature |
 | [ADR-0008](adr/ADR-0008-baseline-zxing-cpp.md) | El baseline de comparación es zxing-cpp desde artefactos publicados, en Android e iOS |

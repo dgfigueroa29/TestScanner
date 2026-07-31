@@ -3,12 +3,12 @@ package com.testscanner.platform
 import com.testscanner.core.model.ScanImage
 import com.testscanner.core.platform.ImagePicker
 import com.testscanner.core.platform.PickImageResult
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import javax.imageio.ImageIO
 import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 /**
  * Selector de imágenes de escritorio (RF-07).

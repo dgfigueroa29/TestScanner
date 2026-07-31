@@ -46,8 +46,8 @@ import platform.CoreVideo.kCVPixelBufferPixelFormatTypeKey
 import platform.CoreVideo.kCVPixelFormatType_420YpCbCr8BiPlanarFullRange
 import platform.darwin.NSObject
 import platform.darwin.dispatch_queue_create
-import zxingcpp.Barcode as ZXingBarcode
 import zxingcpp.BarcodeReader
+import zxingcpp.Barcode as ZXingBarcode
 
 /**
  * ZXing-cpp en iOS, sobre `AVCaptureVideoDataOutput`.

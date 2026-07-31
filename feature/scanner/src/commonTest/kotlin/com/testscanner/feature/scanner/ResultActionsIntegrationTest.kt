@@ -16,17 +16,17 @@ import com.testscanner.core.model.BarcodeFormat
 import com.testscanner.core.model.BarcodeValueType
 import com.testscanner.core.model.Detection
 import com.testscanner.core.model.ScannerEngineId
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /** RF-13 de punta a punta: el dominio decide qué se puede hacer y la plataforma lo ejecuta. */
 @OptIn(ExperimentalCoroutinesApi::class)

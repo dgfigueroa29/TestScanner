@@ -20,9 +20,9 @@ import com.testscanner.engines.manual.ManualInputScannerEngine
 import com.testscanner.platform.DesktopFileSaver
 import com.testscanner.platform.DesktopImagePicker
 import com.testscanner.platform.DesktopPlatformActions
-import java.util.prefs.Preferences
 import org.koin.core.module.Module
 import org.koin.dsl.module
+import java.util.prefs.Preferences
 
 /** Motores enlazados en el binario de escritorio. Fase 3 añadirá aquí ZXing-cpp. */
 actual fun platformModule(): Module = module {

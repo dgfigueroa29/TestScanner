@@ -56,7 +56,7 @@ verificable desactivando Play Services.
 
 > Pendiente de la primera compilación con Gradle: el entorno donde se escribió esta fase no tenía
 > acceso a `dl.google.com`, así que las APIs de ML Kit y CameraX están sin compilar. El núcleo puro
-> sí está verificado (328 tests en verde con kotlinc).
+> sí está verificado (333 tests en verde con kotlinc).
 
 ---
 
@@ -85,7 +85,10 @@ verificable desactivando Play Services.
       salida de metadatos, porque esa ya trae su propio decodificador dentro y el baseline dejaría
       de serlo. Decodifica también imágenes estáticas, lo que da a iOS su primer decodificador de
       archivos
-- [ ] Revisión de ADR-0005: el grafo ya tiene 2 destinos; migrar a `navigation-compose` si llega a 6 o aparecen deep links
+- [x] Revisión de ADR-0005 (cerraba D4): tres destinos y ningún deep link, así que la navegación
+      propia se queda. El defecto real era otro y se corrigió: el backstack no sobrevivía a rotar la
+      pantalla. Ahora se guarda por ids estables — escritos a mano, porque R8 ofusca los nombres de
+      clase
 
 - [ ] CI: `linkDebugFrameworkIosSimulatorArm64` en runner macOS
 
@@ -177,7 +180,7 @@ Registrada de forma explícita para que no se olvide:
 | ~~D1~~ | ~~Sin convention plugins: cada módulo repite su configuración KMP~~ | **Saldada**: `build-logic/` con `testscanner.kmp.library`, `.kmp.compose` y `.android.application` |
 | ~~D2~~ | ~~Preferencias en memoria, no persistidas~~ | **Saldada**: `multiplatform-settings` en las cuatro plataformas |
 | ~~D3~~ | ~~Historial en memoria~~ | **Saldada**: Room KMP en Android, iOS y Desktop. En Web sigue en memoria porque Room no tiene target wasmJs |
-| D4 | Navegación propia sin deep links ni restauración de estado | Fase 3 (revisión ADR-0005) |
+| ~~D4~~ | ~~Navegación propia sin deep links ni restauración de estado~~ | **Saldada**: hecha la revisión de ADR-0005, el umbral (seis destinos o deep links) no se alcanza y la navegación propia se mantiene. Lo que sí era un defecto era la restauración: rotar devolvía al escáner. `Navigator` guarda y restaura el backstack por ids estables y `MainActivity` lo pasa por `onSaveInstanceState` |
 | ~~D5~~ | ~~Strings hardcodeados en la UI~~ | **Saldada**: `composeResources` por módulo. Los ViewModels emiten mensajes semánticos (`ScannerMessage`, `HistoryMessage`) y `ResultAction` dejó de traer etiqueta: el dominio dice qué acción, la UI cómo se llama |
 | ~~D6~~ | ~~La suite de contrato no se ejecuta contra motores de cámara reales~~ | **Cerrada como no-objetivo**: no habrá emulador en CI, así que ningún test puede exigir dispositivo. Lo cubre lo que sí corre sin él — ver más abajo |
 | ~~D8~~ | ~~El zoom se declara como capacidad pero no hay control en la UI~~ | **Saldada**: slider derivado de `canControlZoom` |

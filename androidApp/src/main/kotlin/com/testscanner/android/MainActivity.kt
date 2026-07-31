@@ -16,9 +16,9 @@ import com.testscanner.platform.AndroidFileSaver
 import com.testscanner.platform.AndroidImagePicker
 import com.testscanner.platform.DocumentRequester
 import com.testscanner.platform.ImageRequester
-import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.koin.android.ext.android.inject
+import kotlin.coroutines.resume
 
 /**
  * Shell de Android: no contiene lógica ni UI propia.
@@ -26,7 +26,8 @@ import org.koin.android.ext.android.inject
  * Sus responsabilidades más allá de pintar `App()` son de plataforma pura: prestar sus
  * `ActivityResultLauncher` al controlador de permisos y al selector de imágenes mientras está viva
  * — ambos son singletons del grafo y no pueden retener la Activity, así que el préstamo se retira
- * en `onDestroy` — y conectar el botón atrás del sistema al `Navigator` compartido.
+ * en `onDestroy` — y conectar el botón atrás del sistema al `Navigator` compartido, además de
+ * guardar y restaurar su backstack al recrearse la Activity.
  */
 class MainActivity : ComponentActivity() {
 
@@ -107,6 +108,11 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // Rotar la pantalla recrea la Activity, y con ella el Navigator: sin esto el usuario volvía
+        // al escáner desde donde estuviera. El backstack viaja como ids y no como objetos porque
+        // `Destination` no es `Parcelable` y no hay razón para que lo sea (ADR-0005).
+        savedInstanceState?.getStringArrayList(KEY_BACKSTACK)?.let(navigator::restoreState)
+
         // El botón atrás del sistema desapila en el Navigator; cuando ya no hay nada que desapilar
         // se devuelve el control a la plataforma para que cierre la Activity (ADR-0005).
         onBackPressedDispatcher.addCallback(this) {
@@ -137,6 +143,11 @@ class MainActivity : ComponentActivity() {
         launcher.launch(suggestedName)
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putStringArrayList(KEY_BACKSTACK, ArrayList(navigator.saveState()))
+    }
+
     override fun onDestroy() {
         permissionController.requester = null
         imagePicker.requester = null
@@ -147,5 +158,6 @@ class MainActivity : ComponentActivity() {
     private companion object {
         const val MIME_CSV = "text/csv"
         const val MIME_JSON = "application/json"
+        const val KEY_BACKSTACK = "backstack"
     }
 }

@@ -3,10 +3,10 @@ package com.testscanner.platform
 import com.testscanner.core.model.ScanImage
 import com.testscanner.core.platform.ImagePicker
 import com.testscanner.core.platform.PickImageResult
+import kotlinx.coroutines.await
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.js.Promise
-import kotlinx.coroutines.await
 
 /**
  * Abre un `<input type="file">` invisible y resuelve con la imagen elegida.

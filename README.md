@@ -8,7 +8,7 @@ y Web con un único código base.
 
 ---
 
-## Estado actual — Fase 1 cerrada, Fase 2 casi cerrada
+## Estado actual — los 7 motores escritos, iOS pendiente de máquina
 
 | | |
 |---|---|
@@ -28,15 +28,28 @@ y Web con un único código base.
 | Escaneo desde imagen (RF-07) | ✅ selector en las cuatro plataformas, sin pedir permisos |
 | Exportación del historial | ✅ CSV y JSON, guardado en las cuatro plataformas |
 | ZXing-cpp (Android + iOS) | ✅ implementado — el mismo decodificador C++ en ambas, que es lo que hace comparables las lecturas |
+| Acciones sobre el resultado (RF-13) | ✅ copiar, compartir y abrir, según el significado del código |
+| Navegación | ✅ propia, con backstack que sobrevive a rotar la pantalla |
+| Build de release con R8 | ✅ `minify` y `shrinkResources`, con `assembleRelease` en CI |
 
 El catálogo muestra las siete alternativas con su estado real; los motores aún no implementados se
 declaran como tales, con la fase en la que llegan. Ver `docs/ROADMAP.md`.
+
+Lo que queda fuera por ahora, y por qué:
+
+- **iOS está despriorizado**, no abandonado: el código está escrito, pero compilarlo exige macOS y
+  probarlo un dispositivo, así que no marca el ritmo. Lo que avanza es lo que Android, Escritorio y
+  Web pueden confirmar.
+- **No hay tests instrumentados y no los va a haber.** Sin emulador en CI, un test que exija
+  dispositivo nunca se ejecuta y da una falsa sensación de red. El ROADMAP dice exactamente qué queda
+  cubierto sin dispositivo y qué no.
+- **Escritorio no tiene decodificador todavía** (deuda D13): zxing-cpp no publica artefacto JVM.
 
 > **Sin compilar con Gradle todavía.** El CI de `.github/workflows/verify.yml` es lo que dará el
 > primer veredicto completo en cuanto se abra un PR.
 > El entorno donde se desarrolló no tenía acceso a
 > `dl.google.com`, así que no hubo Android SDK ni artefactos de AGP/Compose. Lo verificado son los
-> **328 tests del núcleo puro**, compilados y ejecutados con kotlinc 2.3.20 — el mismo compilador al que apunta el build. Todo lo que necesita
+> **333 tests del núcleo puro**, compilados y ejecutados con kotlinc 2.3.20 — el mismo compilador al que apunta el build. Todo lo que necesita
 > Gradle — `build-logic`, las versiones del catálogo, los motores de plataforma y el código
 > Compose — está pendiente de la primera compilación.
 
@@ -66,6 +79,7 @@ core/domain         casos de uso, políticas de selección y decoradores del SPI
 core/data           registro de motores, preferencias e historial
 core/designsystem   tema y componentes Compose compartidos
 core/permissions    abstracción de permisos por plataforma
+core/platform       acciones del sistema: copiar, compartir, abrir, elegir imagen, guardar archivo
 core/database       Room KMP: historial persistente (sin target wasmJs)
 engines/*           un módulo por alternativa de escaneo
 feature/scanner     MVI, pantalla de escaneo y comparador de motores

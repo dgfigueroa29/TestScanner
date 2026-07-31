@@ -1,7 +1,7 @@
 package com.testscanner.engines.mlkit
 
-import com.google.mlkit.vision.barcode.common.Barcode as MlKitBarcode
 import com.testscanner.core.model.BarcodeFormat
+import com.google.mlkit.vision.barcode.common.Barcode as MlKitBarcode
 
 /**
  * Traducción entre las constantes de ML Kit y [BarcodeFormat].

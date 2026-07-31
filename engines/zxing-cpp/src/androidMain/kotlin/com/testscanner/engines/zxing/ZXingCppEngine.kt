@@ -26,11 +26,11 @@ import com.testscanner.core.scanner.SystemTimeProvider
 import com.testscanner.core.scanner.TimeProvider
 import com.testscanner.core.scanner.catalog.ScannerEngineCatalog
 import com.testscanner.core.scanner.ui.CameraPreviewEngine
-import java.util.concurrent.Executor
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import zxingcpp.BarcodeReader
+import java.util.concurrent.Executor
 
 /**
  * ZXing-cpp en Android, sobre el mismo pipeline de CameraX que usa el motor de ML Kit.

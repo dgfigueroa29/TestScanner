@@ -7,12 +7,12 @@ import com.testscanner.core.model.BarcodeFormat
 import com.testscanner.core.model.Detection
 import com.testscanner.core.model.ScanSource
 import com.testscanner.core.model.ScannerEngineId
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.runTest
 
 class SettingsScanHistoryRepositoryTest {
 

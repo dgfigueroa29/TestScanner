@@ -1,7 +1,6 @@
 package com.testscanner.core.permissions
 
 import com.testscanner.core.model.Permission
-import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.AVFoundation.AVAuthorizationStatusAuthorized
 import platform.AVFoundation.AVAuthorizationStatusDenied
@@ -14,6 +13,7 @@ import platform.AVFoundation.requestAccessForMediaType
 import platform.Foundation.NSURL
 import platform.UIKit.UIApplication
 import platform.UIKit.UIApplicationOpenSettingsURLString
+import kotlin.coroutines.resume
 
 /**
  * Permisos de iOS.

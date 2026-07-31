@@ -2,10 +2,10 @@ package com.testscanner.platform
 
 import com.testscanner.core.platform.FileSaver
 import com.testscanner.core.platform.SaveFileResult
-import java.io.File
-import javax.swing.JFileChooser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
+import javax.swing.JFileChooser
 
 /** Guardado de archivos en escritorio (RF-11): un diálogo de sistema y un `File`. */
 class DesktopFileSaver : FileSaver {

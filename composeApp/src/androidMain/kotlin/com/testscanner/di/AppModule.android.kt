@@ -25,11 +25,11 @@ import com.testscanner.engines.zxing.ZXingCppEngine
 import com.testscanner.platform.AndroidFileSaver
 import com.testscanner.platform.AndroidImagePicker
 import com.testscanner.platform.AndroidPlatformActions
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.Module
 import org.koin.dsl.module
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 /**
  * Motores enlazados en el binario de Android.

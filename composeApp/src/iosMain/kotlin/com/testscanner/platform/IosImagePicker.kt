@@ -3,7 +3,6 @@ package com.testscanner.platform
 import com.testscanner.core.model.ScanImage
 import com.testscanner.core.platform.ImagePicker
 import com.testscanner.core.platform.PickImageResult
-import kotlin.coroutines.resume
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.useContents
@@ -23,6 +22,7 @@ import platform.UIKit.UIWindow
 import platform.UIKit.UIWindowScene
 import platform.darwin.NSObject
 import platform.posix.memcpy
+import kotlin.coroutines.resume
 
 /**
  * Selector de imágenes de iOS (RF-07).

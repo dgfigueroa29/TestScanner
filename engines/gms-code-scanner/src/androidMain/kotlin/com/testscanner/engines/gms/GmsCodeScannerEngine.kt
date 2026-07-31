@@ -3,7 +3,6 @@ package com.testscanner.engines.gms
 import android.content.Context
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
-import com.google.mlkit.vision.barcode.common.Barcode as MlKitBarcode
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import com.testscanner.core.model.Barcode
@@ -18,11 +17,12 @@ import com.testscanner.core.scanner.ScannerEngineDescriptor
 import com.testscanner.core.scanner.SystemTimeProvider
 import com.testscanner.core.scanner.TimeProvider
 import com.testscanner.core.scanner.catalog.ScannerEngineCatalog
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import com.google.mlkit.vision.barcode.common.Barcode as MlKitBarcode
 
 /**
  * Escáner del sistema (Google Play Services).
