@@ -128,7 +128,7 @@ class HistoryExporterTest {
             detection("https://a.b", valueType = BarcodeValueType.Url("https://a.b")),
         )
 
-        assertTrue(result.contains("\"valueType\": \"Url\""), result)
+        assertTrue(result.contains("\"valueType\": \"URL\""), result)
     }
 
     @Test
@@ -145,6 +145,14 @@ class HistoryExporterTest {
         )
 
         assertTrue(result.contains("\"confidence\": 0.8"), result)
+    }
+
+    @Test
+    fun `el tipo semantico se exporta con un id propio y no con el nombre de la clase`() {
+        // `::class.simpleName` devolvería el nombre ofuscado en una build con R8, y el archivo
+        // exportado diría "a" en vez de "URL".
+        assertEquals("URL", BarcodeValueType.Url("https://a.b").id)
+        assertEquals("TEXT", BarcodeValueType.Text("hola").id)
     }
 
     @Test

@@ -24,8 +24,13 @@ import kotlinx.coroutines.test.runTest
  * vida de la sesión y que la cancelación libera recursos. Sin esto, las capacidades declarativas
  * — de las que dependen el selector y la UI entera — serían una promesa sin comprobar (ADR-0002).
  *
- * Los motores con cámara real la heredan desde `androidTest`/`iosTest`; los que son `commonMain`
- * puro, desde `commonTest`.
+ * La heredan desde `commonTest` los motores que se pueden instanciar sin dispositivo —el de entrada
+ * manual— y **todos los decoradores del dominio**, incluida la cadena completa que llega al
+ * ViewModel.
+ *
+ * Los motores de cámara no la heredan, y es una decisión y no un olvido: exigirían un emulador en
+ * CI, y un test que nunca se ejecuta da una red de seguridad falsa. Lo que los cubre sin dispositivo
+ * está en `docs/ROADMAP.md`.
  */
 abstract class BarcodeScannerEngineContractTest {
 

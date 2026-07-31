@@ -48,14 +48,15 @@ con su estado real; los tests de `:core:domain` y `:core:data` pasan en CI.
 - [x] Higiene del repo: `.editorconfig` alineado con detekt, `.idea/` fuera del control de versiones
 - [x] Preferencias persistentes con `multiplatform-settings` (D2) y control de zoom en la UI (D8)
 - [x] `ScanRequest.timeoutMillis` implementado (`DeadlineScannerEngine`): estaba en el modelo desde la Fase 1 sin que ningún código lo cumpliera
-- [ ] Suite de contrato ejecutándose contra los motores de cámara en `androidTest`
+- [x] Decisión sobre los tests instrumentados: **no los va a haber**. Sin emulador en CI, un test
+      que exija dispositivo es un test que nunca se ejecuta y que da una falsa sensación de red
 
 **Criterio de salida:** escaneo real en Android alternando dos motores en caliente, con fallback
 verificable desactivando Play Services.
 
 > Pendiente de la primera compilación con Gradle: el entorno donde se escribió esta fase no tenía
 > acceso a `dl.google.com`, así que las APIs de ML Kit y CameraX están sin compilar. El núcleo puro
-> sí está verificado (315 tests en verde con kotlinc).
+> sí está verificado (316 tests en verde con kotlinc).
 
 ---
 
@@ -108,8 +109,8 @@ Android e iOS sobre el mismo set de imágenes de referencia.
       en Android, `UIImagePickerController` en iOS, `JFileChooser` en escritorio e `<input
       type=file>` en Web. Ninguno pide permisos: los cuatro corren fuera de la app y devuelven solo
       lo elegido
-- [ ] Suite de contrato contra los motores nuevos: ambos necesitan runtime real (navegador o
-      dispositivo), así que va con D6 y no en `commonTest`
+- [x] Suite de contrato contra lo que se puede ejercitar sin dispositivo: los decoradores y la
+      cadena completa. Los motores de cámara quedan cubiertos solo por lo declarativo (ver D6)
 
 > El fallback web a ZXing-cpp compilado a Wasm que figuraba aquí se ha retirado: no existe
 > publicación wasmJs (ADR-0008). El respaldo del navegador es la entrada manual.
@@ -147,6 +148,25 @@ recupera correctamente EAN-13 impresos sobre códigos dañados.
 
 ---
 
+## Qué cubre a los motores de cámara sin emulador
+
+La decisión de no tener tests instrumentados deja un hueco real y conviene decir exactamente cuál es
+y qué lo compensa:
+
+| Se comprueba sin dispositivo | Sigue sin comprobarse |
+|---|---|
+| Que el descriptor de los siete motores es coherente: IDs únicos, fases válidas, sin prometer control de cámara con UI propia (`ScannerEngineCatalogTest`) | Que el motor **lea** un código real |
+| Que la selección, el fallback, los límites de petición y el plazo se comportan según el contrato, incluida la cadena completa que llega al ViewModel | Que la cámara arranque, y que se libere al cancelar |
+| Que lo declarado tenga quien lo cumpla, en todo lo instanciable sin `Context` | Lo mismo en los motores de Android e iOS, que necesitan `Context` o `AVCaptureSession` |
+| Que el proyecto **compile** para Android, Escritorio y Web, incluida la build de release con R8 | — |
+
+El riesgo que queda es el de siempre en este tipo de app: el código de cámara solo se prueba
+usándola. Lo que sí evita el diseño es que un fallo ahí se lleve por delante al resto — el SPI
+mantiene la lógica de selección, degradación y presentación fuera de los motores, y esa parte sí
+está cubierta.
+
+---
+
 ## Deuda técnica aceptada en la Fase 1
 
 Registrada de forma explícita para que no se olvide:
@@ -158,13 +178,13 @@ Registrada de forma explícita para que no se olvide:
 | ~~D3~~ | ~~Historial en memoria~~ | **Saldada**: Room KMP en Android, iOS y Desktop. En Web sigue en memoria porque Room no tiene target wasmJs |
 | D4 | Navegación propia sin deep links ni restauración de estado | Fase 3 (revisión ADR-0005) |
 | ~~D5~~ | ~~Strings hardcodeados en la UI~~ | **Saldada**: `composeResources` por módulo. Los ViewModels emiten mensajes semánticos (`ScannerMessage`, `HistoryMessage`) y `ResultAction` dejó de traer etiqueta: el dominio dice qué acción, la UI cómo se llama |
-| D6 | La suite de contrato la pasan el motor manual y los siete montajes de decoradores, pero los motores de cámara siguen necesitando dispositivo | Cuando haya CI con emulador |
+| ~~D6~~ | ~~La suite de contrato no se ejecuta contra motores de cámara reales~~ | **Cerrada como no-objetivo**: no habrá emulador en CI, así que ningún test puede exigir dispositivo. Lo cubre lo que sí corre sin él — ver más abajo |
 | ~~D8~~ | ~~El zoom se declara como capacidad pero no hay control en la UI~~ | **Saldada**: slider derivado de `canControlZoom` |
 | ~~D10~~ | ~~RF-07 sin UI ni selector de archivos~~ | **Saldada**: `ImagePicker` en las cuatro plataformas y `DecodeImageUseCase` recorriendo la cadena de motores. Un motor bloqueado por el permiso de cámara sigue sirviendo para leer un archivo |
 | ~~D12~~ | ~~RF-13 (copiar, compartir, abrir enlace) sin implementar~~ | **Saldada**: `PlatformActions` en `:core:platform` con implementación en las cuatro plataformas. En escritorio no hay hoja de compartir y el botón no se ofrece (`canShare`) |
 | ~~D11~~ | ~~La comparación necesita dos motores de cámara y solo Android los tenía~~ | **Saldada**: con ZXing-cpp, iOS tiene dos (Vision y ZXing-cpp) y Android cuatro |
 | D9 | El historial de Web es de sesión: Room KMP no soporta wasmJs. Requiere un almacén propio sobre IndexedDB | Fase 4 |
-| D7 | `:androidApp` sin ProGuard/R8 configurado para release | Fase 2 |
+| ~~D7~~ | ~~`:androidApp` sin ProGuard/R8 configurado para release~~ | **Saldada**: `minify` y `shrinkResources` activados, con reglas cortas y justificadas, y `assembleRelease` en CI para que R8 se ejecute de verdad |
 | ~~D14~~ | ~~El motor de Web escanea pero no muestra visor~~ | **Saldada**: el `<video>` se coloca sobre el canvas desde `onGloballyPositioned`. A cambio tapa el overlay, declarado con `occludesOverlay` |
 | D15 | El texto que se copia de un WiFi o una vCard lo compone `ResultActionsFactory` en el dominio (`Red: … · Clave: …`). Es contenido y no *chrome*, pero sigue siendo español dentro del dominio; sacarlo exige devolver una estructura y formatearla arriba | Fase 5 |
 | D13 | Desktop y Web se quedan sin el baseline de comparación: zxing-cpp no publica artefacto JVM ni wasmJs (ADR-0008). En Desktop hoy no hay ningún decodificador; el candidato es `com.google.zxing:core`, y entraría al catálogo **como motor propio**, no con el nombre de zxing-cpp. El selector de imágenes de escritorio ya existe: lo que falta es el decodificador | Fase 5 |

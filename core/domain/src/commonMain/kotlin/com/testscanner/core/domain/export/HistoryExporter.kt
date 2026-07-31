@@ -2,7 +2,6 @@ package com.testscanner.core.domain.export
 
 import com.testscanner.core.model.Detection
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 /** Formatos en los que se puede sacar el historial de la app (RF-11). */
@@ -58,15 +57,19 @@ object HistoryExporter {
                     detection.engineId.id,
                     detection.detectedAtMillis.toString(),
                     detection.latencyMillis?.toString().orEmpty(),
-                    detection.barcode.valueType::class.simpleName.orEmpty(),
+                    detection.barcode.valueType.id,
                     detection.barcode.confidence?.toString().orEmpty(),
                 ).joinToString(SEPARATOR) { it.asCsvField() },
             )
         }
     }
 
-    private fun toJson(detections: List<Detection>): String =
-        json.encodeToString(ExportedHistory(detections.map { it.toExported() }))
+    // Con el serializador explícito y no con la variante `reified`: esa resuelve el serializador
+    // por reflexión sobre la clase, que es justo lo que R8 puede dejar sin nombre en release.
+    private fun toJson(detections: List<Detection>): String = json.encodeToString(
+        ExportedHistory.serializer(),
+        ExportedHistory(detections.map { it.toExported() }),
+    )
 
     /**
      * Un campo CSV según RFC 4180, con una precaución añadida que no es cosmética.
@@ -93,7 +96,7 @@ object HistoryExporter {
         engine = engineId.id,
         detectedAt = detectedAtMillis,
         latencyMs = latencyMillis,
-        valueType = barcode.valueType::class.simpleName.orEmpty(),
+        valueType = barcode.valueType.id,
         confidence = barcode.confidence,
     )
 
