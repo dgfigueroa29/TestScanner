@@ -12,7 +12,9 @@ import com.testscanner.App
 import com.testscanner.core.permissions.AndroidPermissionController
 import com.testscanner.core.permissions.PermissionRequester
 import com.testscanner.navigation.Navigator
+import com.testscanner.platform.AndroidFileSaver
 import com.testscanner.platform.AndroidImagePicker
+import com.testscanner.platform.DocumentRequester
 import com.testscanner.platform.ImageRequester
 import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -32,11 +34,15 @@ class MainActivity : ComponentActivity() {
 
     private val imagePicker: AndroidImagePicker by inject()
 
+    private val fileSaver: AndroidFileSaver by inject()
+
     private val navigator = Navigator()
 
     private var pendingRequest: ((Boolean) -> Unit)? = null
 
     private var pendingImage: ((Uri?) -> Unit)? = null
+
+    private var pendingDocument: ((Uri?) -> Unit)? = null
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -52,6 +58,23 @@ class MainActivity : ComponentActivity() {
     ) { uri ->
         pendingImage?.invoke(uri)
         pendingImage = null
+    }
+
+    // `CreateDocument` recibe el tipo MIME al **construirse**, no al lanzarse, y los launchers hay
+    // que registrarlos antes de que la Activity arranque. Como los formatos de exportación son dos
+    // y conocidos, se registra uno por cada uno en lugar de inventar registro dinámico.
+    private val csvLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument(MIME_CSV),
+    ) { uri ->
+        pendingDocument?.invoke(uri)
+        pendingDocument = null
+    }
+
+    private val jsonLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument(MIME_JSON),
+    ) { uri ->
+        pendingDocument?.invoke(uri)
+        pendingDocument = null
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -76,6 +99,14 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        fileSaver.requester = DocumentRequester { mimeType, suggestedName ->
+            suspendCancellableCoroutine { continuation ->
+                pendingDocument = { uri -> continuation.resume(uri) }
+                launchCreateDocument(mimeType, suggestedName)
+                continuation.invokeOnCancellation { pendingDocument = null }
+            }
+        }
+
         // El botón atrás del sistema desapila en el Navigator; cuando ya no hay nada que desapilar
         // se devuelve el control a la plataforma para que cierre la Activity (ADR-0005).
         onBackPressedDispatcher.addCallback(this) {
@@ -88,9 +119,33 @@ class MainActivity : ComponentActivity() {
         setContent { App(navigator) }
     }
 
+    private fun launchCreateDocument(mimeType: String, suggestedName: String) {
+        val launcher = when (mimeType) {
+            MIME_CSV -> csvLauncher
+            MIME_JSON -> jsonLauncher
+            // Un tipo que no se registró se trata como cancelación: es preferible a lanzar sobre un
+            // launcher inexistente, que reventaría la Activity.
+            else -> null
+        }
+
+        if (launcher == null) {
+            pendingDocument?.invoke(null)
+            pendingDocument = null
+            return
+        }
+
+        launcher.launch(suggestedName)
+    }
+
     override fun onDestroy() {
         permissionController.requester = null
         imagePicker.requester = null
+        fileSaver.requester = null
         super.onDestroy()
+    }
+
+    private companion object {
+        const val MIME_CSV = "text/csv"
+        const val MIME_JSON = "application/json"
     }
 }

@@ -54,7 +54,7 @@ verificable desactivando Play Services.
 
 > Pendiente de la primera compilación con Gradle: el entorno donde se escribió esta fase no tenía
 > acceso a `dl.google.com`, así que las APIs de ML Kit y CameraX están sin compilar. El núcleo puro
-> sí está verificado (215 tests en verde con kotlinc).
+> sí está verificado (235 tests en verde con kotlinc).
 
 ---
 
@@ -129,7 +129,10 @@ recupera correctamente EAN-13 impresos sobre códigos dañados.
 - [x] Acciones sobre el resultado (RF-13): copiar, compartir y abrir, derivadas del **significado**
       del código y no de su formato (`ResultActionsFactory`), ejecutadas por `PlatformActions` en las
       cuatro plataformas. Sin esto, escanear un QR con una URL no llevaba a ningún lado
-- [ ] Exportación del historial (CSV/JSON)
+- [x] Exportación del historial a CSV y JSON (`HistoryExporter` + `FileSaver`). Exporta lo que se
+      está viendo, no todo: un archivo que no se parece a la pantalla es una sorpresa. El CSV
+      neutraliza los valores que una hoja de cálculo ejecutaría como fórmula — el contenido de un
+      código escaneado viene de fuera y no es de fiar
 - [ ] Play Feature Delivery para los motores pesados de Android (RNF-06)
 - [ ] Accesibilidad completa (RNF-05) y auditoría de privacidad (RNF-03)
 

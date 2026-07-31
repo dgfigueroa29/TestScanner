@@ -9,11 +9,13 @@ import com.testscanner.core.domain.repository.ScanPreferencesRepository
 import com.testscanner.core.model.ScannerPlatform
 import com.testscanner.core.permissions.AlwaysGrantedPermissionController
 import com.testscanner.core.permissions.PermissionController
+import com.testscanner.core.platform.FileSaver
 import com.testscanner.core.platform.ImagePicker
 import com.testscanner.core.platform.PlatformActions
 import com.testscanner.core.scanner.BarcodeScannerEngine
 import com.testscanner.engines.browser.BrowserDetectorEngine
 import com.testscanner.engines.manual.ManualInputScannerEngine
+import com.testscanner.platform.WebFileSaver
 import com.testscanner.platform.WebImagePicker
 import com.testscanner.platform.WebPlatformActions
 import org.koin.core.module.Module
@@ -52,4 +54,7 @@ actual fun platformModule(): Module = module {
 
     // Escaneo desde imagen (RF-07).
     single<ImagePicker> { WebImagePicker() }
+
+    // Exportar el historial (RF-11).
+    single<FileSaver> { WebFileSaver() }
 }

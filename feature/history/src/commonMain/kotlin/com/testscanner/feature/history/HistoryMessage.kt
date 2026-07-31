@@ -17,4 +17,12 @@ sealed interface HistoryMessage {
     data object ShareFailed : HistoryMessage
 
     data object OpenFailed : HistoryMessage
+
+    /** La exportación terminó. `location` es `null` donde el sistema no revela el destino. */
+    data class Exported(val location: String?) : HistoryMessage
+
+    data object NothingToExport : HistoryMessage
+
+    /** Motivo que da la plataforma al no poder escribir. Ver la nota de `ScannerMessage.Raw`. */
+    data class ExportFailed(val reason: String) : HistoryMessage
 }

@@ -5,7 +5,7 @@
 | Proyecto | TestScanner |
 | Documento | Software Design Document (SDD) |
 | Versión | 1.2 |
-| Estado | Vigente — Fases 1, 2 y 4 cerradas; Fase 3 pendiente del motor zxing-cpp |
+| Estado | Vigente — Fases 1 a 4 cerradas en código; todo pendiente de la primera compilación |
 | Fecha | 2026-07-31 |
 | Autor | Equipo TestScanner |
 | Alcance de esta versión | Migración de app Android monolítica a Compose Multiplatform + arquitectura de motores de escaneo intercambiables |
@@ -223,8 +223,8 @@ TestScanner/
 │   ├── data/                          # Registry, preferencias e historial
 │   ├── designsystem/                  # CMP: tema, tokens, componentes reutilizables
 │   ├── permissions/                   # expect/actual: permiso de cámara
-│   └── platform/                      # servicios del sistema: portapapeles, compartir,
-│                                      #   abrir enlace y selector de imágenes
+│   └── platform/                      # servicios del sistema: portapapeles, compartir, abrir
+│                                      #   enlace, selector de imágenes y guardado de archivos
 │
 ├── engines/
 │   ├── manual/                        # entrada manual — motor de referencia, 100 % common
@@ -833,7 +833,33 @@ Por el mismo motivo `ResultAction` dejó de traer `label`. El dominio decide **q
 sentido y de qué clase es cada una (`OpenKind.Phone` y no `"Llamar"`); cómo se llaman en pantalla es
 de la UI. Antes una decisión de dominio venía con el idioma pegado.
 
-### 9.7 Escaneo desde imagen (RF-07)
+### 9.7 Exportación del historial
+
+El historial sale a **CSV** o **JSON**, y el reparto es el de siempre: `:core:domain` decide qué
+contiene el archivo y `:core:platform` (`FileSaver`) dónde acaba. Es el tercer servicio del sistema
+del módulo — [PlatformActions] son acciones instantáneas, `ImagePicker` trae algo de fuera y esto
+lleva algo hacia fuera.
+
+Se exporta **lo que se está viendo**, no todo el historial: si el usuario filtró por un motor, un
+archivo con el conjunto entero no se parecería a la pantalla que tiene delante.
+
+#### Una celda de CSV puede ser código
+
+Excel, Numbers y Sheets ejecutan como fórmula cualquier celda que empiece por `=`, `+`, `-` o `@`.
+El contenido de un código escaneado **viene de fuera**, así que un QR con `=HYPERLINK(...)` dentro
+se convertiría en código corriendo en la máquina de quien abra el archivo. El exportador antepone
+una comilla simple a esos valores; el precio es que en esos casos el CSV no es byte a byte lo
+escaneado, y por eso el JSON —donde no hay nada que ejecutar— lo conserva intacto.
+
+El resto del CSV sigue RFC 4180: se entrecomilla cuando el valor lleva comas, comillas o saltos de
+línea, y las comillas internas se duplican. No es teórico: una vCard leída de un QR trae las tres
+cosas.
+
+Los nombres de columna y las claves JSON están en inglés y en `snake_case` aunque la app esté en
+español. No es interfaz: es un archivo que abre una hoja de cálculo o consume un script, y traducir
+la app no debería romper lo que alguien tenga montado encima.
+
+### 9.8 Escaneo desde imagen (RF-07)
 
 Escanear una foto no es una variante menor de escanear con la cámara: es la salida cuando el código
 está en una captura de pantalla, en un PDF, en un correo — o cuando el usuario ha negado el permiso

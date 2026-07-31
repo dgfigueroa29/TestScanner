@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.testscanner.core.designsystem.LocalSnackbarHostState
 import com.testscanner.core.designsystem.Spacing
+import com.testscanner.core.domain.export.ExportFormat
 import com.testscanner.core.domain.scan.OpenKind
 import com.testscanner.core.domain.scan.ResultAction
 import com.testscanner.core.domain.scan.ResultActionsFactory
@@ -30,11 +31,16 @@ import com.testscanner.core.model.Detection
 import com.testscanner.feature.history.resources.Res
 import com.testscanner.feature.history.resources.history_clear
 import com.testscanner.feature.history.resources.history_empty
+import com.testscanner.feature.history.resources.history_export_csv
+import com.testscanner.feature.history.resources.history_export_json
 import com.testscanner.feature.history.resources.history_filter_all
 import com.testscanner.feature.history.resources.history_row_latency
 import com.testscanner.feature.history.resources.history_row_meta
 import com.testscanner.feature.history.resources.message_copied
 import com.testscanner.feature.history.resources.message_copy_failed
+import com.testscanner.feature.history.resources.message_exported
+import com.testscanner.feature.history.resources.message_exported_to
+import com.testscanner.feature.history.resources.message_nothing_to_export
 import com.testscanner.feature.history.resources.message_open_failed
 import com.testscanner.feature.history.resources.message_share_failed
 import com.testscanner.feature.history.resources.result_copy
@@ -121,8 +127,19 @@ private fun EngineFilters(state: HistoryState, onAction: (HistoryAction) -> Unit
             }
         }
 
-        OutlinedButton(onClick = { onAction(HistoryAction.Clear) }) {
-            Text(stringResource(Res.string.history_clear))
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            // Exportar lo que se está viendo, no todo: el archivo debe parecerse a la pantalla.
+            ExportFormat.entries.forEach { format ->
+                OutlinedButton(
+                    onClick = { onAction(HistoryAction.Export(format)) },
+                    enabled = !state.isExporting,
+                ) {
+                    Text(stringResource(format.labelResource()))
+                }
+            }
+            OutlinedButton(onClick = { onAction(HistoryAction.Clear) }) {
+                Text(stringResource(Res.string.history_clear))
+            }
         }
     }
 }
@@ -202,4 +219,18 @@ private fun resolve(message: HistoryMessage): String = when (message) {
     HistoryMessage.CopyFailed -> stringResource(Res.string.message_copy_failed)
     HistoryMessage.ShareFailed -> stringResource(Res.string.message_share_failed)
     HistoryMessage.OpenFailed -> stringResource(Res.string.message_open_failed)
+    HistoryMessage.NothingToExport -> stringResource(Res.string.message_nothing_to_export)
+
+    // iOS y el navegador no revelan dónde acabó el archivo, así que hay dos mensajes: uno que dice
+    // el destino y otro que solo confirma. Fingir una ruta sería peor que no darla.
+    is HistoryMessage.Exported -> message.location
+        ?.let { stringResource(Res.string.message_exported_to, it) }
+        ?: stringResource(Res.string.message_exported)
+
+    is HistoryMessage.ExportFailed -> message.reason
+}
+
+private fun ExportFormat.labelResource(): StringResource = when (this) {
+    ExportFormat.Csv -> Res.string.history_export_csv
+    ExportFormat.Json -> Res.string.history_export_json
 }

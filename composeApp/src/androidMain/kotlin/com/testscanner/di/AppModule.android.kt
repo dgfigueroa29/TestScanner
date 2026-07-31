@@ -13,6 +13,7 @@ import com.testscanner.core.domain.repository.ScanPreferencesRepository
 import com.testscanner.core.model.ScannerPlatform
 import com.testscanner.core.permissions.AndroidPermissionController
 import com.testscanner.core.permissions.PermissionController
+import com.testscanner.core.platform.FileSaver
 import com.testscanner.core.platform.ImagePicker
 import com.testscanner.core.platform.PlatformActions
 import com.testscanner.core.scanner.BarcodeScannerEngine
@@ -21,6 +22,7 @@ import com.testscanner.engines.manual.ManualInputScannerEngine
 import com.testscanner.engines.mlkit.MlKitCameraXEngine
 import com.testscanner.engines.ocr.MlKitOcrEngine
 import com.testscanner.engines.zxing.ZXingCppEngine
+import com.testscanner.platform.AndroidFileSaver
 import com.testscanner.platform.AndroidImagePicker
 import com.testscanner.platform.AndroidPlatformActions
 import java.util.concurrent.ExecutorService
@@ -80,4 +82,8 @@ actual fun platformModule(): Module = module {
     // presta su launcher, igual que hace con el controlador de permisos.
     single { AndroidImagePicker(androidContext()) }
     single<ImagePicker> { get<AndroidImagePicker>() }
+
+    // Exportar el historial (RF-11): también toma prestado el launcher de la Activity.
+    single { AndroidFileSaver(androidContext()) }
+    single<FileSaver> { get<AndroidFileSaver>() }
 }

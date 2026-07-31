@@ -1,5 +1,6 @@
 package com.testscanner.feature.history
 
+import com.testscanner.core.domain.export.ExportFormat
 import com.testscanner.core.domain.scan.ResultAction
 import com.testscanner.core.model.Detection
 import com.testscanner.core.model.ScannerEngineId
@@ -10,6 +11,8 @@ data class HistoryState(
     /** `null` = sin filtro. Filtrar por motor es lo que hace comparable el historial (G5). */
     val engineFilter: ScannerEngineId? = null,
     val canShare: Boolean = false,
+    /** Hay una exportación en curso: bloquea los botones para no abrir dos diálogos a la vez. */
+    val isExporting: Boolean = false,
 ) {
     val visible: List<Detection>
         get() = engineFilter?.let { id -> detections.filter { it.engineId == id } } ?: detections
@@ -24,6 +27,8 @@ data class HistoryState(
 sealed interface HistoryAction {
     data class FilterByEngine(val id: ScannerEngineId?) : HistoryAction
     data class RunResultAction(val detection: Detection, val action: ResultAction) : HistoryAction
+    /** Sacar el historial a un archivo (RF-11). */
+    data class Export(val format: ExportFormat) : HistoryAction
     data object Clear : HistoryAction
 }
 

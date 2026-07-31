@@ -12,10 +12,12 @@ import com.testscanner.core.domain.repository.ScanPreferencesRepository
 import com.testscanner.core.model.ScannerPlatform
 import com.testscanner.core.permissions.AlwaysGrantedPermissionController
 import com.testscanner.core.permissions.PermissionController
+import com.testscanner.core.platform.FileSaver
 import com.testscanner.core.platform.ImagePicker
 import com.testscanner.core.platform.PlatformActions
 import com.testscanner.core.scanner.BarcodeScannerEngine
 import com.testscanner.engines.manual.ManualInputScannerEngine
+import com.testscanner.platform.DesktopFileSaver
 import com.testscanner.platform.DesktopImagePicker
 import com.testscanner.platform.DesktopPlatformActions
 import java.util.prefs.Preferences
@@ -48,4 +50,7 @@ actual fun platformModule(): Module = module {
 
     // Escaneo desde imagen (RF-07).
     single<ImagePicker> { DesktopImagePicker() }
+
+    // Exportar el historial (RF-11).
+    single<FileSaver> { DesktopFileSaver() }
 }

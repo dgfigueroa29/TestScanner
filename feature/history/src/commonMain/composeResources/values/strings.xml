@@ -4,6 +4,8 @@
     <string name="history_empty">Todavía no escaneaste nada</string>
     <string name="history_filter_all">Todos</string>
     <string name="history_clear">Borrar</string>
+    <string name="history_export_csv">CSV</string>
+    <string name="history_export_json">JSON</string>
     <string name="history_row_meta">%1$s · %2$s</string>
     <string name="history_row_latency"> · %1$d ms</string>
 
@@ -21,4 +23,7 @@
     <string name="message_copy_failed">No se pudo copiar al portapapeles</string>
     <string name="message_share_failed">No se pudo abrir la hoja de compartir</string>
     <string name="message_open_failed">Ninguna app puede abrir esto</string>
+    <string name="message_exported">Historial exportado</string>
+    <string name="message_exported_to">Guardado en %1$s</string>
+    <string name="message_nothing_to_export">No hay nada que exportar</string>
 </resources>

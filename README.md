@@ -26,6 +26,7 @@ y Web con un único código base.
 | BarcodeDetector del navegador (Web) | ✅ implementado, con visor sobre el canvas |
 | OCR con ML Kit Text Recognition (Android) | ✅ implementado; en iOS irá con Vision, no con ML Kit |
 | Escaneo desde imagen (RF-07) | ✅ selector en las cuatro plataformas, sin pedir permisos |
+| Exportación del historial | ✅ CSV y JSON, guardado en las cuatro plataformas |
 | ZXing-cpp (Android + iOS) | ✅ implementado — el mismo decodificador C++ en ambas, que es lo que hace comparables las lecturas |
 
 El catálogo muestra las siete alternativas con su estado real; los motores aún no implementados se
@@ -35,7 +36,7 @@ declaran como tales, con la fase en la que llegan. Ver `docs/ROADMAP.md`.
 > primer veredicto completo en cuanto se abra un PR.
 > El entorno donde se desarrolló no tenía acceso a
 > `dl.google.com`, así que no hubo Android SDK ni artefactos de AGP/Compose. Lo verificado son los
-> **215 tests del núcleo puro**, compilados y ejecutados con kotlinc 2.3.20 — el mismo compilador al que apunta el build. Todo lo que necesita
+> **235 tests del núcleo puro**, compilados y ejecutados con kotlinc 2.3.20 — el mismo compilador al que apunta el build. Todo lo que necesita
 > Gradle — `build-logic`, las versiones del catálogo, los motores de plataforma y el código
 > Compose — está pendiente de la primera compilación.
 
