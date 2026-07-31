@@ -188,7 +188,7 @@ class HistoryViewModelTest {
         // El motivo principal para volver al historial: pegar en otro lado algo que ya se escaneó.
         val (viewModel, _) = viewModel(listOf(mlKit))
 
-        viewModel.onAction(HistoryAction.RunResultAction(mlKit, ResultAction.Copy))
+        viewModel.onAction(HistoryAction.RunResultAction(ResultAction.Copy, "a"))
 
         assertEquals(listOf("a"), actions.copied)
     }

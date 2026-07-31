@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.testscanner.core.domain.export.ExportFormat
 import com.testscanner.core.domain.export.HistoryExporter
 import com.testscanner.core.domain.scan.ResultAction
-import com.testscanner.core.domain.scan.ResultActionsFactory
 import com.testscanner.core.domain.usecase.ClearScanHistoryUseCase
 import com.testscanner.core.domain.usecase.ObserveScanHistoryUseCase
 import com.testscanner.core.model.Detection
@@ -52,7 +51,7 @@ class HistoryViewModel(
     fun onAction(action: HistoryAction) {
         when (action) {
             is HistoryAction.FilterByEngine -> filterBy(action.id)
-            is HistoryAction.RunResultAction -> runResultAction(action.detection, action.action)
+            is HistoryAction.RunResultAction -> runResultAction(action.action, action.text)
             is HistoryAction.Export -> export(action.format)
             HistoryAction.Clear -> clear()
         }
@@ -68,10 +67,8 @@ class HistoryViewModel(
      * Es el caso de uso más frecuente del historial: se escaneó algo antes y ahora hace falta
      * pegarlo en otro lado. Sin esto, el historial solo servía para mirar.
      */
-    private fun runResultAction(detection: Detection, action: ResultAction) {
+    private fun runResultAction(action: ResultAction, text: String) {
         viewModelScope.launch {
-            val text = ResultActionsFactory.shareableText(detection.barcode)
-
             val (succeeded, failure) = when (action) {
                 ResultAction.Copy ->
                     platformActions.copyToClipboard(text) to HistoryMessage.CopyFailed

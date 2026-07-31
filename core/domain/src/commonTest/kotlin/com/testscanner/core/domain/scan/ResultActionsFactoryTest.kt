@@ -101,9 +101,10 @@ class ResultActionsFactoryTest {
     }
 
     @Test
-    fun `el WiFi se comparte legible y no como QR crudo`() {
-        // Pegarle a alguien "WIFI:T:WPA;S:...;;" no le sirve de nada.
-        val text = ResultActionsFactory.shareableText(
+    fun `del WiFi se comparten la red y la clave, no el QR crudo`() {
+        // Pegarle a alguien "WIFI:T:WPA;S:...;;" no le sirve de nada. El dominio dice *qué* datos
+        // son los útiles; redactarlos es cosa de la pantalla (D15).
+        val content = ResultActionsFactory.shareableContent(
             barcode(
                 value = "WIFI:T:WPA;S:MiRed;P:clave;;",
                 type = BarcodeValueType.Wifi(
@@ -114,12 +115,28 @@ class ResultActionsFactoryTest {
             ),
         )
 
-        assertEquals("Red: MiRed · Clave: clave", text)
+        assertEquals(ShareableContent.Wifi("MiRed", "clave"), content)
     }
 
     @Test
-    fun `un contacto se comparte con sus datos en una linea`() {
-        val text = ResultActionsFactory.shareableText(
+    fun `una red abierta se comparte sin clave`() {
+        val content = ResultActionsFactory.shareableContent(
+            barcode(
+                value = "WIFI:T:nopass;S:Invitados;;",
+                type = BarcodeValueType.Wifi(
+                    ssid = "Invitados",
+                    password = null,
+                    encryption = BarcodeValueType.WifiEncryption.OPEN,
+                ),
+            ),
+        )
+
+        assertEquals(ShareableContent.Wifi("Invitados", null), content)
+    }
+
+    @Test
+    fun `de un contacto se comparten sus datos en orden`() {
+        val content = ResultActionsFactory.shareableContent(
             barcode(
                 value = "BEGIN:VCARD...",
                 type = BarcodeValueType.ContactInfo(
@@ -131,16 +148,31 @@ class ResultActionsFactoryTest {
             ),
         )
 
-        assertEquals("Ada Lovelace · Analytical Engines · +34600111222 · ada@ejemplo.com", text)
+        assertEquals(
+            ShareableContent.Contact(
+                listOf("Ada Lovelace", "Analytical Engines", "+34600111222", "ada@ejemplo.com"),
+            ),
+            content,
+        )
+    }
+
+    @Test
+    fun `un contacto sin ningun dato cae al valor crudo`() {
+        // Compartir una lista vacía dejaría al usuario con nada en el portapapeles.
+        val content = ResultActionsFactory.shareableContent(
+            barcode("BEGIN:VCARD...", BarcodeValueType.ContactInfo(formattedName = null)),
+        )
+
+        assertEquals(ShareableContent.Raw("BEGIN:VCARD..."), content)
     }
 
     @Test
     fun `para todo lo demas se comparte el valor crudo`() {
-        val text = ResultActionsFactory.shareableText(
+        val content = ResultActionsFactory.shareableContent(
             barcode("https://a.b", BarcodeValueType.Url("https://a.b")),
         )
 
-        assertEquals("https://a.b", text)
+        assertEquals(ShareableContent.Raw("https://a.b"), content)
     }
 
     @Test

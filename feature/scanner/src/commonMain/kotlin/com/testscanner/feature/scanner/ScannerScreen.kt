@@ -40,6 +40,7 @@ import com.testscanner.core.domain.model.EngineStatus
 import com.testscanner.core.domain.scan.OpenKind
 import com.testscanner.core.domain.scan.ResultAction
 import com.testscanner.core.domain.scan.ResultActionsFactory
+import com.testscanner.core.domain.scan.ShareableContent
 import com.testscanner.core.model.BarcodeFormat
 import com.testscanner.core.model.Detection
 import com.testscanner.core.scanner.EngineAvailability
@@ -94,6 +95,9 @@ import com.testscanner.feature.scanner.resources.session_idle
 import com.testscanner.feature.scanner.resources.session_scanning
 import com.testscanner.feature.scanner.resources.session_starting
 import com.testscanner.feature.scanner.resources.session_switched_from
+import com.testscanner.feature.scanner.resources.share_separator
+import com.testscanner.feature.scanner.resources.share_wifi
+import com.testscanner.feature.scanner.resources.share_wifi_with_password
 import com.testscanner.feature.scanner.resources.torch_off
 import com.testscanner.feature.scanner.resources.torch_on
 import com.testscanner.feature.scanner.resources.zoom_ratio
@@ -492,6 +496,7 @@ private fun DetectionRow(
     onAction: (ScannerAction) -> Unit,
 ) {
     val actions = ResultActionsFactory.actionsFor(detection.barcode, canShare)
+    val shareable = ResultActionsFactory.shareableContent(detection.barcode).asText()
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -519,7 +524,7 @@ private fun DetectionRow(
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 actions.forEach { action ->
                     TextButton(
-                        onClick = { onAction(ScannerAction.RunResultAction(detection, action)) },
+                        onClick = { onAction(ScannerAction.RunResultAction(action, shareable)) },
                     ) {
                         Text(stringResource(action.labelResource()))
                     }
@@ -589,3 +594,21 @@ private const val VIEWFINDER_ASPECT_RATIO = 3f / 4f
 // El rango real depende de la cámara; el motor recorta al máximo que admita el dispositivo.
 private const val MIN_ZOOM = 1f
 private const val MAX_ZOOM = 5f
+
+/**
+ * Redacta lo que se copia o se comparte.
+ *
+ * El dominio dice qué datos son relevantes; el texto se arma aquí, donde están los recursos
+ * traducibles. Antes la frase se componía en `ResultActionsFactory`, que era español dentro del
+ * dominio (deuda D15).
+ */
+@Composable
+private fun ShareableContent.asText(): String = when (this) {
+    is ShareableContent.Raw -> value
+
+    is ShareableContent.Wifi -> password
+        ?.let { stringResource(Res.string.share_wifi_with_password, ssid, it) }
+        ?: stringResource(Res.string.share_wifi, ssid)
+
+    is ShareableContent.Contact -> parts.joinToString(stringResource(Res.string.share_separator))
+}

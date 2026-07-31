@@ -27,6 +27,7 @@ import com.testscanner.core.domain.export.ExportFormat
 import com.testscanner.core.domain.scan.OpenKind
 import com.testscanner.core.domain.scan.ResultAction
 import com.testscanner.core.domain.scan.ResultActionsFactory
+import com.testscanner.core.domain.scan.ShareableContent
 import com.testscanner.core.model.Detection
 import com.testscanner.feature.history.resources.Res
 import com.testscanner.feature.history.resources.history_clear
@@ -50,6 +51,9 @@ import com.testscanner.feature.history.resources.result_open_map
 import com.testscanner.feature.history.resources.result_open_phone
 import com.testscanner.feature.history.resources.result_open_sms
 import com.testscanner.feature.history.resources.result_share
+import com.testscanner.feature.history.resources.share_separator
+import com.testscanner.feature.history.resources.share_wifi
+import com.testscanner.feature.history.resources.share_wifi_with_password
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -151,6 +155,7 @@ private fun HistoryRow(
     onAction: (HistoryAction) -> Unit,
 ) {
     val actions = ResultActionsFactory.actionsFor(detection.barcode, canShare)
+    val shareable = ResultActionsFactory.shareableContent(detection.barcode).asText()
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -178,7 +183,7 @@ private fun HistoryRow(
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 actions.forEach { action ->
                     TextButton(
-                        onClick = { onAction(HistoryAction.RunResultAction(detection, action)) },
+                        onClick = { onAction(HistoryAction.RunResultAction(action, shareable)) },
                     ) {
                         Text(stringResource(action.labelResource()))
                     }
@@ -233,4 +238,22 @@ private fun resolve(message: HistoryMessage): String = when (message) {
 private fun ExportFormat.labelResource(): StringResource = when (this) {
     ExportFormat.Csv -> Res.string.history_export_csv
     ExportFormat.Json -> Res.string.history_export_json
+}
+
+/**
+ * Redacta lo que se copia o se comparte.
+ *
+ * El dominio dice qué datos son relevantes; el texto se arma aquí, donde están los recursos
+ * traducibles. Antes la frase se componía en `ResultActionsFactory`, que era español dentro del
+ * dominio (deuda D15).
+ */
+@Composable
+private fun ShareableContent.asText(): String = when (this) {
+    is ShareableContent.Raw -> value
+
+    is ShareableContent.Wifi -> password
+        ?.let { stringResource(Res.string.share_wifi_with_password, ssid, it) }
+        ?: stringResource(Res.string.share_wifi, ssid)
+
+    is ShareableContent.Contact -> parts.joinToString(stringResource(Res.string.share_separator))
 }

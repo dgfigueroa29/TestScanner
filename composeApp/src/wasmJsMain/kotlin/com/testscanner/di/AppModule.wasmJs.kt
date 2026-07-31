@@ -2,7 +2,7 @@ package com.testscanner.di
 
 import com.russhwolf.settings.Settings
 import com.russhwolf.settings.StorageSettings
-import com.testscanner.core.data.repository.InMemoryScanHistoryRepository
+import com.testscanner.core.data.repository.SettingsScanHistoryRepository
 import com.testscanner.core.data.repository.SettingsScanPreferencesRepository
 import com.testscanner.core.domain.repository.ScanHistoryRepository
 import com.testscanner.core.domain.repository.ScanPreferencesRepository
@@ -40,9 +40,11 @@ actual fun platformModule(): Module = module {
     // la produce de verdad: como un fallo de sesión del motor.
     single<PermissionController> { AlwaysGrantedPermissionController() }
 
-    // Room KMP no tiene target wasmJs. El historial de Web es de sesión, y eso queda visible aquí
-    // en lugar de escondido tras un actual que fingiera persistir.
-    single<ScanHistoryRepository> { InMemoryScanHistoryRepository() }
+    // Room KMP no tiene target wasmJs, así que el historial se guarda como JSON en el almacén de
+    // la plataforma —`localStorage`, el mismo que ya usan las preferencias—. Guarda exactamente los
+    // mismos campos que la tabla de Room, de modo que el historial de Web y el de las otras tres
+    // plataformas contienen lo mismo (deuda D9).
+    single<ScanHistoryRepository> { SettingsScanHistoryRepository(get()) }
 
     // Preferencias persistentes: multiplatform-settings cubre las cuatro plataformas, así que
     // aquí no hay excepciones como sí las hay con el historial.

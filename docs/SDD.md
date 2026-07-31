@@ -864,6 +864,16 @@ lleva algo hacia fuera.
 Se exporta **lo que se está viendo**, no todo el historial: si el usuario filtró por un motor, un
 archivo con el conjunto entero no se parecería a la pantalla que tiene delante.
 
+#### El dominio no redacta frases
+
+`shareableContent()` devuelve **la estructura** de lo que se va a copiar —una red WiFi con su clave,
+los campos de una vCard, o el valor crudo— y la pantalla la redacta con sus recursos. Antes componía
+aquí `"Red: X · Clave: Y"`, que era español dentro del dominio y no había forma de traducirlo sin
+tocar esa clase.
+
+La consecuencia visible es que la acción del ViewModel lleva el texto ya hecho: el dominio dice qué
+datos importan, la pantalla los escribe y la plataforma los ejecuta.
+
 #### Una celda de CSV puede ser código
 
 Excel, Numbers y Sheets ejecutan como fórmula cualquier celda que empiece por `=`, `+`, `-` o `@`.

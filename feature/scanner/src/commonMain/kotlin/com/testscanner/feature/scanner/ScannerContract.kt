@@ -78,7 +78,13 @@ sealed interface ScannerAction {
     data object SubmitManualInput : ScannerAction
     /** Elegir una imagen del dispositivo y decodificarla (RF-07). */
     data object ScanFromImage : ScannerAction
-    data class RunResultAction(val detection: Detection, val action: ResultAction) : ScannerAction
+    /**
+     * Ejecutar una acción sobre un resultado (RF-13).
+     *
+     * Lleva el texto ya redactado porque redactarlo es cosa de la pantalla: el dominio dice qué
+     * datos son relevantes (`ShareableContent`) y la UI los pasa por sus recursos traducibles.
+     */
+    data class RunResultAction(val action: ResultAction, val text: String) : ScannerAction
     data object ToggleTorch : ScannerAction
     data class SetZoom(val ratio: Float) : ScannerAction
     data object RequestCameraPermission : ScannerAction

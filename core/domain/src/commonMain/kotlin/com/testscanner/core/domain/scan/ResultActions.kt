@@ -33,6 +33,24 @@ sealed interface ResultAction {
 enum class OpenKind { Link, Email, Phone, Sms, Map }
 
 /**
+ * Lo que se lleva el portapapeles o la hoja de compartir, **antes de redactarse**.
+ *
+ * Existe para que el dominio no componga frases. Un `"Red: $ssid"` metido aquí obliga a tocar el
+ * dominio para traducir la app, y ya no es una decisión de dominio: es una de presentación con los
+ * datos de dominio dentro.
+ */
+sealed interface ShareableContent {
+
+    /** El valor tal cual. Es el caso normal: lo que el usuario espera pegar. */
+    data class Raw(val value: String) : ShareableContent
+
+    data class Wifi(val ssid: String, val password: String?) : ShareableContent
+
+    /** Campos de una vCard, en el orden en que tienen sentido leídos. */
+    data class Contact(val parts: List<String>) : ShareableContent
+}
+
+/**
  * Decide qué se puede hacer con un código, a partir de **lo que significa** y no de su formato.
  *
  * Es lógica pura sobre [BarcodeValueType], así que se testea sin plataforma. La ejecución — el
@@ -52,22 +70,29 @@ object ResultActionsFactory {
         if (canShare) add(ResultAction.Share)
     }
 
-    /** Texto que se copia o comparte. Para un WiFi no es el QR crudo sino algo legible. */
-    fun shareableText(barcode: Barcode): String = when (val value = barcode.valueType) {
-        is BarcodeValueType.Wifi -> buildString {
-            append("Red: ${value.ssid}")
-            value.password?.let { append(" · Clave: $it") }
-        }
+    /**
+     * Qué se copia o se comparte.
+     *
+     * Devuelve **la estructura y no el texto**: el dominio decide qué datos son los relevantes y la
+     * UI los redacta con sus recursos traducibles. Antes componía aquí `"Red: X · Clave: Y"`, que
+     * era español metido en el dominio y no había forma de traducirlo sin tocar esta clase.
+     */
+    fun shareableContent(barcode: Barcode): ShareableContent = when (val value = barcode.valueType) {
+        // Pegarle a alguien `WIFI:T:WPA;S:...;;` no le sirve de nada: lo que quiere son el nombre
+        // de la red y la clave.
+        is BarcodeValueType.Wifi -> ShareableContent.Wifi(value.ssid, value.password)
 
         is BarcodeValueType.ContactInfo -> listOfNotNull(
             value.formattedName,
             value.organization,
             value.phones.firstOrNull(),
             value.emails.firstOrNull(),
-        ).joinToString(" · ").ifEmpty { barcode.rawValue }
+        ).let { parts ->
+            if (parts.isEmpty()) ShareableContent.Raw(barcode.rawValue) else ShareableContent.Contact(parts)
+        }
 
         // Para todo lo demás el valor crudo es lo que el usuario espera pegar.
-        else -> barcode.rawValue
+        else -> ShareableContent.Raw(barcode.rawValue)
     }
 
     private fun openActionFor(value: BarcodeValueType): ResultAction.Open? = when (value) {

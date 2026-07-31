@@ -16,17 +16,17 @@ import com.testscanner.core.model.BarcodeFormat
 import com.testscanner.core.model.BarcodeValueType
 import com.testscanner.core.model.Detection
 import com.testscanner.core.model.ScannerEngineId
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 /** RF-13 de punta a punta: el dominio decide qué se puede hacer y la plataforma lo ejecuta. */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -94,17 +94,17 @@ class ResultActionsIntegrationTest {
         val viewModel = viewModel()
         val detection = urlDetection()
 
-        viewModel.onAction(ScannerAction.RunResultAction(detection, ResultAction.Copy))
+        viewModel.onAction(ScannerAction.RunResultAction(ResultAction.Copy, detection.barcode.rawValue))
 
         assertEquals(listOf("https://ejemplo.com"), platform.copied)
     }
 
     @Test
-    fun `copiar un WiFi manda el texto legible, no el QR crudo`() = runTest {
-        // Pegarle a alguien "WIFI:T:WPA;S:...;;" no le sirve de nada.
+    fun `copia exactamente el texto que le da la pantalla`() = runTest {
+        // Redactarlo es cosa de la UI (D15); el ViewModel no lo reinterpreta ni lo recorta.
         val viewModel = viewModel()
 
-        viewModel.onAction(ScannerAction.RunResultAction(wifiDetection(), ResultAction.Copy))
+        viewModel.onAction(ScannerAction.RunResultAction(ResultAction.Copy, "Red: MiRed · Clave: clave"))
 
         assertEquals(listOf("Red: MiRed · Clave: clave"), platform.copied)
     }
@@ -115,7 +115,7 @@ class ResultActionsIntegrationTest {
         val detection = urlDetection()
         val open = ResultAction.Open("https://ejemplo.com", OpenKind.Link)
 
-        viewModel.onAction(ScannerAction.RunResultAction(detection, open))
+        viewModel.onAction(ScannerAction.RunResultAction(open, detection.barcode.rawValue))
 
         assertEquals(listOf("https://ejemplo.com"), platform.opened)
     }
@@ -125,7 +125,7 @@ class ResultActionsIntegrationTest {
         val viewModel = viewModel()
 
         viewModel.effects.test {
-            viewModel.onAction(ScannerAction.RunResultAction(urlDetection(), ResultAction.Copy))
+            viewModel.onAction(ScannerAction.RunResultAction(ResultAction.Copy, "lo que sea"))
             assertEquals(ScannerEffect.ShowMessage(ScannerMessage.Copied), awaitItem())
         }
     }
@@ -136,7 +136,7 @@ class ResultActionsIntegrationTest {
 
         viewModel.effects.test {
             val open = ResultAction.Open("algo://raro", OpenKind.Link)
-            viewModel.onAction(ScannerAction.RunResultAction(urlDetection(), open))
+            viewModel.onAction(ScannerAction.RunResultAction(open, "lo que sea"))
             assertEquals(ScannerEffect.ShowMessage(ScannerMessage.OpenFailed), awaitItem())
         }
     }

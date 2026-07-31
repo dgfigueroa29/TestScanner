@@ -11,6 +11,10 @@
 
     <!-- Acciones sobre el resultado (RF-13) -->
     <string name="result_copy">Copiar</string>
+    <!-- Lo que se copia de un QR de WiFi: pegarle a alguien `WIFI:T:WPA;S:…;;` no le sirve. -->
+    <string name="share_wifi">Red: %1$s</string>
+    <string name="share_wifi_with_password">Red: %1$s · Clave: %2$s</string>
+    <string name="share_separator"> · </string>
     <string name="result_share">Compartir</string>
     <string name="result_open_link">Abrir enlace</string>
     <string name="result_open_email">Escribir</string>

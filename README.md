@@ -19,7 +19,7 @@ y Web con un único código base.
 | Comparador de motores con marcador en vivo (G5) | ✅ implementado y en la UI |
 | Motor de entrada manual | ✅ funcional en las 4 plataformas |
 | Google Code Scanner y ML Kit + CameraX (Android) | ✅ implementados, sin compilar aún |
-| Historial persistente con Room KMP | ✅ Android, iOS y Desktop (Web: en memoria) |
+| Historial persistente | ✅ Room en Android, iOS y Desktop; en Web, JSON en el almacén del navegador |
 | Preferencias persistentes | ✅ las cuatro plataformas |
 | CI en GitHub Actions | ✅ detekt, tests, Android, Desktop, Web y iOS |
 | Vision / AVFoundation (iOS) | ✅ implementado, sin compilar aún |
@@ -36,7 +36,7 @@ declaran como tales, con la fase en la que llegan. Ver `docs/ROADMAP.md`.
 > primer veredicto completo en cuanto se abra un PR.
 > El entorno donde se desarrolló no tenía acceso a
 > `dl.google.com`, así que no hubo Android SDK ni artefactos de AGP/Compose. Lo verificado son los
-> **316 tests del núcleo puro**, compilados y ejecutados con kotlinc 2.3.20 — el mismo compilador al que apunta el build. Todo lo que necesita
+> **328 tests del núcleo puro**, compilados y ejecutados con kotlinc 2.3.20 — el mismo compilador al que apunta el build. Todo lo que necesita
 > Gradle — `build-logic`, las versiones del catálogo, los motores de plataforma y el código
 > Compose — está pendiente de la primera compilación.
 

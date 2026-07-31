@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.testscanner.core.domain.repository.ScanPreferencesRepository
 import com.testscanner.core.domain.repository.ScannerEngineRepository
 import com.testscanner.core.domain.scan.ResultAction
-import com.testscanner.core.domain.scan.ResultActionsFactory
 import com.testscanner.core.domain.usecase.DecodeImageUseCase
 import com.testscanner.core.domain.usecase.ObserveEngineCatalogUseCase
 import com.testscanner.core.domain.usecase.ObserveScanPreferencesUseCase
@@ -84,7 +83,7 @@ class ScannerViewModel(
             is ScannerAction.ManualInputChanged -> _state.update { it.copy(manualInput = action.value) }
             ScannerAction.SubmitManualInput -> submitManualInput()
             ScannerAction.ScanFromImage -> scanFromImage()
-            is ScannerAction.RunResultAction -> runResultAction(action.detection, action.action)
+            is ScannerAction.RunResultAction -> runResultAction(action.action, action.text)
             ScannerAction.ToggleTorch -> toggleTorch()
             is ScannerAction.SetZoom -> setZoom(action.ratio)
             ScannerAction.RequestCameraPermission -> requestCameraPermission()
@@ -298,14 +297,12 @@ class ScannerViewModel(
     /**
      * Ejecuta una acción sobre un resultado (RF-13).
      *
-     * El dominio decide **qué** se puede hacer con el código y la plataforma **cómo**; el ViewModel
-     * solo une las dos mitades y avisa si la acción no prosperó — el portapapeles puede estar
-     * bloqueado y no abrirse ninguna app para un esquema.
+     * El dominio decide **qué** se puede hacer con el código, la pantalla lo **redacta** y la
+     * plataforma lo **ejecuta**; el ViewModel une las tres partes y avisa si la acción no prosperó
+     * — el portapapeles puede estar bloqueado y no abrirse ninguna app para un esquema.
      */
-    private fun runResultAction(detection: Detection, action: ResultAction) {
+    private fun runResultAction(action: ResultAction, text: String) {
         viewModelScope.launch {
-            val text = ResultActionsFactory.shareableText(detection.barcode)
-
             val (succeeded, failure) = when (action) {
                 ResultAction.Copy ->
                     platformActions.copyToClipboard(text) to ScannerMessage.CopyFailed

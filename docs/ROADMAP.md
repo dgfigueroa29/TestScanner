@@ -56,7 +56,7 @@ verificable desactivando Play Services.
 
 > Pendiente de la primera compilación con Gradle: el entorno donde se escribió esta fase no tenía
 > acceso a `dl.google.com`, así que las APIs de ML Kit y CameraX están sin compilar. El núcleo puro
-> sí está verificado (316 tests en verde con kotlinc).
+> sí está verificado (328 tests en verde con kotlinc).
 
 ---
 
@@ -141,6 +141,7 @@ recupera correctamente EAN-13 impresos sobre códigos dañados.
       neutraliza los valores que una hoja de cálculo ejecutaría como fórmula — el contenido de un
       código escaneado viene de fuera y no es de fiar
 - [ ] Play Feature Delivery para los motores pesados de Android (RNF-06)
+- [x] Historial de Web persistente (D9) y textos de compartir fuera del dominio (D15)
 - [ ] Accesibilidad completa (RNF-05) y auditoría de privacidad (RNF-03)
 
 **Criterio de salida:** el usuario puede responder, dentro de la app y con datos, la pregunta
@@ -183,8 +184,8 @@ Registrada de forma explícita para que no se olvide:
 | ~~D10~~ | ~~RF-07 sin UI ni selector de archivos~~ | **Saldada**: `ImagePicker` en las cuatro plataformas y `DecodeImageUseCase` recorriendo la cadena de motores. Un motor bloqueado por el permiso de cámara sigue sirviendo para leer un archivo |
 | ~~D12~~ | ~~RF-13 (copiar, compartir, abrir enlace) sin implementar~~ | **Saldada**: `PlatformActions` en `:core:platform` con implementación en las cuatro plataformas. En escritorio no hay hoja de compartir y el botón no se ofrece (`canShare`) |
 | ~~D11~~ | ~~La comparación necesita dos motores de cámara y solo Android los tenía~~ | **Saldada**: con ZXing-cpp, iOS tiene dos (Vision y ZXing-cpp) y Android cuatro |
-| D9 | El historial de Web es de sesión: Room KMP no soporta wasmJs. Requiere un almacén propio sobre IndexedDB | Fase 4 |
+| ~~D9~~ | ~~El historial de Web es de sesión~~ | **Saldada**, aunque no con IndexedDB: se guarda como JSON en el almacén de la plataforma, con los mismos campos que la tabla de Room. Unas cientos de filas de texto no justifican una base de datos, y esto corre en `commonTest` mientras que IndexedDB serían cien líneas de interop que nadie puede probar |
 | ~~D7~~ | ~~`:androidApp` sin ProGuard/R8 configurado para release~~ | **Saldada**: `minify` y `shrinkResources` activados, con reglas cortas y justificadas, y `assembleRelease` en CI para que R8 se ejecute de verdad |
 | ~~D14~~ | ~~El motor de Web escanea pero no muestra visor~~ | **Saldada**: el `<video>` se coloca sobre el canvas desde `onGloballyPositioned`. A cambio tapa el overlay, declarado con `occludesOverlay` |
-| D15 | El texto que se copia de un WiFi o una vCard lo compone `ResultActionsFactory` en el dominio (`Red: … · Clave: …`). Es contenido y no *chrome*, pero sigue siendo español dentro del dominio; sacarlo exige devolver una estructura y formatearla arriba | Fase 5 |
+| ~~D15~~ | ~~El texto que se copia de un WiFi lo compone el dominio~~ | **Saldada**: `shareableContent()` devuelve la estructura y la pantalla la redacta con sus recursos. La acción del ViewModel lleva el texto ya hecho |
 | D13 | Desktop y Web se quedan sin el baseline de comparación: zxing-cpp no publica artefacto JVM ni wasmJs (ADR-0008). En Desktop hoy no hay ningún decodificador; el candidato es `com.google.zxing:core`, y entraría al catálogo **como motor propio**, no con el nombre de zxing-cpp. El selector de imágenes de escritorio ya existe: lo que falta es el decodificador | Fase 5 |
