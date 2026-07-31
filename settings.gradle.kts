@@ -16,7 +16,18 @@ pluginManagement {
 }
 
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    // `PREFER_SETTINGS` y no `FAIL_ON_PROJECT_REPOS`, que es lo que había.
+    //
+    // El plugin de Kotlin/Wasm declara los repositorios de Node y Yarn **a nivel de proyecto**, por
+    // diseño y sin forma de desactivarlo. Con `FAIL_ON_PROJECT_REPOS` eso tumba la build entera
+    // ("repository 'Distributions at https://nodejs.org/dist' was added by unknown code"), y
+    // declararlos también aquí no ayuda: el modo no comprueba si el repositorio ya existe, prohíbe
+    // que un proyecto declare ninguno.
+    //
+    // `PREFER_SETTINGS` conserva lo que importaba —los repositorios de proyecto se ignoran, así que
+    // ningún módulo puede traerse dependencias de un sitio que nadie más ve— y se queda en un aviso
+    // en lugar de un error. Los de Node y Yarn se declaran abajo para que sí haya de dónde bajarlos.
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
         google {
             mavenContent {
