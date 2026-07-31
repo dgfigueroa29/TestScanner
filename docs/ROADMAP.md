@@ -55,25 +55,27 @@ con su estado real; los tests de `:core:domain` y `:core:data` pasan en CI.
 **Criterio de salida:** escaneo real en Android alternando dos motores en caliente, con fallback
 verificable desactivando Play Services.
 
-> Pendiente de la primera compilación con Gradle: el entorno donde se escribió esta fase no tenía
-> acceso a `dl.google.com`, así que las APIs de ML Kit y CameraX están sin compilar. El núcleo puro
-> sí está verificado (358 tests en verde con kotlinc).
+> **Compila y pasa CI.** Las APIs de ML Kit y CameraX estuvieron sin compilar hasta que se activó
+> Actions, porque el entorno de desarrollo no alcanza `dl.google.com`. Ya no: el job de Android
+> ensambla debug, pasa lint y ensambla release con R8.
 
 ---
 
 ## Fase 3 — iOS ⏸️ despriorizada
 
-> **Sin dispositivos Apple no se puede verificar nada de esto.** El código está escrito y sigue en
-> el repositorio, pero deja de marcar el ritmo: compilar Kotlin/Native exige macOS y probarlo exige
-> un iPhone o un simulador, así que cualquier fallo aquí solo aparecería al llegar a esa máquina.
-> Lo que se hace mientras tanto es lo que Android, Escritorio y Web sí pueden confirmar.
+> **Sin dispositivos Apple no se puede *probar* nada de esto**, y por eso deja de marcar el ritmo.
+> Lo que sí cambió al activar Actions es que **compilarlo ya no exige una Mac propia**: el job `ios`
+> corre en un runner macOS y enlaza el framework al llegar a `main`. Eso cubre los errores de
+> compilación de Kotlin/Native —que es donde estaba el riesgo grueso, porque ese código no se había
+> compilado jamás— pero no que la cámara funcione, que sigue necesitando un iPhone.
 
 - [x] `:engines:vision-ios` — `AVCaptureSession` + `AVCaptureMetadataOutput`, con linterna y zoom
 - [x] Preview de iOS (`UIKitView` con `AVCaptureVideoPreviewLayer`) vía `CameraPreviewEngine`
 - [x] `IosPermissionController` sobre `AVCaptureDevice`
 - [x] `iosApp/` — fuentes Swift e `Info.plist` con `NSCameraUsageDescription`
 - [ ] `iosApp.xcodeproj` — se crea en Xcode siguiendo `iosApp/README.md` (requiere macOS)
-- [ ] Primera compilación de todo el código iOS: nada de esto se ha compilado aún
+- [ ] Primera compilación de todo el código iOS. Ya no hace falta una Mac propia: el job `ios`
+      corre en un runner macOS al llegar a `main`, así que dará el veredicto al mergear
 - [x] **Motor baseline decidido** (cerraba R9): se consumen los artefactos publicados de zxing-cpp,
       sin cinterop propio — ver [ADR-0008](adr/ADR-0008-baseline-zxing-cpp.md)
 - [x] **Kotlin 2.3.20** (cerraba R10): los klibs de zxing-cpp están compilados con 2.2.0 y el
@@ -93,7 +95,8 @@ verificable desactivando Play Services.
       el sistema mate el proceso, o a un cambio de tamaño de letra o de idioma. Ahora se guarda por
       ids estables, escritos a mano porque R8 ofusca los nombres de clase
 
-- [ ] CI: `linkDebugFrameworkIosSimulatorArm64` en runner macOS
+- [x] CI: `linkDebugFrameworkIosSimulatorArm64` en runner macOS — configurado y a la espera del
+      primer `main` con la build arreglada
 
 **Criterio de salida:** escaneo real en iOS; ZXing-cpp produce resultados comparables entre
 Android e iOS sobre el mismo set de imágenes de referencia.

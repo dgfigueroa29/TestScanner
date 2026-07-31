@@ -4,8 +4,8 @@
 |---|---|
 | Proyecto | TestScanner |
 | Documento | Software Design Document (SDD) |
-| Versión | 1.3 |
-| Estado | Vigente — Fases 1, 2, 4 y 5 cerradas en código salvo lo listado como pendiente; la 3 (iOS) escrita pero despriorizada por falta de dispositivos. Todo pendiente de la primera compilación con Gradle |
+| Versión | 1.4 |
+| Estado | Vigente — **el proyecto compila y pasa CI** en Android (con R8), Escritorio y Web. Fases 1, 2, 4 y 5 cerradas salvo lo listado como pendiente; la 3 (iOS) escrita, con la compilación pendiente del primer `main` |
 | Fecha | 2026-07-31 |
 | Autor | Equipo TestScanner |
 | Alcance de esta versión | Migración de app Android monolítica a Compose Multiplatform + arquitectura de motores de escaneo intercambiables |
@@ -841,7 +841,46 @@ quien la implementa es el motor de dentro. De ahí salió `DecoratingScannerEngi
 - **SonarCloud** para deuda técnica y duplicación; sin regresión permitida en PR.
 - Compilación con `allWarningsAsErrors` en módulos `:core:*`.
 
-### 13.4 CI
+### 13.4 Qué encontró el primer CI
+
+Merece su propia sección porque es el dato más útil que ha producido el proyecto sobre sí mismo.
+
+Hasta que se habilitó Actions, nada se había compilado con Gradle: el entorno de desarrollo no
+alcanza el maven de Google. Lo que sí había era un arnés sobre kotlinc que compilaba y ejecutaba el
+núcleo puro —358 tests— y que atrapó bugs reales durante meses. Cuando por fin corrió Gradle
+aparecieron **doce fallos encadenados**, cada uno tapado por el anterior:
+
+| # | Dónde | Qué era |
+|---|---|---|
+| 1 | `build-logic` | Los convention plugins declarados `compileOnly`. Válido para clases `Plugin<Project>`, no para scripts precompilados |
+| 2 | Raíz | Kotlin/Wasm aplica `LifecycleBasePlugin` **al proyecto raíz** y chocaba con un `clean` escrito a mano |
+| 3 | `:core:database` | KSP 2.3.10 exige AGP ≥ 8.10 (era el riesgo R11, anotado de antemano) |
+| 4 | Todos los módulos con Compose | CMP 1.11.1 no publica `iosX64`, y declarar ese target rompía la resolución de `commonMain` |
+| 5 | `:core:scanner-testing` | `kotlin.test.Test` no resuelve en la JVM sin la variante de framework |
+| 6 | `:core:designsystem` | `staticCompositionLocalOf { error(...) }` se infiere como `Nothing`, así que `showSnackbar` no existía en **ninguna** pantalla |
+| 7 | Tres pantallas | Faltaba `import androidx.compose.runtime.getValue` para el delegado `by` |
+| 8 | `:core:domain` | La dependencia con `:core:scanner-testing` estaba en el SDD y no en el build |
+| 9 | Dos pantallas | `resolve()` era `@Composable` y se llamaba dentro de un `LaunchedEffect` |
+| 10 | `:core:database` | Room como `implementation` cuando los tipos públicos del módulo heredan de él |
+| 11 | Web | Tres repositorios de herramientas (Node, Yarn, Binaryen) que el plugin declara a nivel de proyecto |
+| 12 | `:engines:browser-detector` y `:androidApp` | `ScanError.PermissionDenied` construido sin argumentos, y otro `implementation` que debía ser visible |
+
+**Lo que esto dice del arnés local.** No fue inútil: los 358 tests que ejecutaba siguen pasando sin
+un solo cambio, y los defectos que encontró eran de lógica de verdad. Pero su cobertura tenía una
+forma muy concreta —`commonMain` compilable como JVM plano— y todo lo que quedaba fuera acumuló
+errores en silencio: el código Compose, las fuentes de plataforma y, sobre todo, **el build**. Ocho
+de los doce fallos son de configuración de Gradle o de visibilidad entre módulos, cosas que ningún
+test unitario puede ver.
+
+**Y del análisis estático.** Detekt pasaba en verde sin analizar un solo archivo, porque su fuente
+por defecto es `src/main/kotlin` y aquí el código vive en `src/commonMain/kotlin`. Al apuntarlo bien
+salieron 105 hallazgos. Es la misma lección que los tests instrumentados que se decidió no tener:
+una comprobación que no se ejecuta es peor que ninguna, porque ocupa el sitio de la que sí haría
+falta.
+
+---
+
+### 13.5 CI
 
 Implementado en `.github/workflows/verify.yml`:
 

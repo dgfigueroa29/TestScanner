@@ -8,7 +8,7 @@ y Web con un único código base.
 
 ---
 
-## Estado actual — los 8 motores escritos, iOS pendiente de máquina
+## Estado actual — compila y pasa CI en Android, Escritorio y Web
 
 | | |
 |---|---|
@@ -18,11 +18,11 @@ y Web con un único código base.
 | Suite de contrato que todo motor debe pasar | ✅ implementada, y aplicada a los decoradores y a la cadena completa |
 | Comparador de motores con marcador en vivo (G5) | ✅ implementado y en la UI |
 | Motor de entrada manual | ✅ funcional en las 4 plataformas |
-| Google Code Scanner y ML Kit + CameraX (Android) | ✅ implementados, sin compilar aún |
+| Google Code Scanner y ML Kit + CameraX (Android) | ✅ implementados y compilando |
 | Historial persistente | ✅ Room en Android, iOS y Desktop; en Web, JSON en el almacén del navegador |
 | Preferencias persistentes | ✅ las cuatro plataformas |
-| CI en GitHub Actions | ✅ detekt, tests, Android, Desktop, Web y iOS |
-| Vision / AVFoundation (iOS) | ✅ implementado, sin compilar aún |
+| CI en GitHub Actions | ✅ **en verde**: detekt, tests, Android (con R8), Desktop y Web |
+| Vision / AVFoundation (iOS) | ✅ implementado; se enlaza en el runner macOS al llegar a `main` |
 | BarcodeDetector del navegador (Web) | ✅ implementado, con visor sobre el canvas |
 | OCR con ML Kit Text Recognition (Android) | ✅ implementado; en iOS irá con Vision, no con ML Kit |
 | Escaneo desde imagen (RF-07) | ✅ selector en las cuatro plataformas, sin pedir permisos |
@@ -40,9 +40,9 @@ declaran como tales, con la fase en la que llegan. Ver `docs/ROADMAP.md`.
 
 Lo que queda fuera por ahora, y por qué:
 
-- **iOS está despriorizado**, no abandonado: el código está escrito, pero compilarlo exige macOS y
-  probarlo un dispositivo, así que no marca el ritmo. Lo que avanza es lo que Android, Escritorio y
-  Web pueden confirmar.
+- **iOS está despriorizado**, no abandonado. Probarlo exige un dispositivo, que no lo hay; lo que sí
+  se puede es **compilarlo**, y el runner macOS del CI lo hará al llegar a `main`. Falta además el
+  `iosApp.xcodeproj`, que solo se crea desde Xcode.
 - **No hay tests instrumentados y no los va a haber.** Sin emulador en CI, un test que exija
   dispositivo nunca se ejecuta y da una falsa sensación de red. El ROADMAP dice exactamente qué queda
   cubierto sin dispositivo y qué no.
@@ -54,13 +54,14 @@ Lo que queda fuera por ahora, y por qué:
 - **Web no tiene respaldo tras el navegador**: zxing-cpp no publica artefacto wasmJs, así que quien
   cierra esa cadena es la entrada manual.
 
-> **Sin compilar con Gradle todavía.** El CI de `.github/workflows/verify.yml` es lo que dará el
-> primer veredicto completo en cuanto se abra un PR.
-> El entorno donde se desarrolló no tenía acceso a
-> `dl.google.com`, así que no hubo Android SDK ni artefactos de AGP/Compose. Lo verificado son los
-> **358 tests del núcleo puro**, compilados y ejecutados con kotlinc 2.3.20 — el mismo compilador al que apunta el build. Todo lo que necesita
-> Gradle — `build-logic`, las versiones del catálogo, los motores de plataforma y el código
-> Compose — está pendiente de la primera compilación.
+> **Verificado en CI.** El proyecto compila entero: Android (debug, lint y release con R8),
+> Escritorio y Web, más detekt y los tests en cada PR. iOS se enlaza en un runner macOS al llegar a
+> `main`.
+>
+> Hasta que se activó Actions nada de esto se había compilado nunca —el entorno de desarrollo no
+> alcanza el maven de Google—, y el primer CI encontró **doce fallos encadenados**, desde el
+> `build-logic` que no resolvía sus plugins hasta un `ScanError` construido sin argumentos en el
+> motor de Web. Están todos arreglados y cada uno explicado en su commit.
 
 ---
 
