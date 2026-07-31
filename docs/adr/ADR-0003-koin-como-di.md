@@ -46,7 +46,7 @@ Usar **Koin 4.x** como contenedor de DI en todos los módulos multiplataforma.
 |---|---|
 | Hilt | No es multiplataforma. Punto final |
 | kotlin-inject / kotlin-inject-anvil | Verificación en compilación, pero KSP en todos los targets encarece el build y la comunidad es menor |
-| Inyección manual (composition root a mano) | Viable al inicio, insostenible al crecer el grafo con 7 motores y varias features |
+| Inyección manual (composition root a mano) | Viable al inicio, insostenible al crecer el grafo con 8 motores y varias features |
 | Metro / Dagger KMP | Demasiado recientes para apostar las fundaciones del proyecto |
 
 ## Nota de revisión

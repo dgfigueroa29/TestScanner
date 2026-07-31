@@ -50,7 +50,7 @@ internal object VisionFormatMapper {
      * Tipos a pedirle a AVFoundation para una petición.
      *
      * Si no queda ninguno se devuelven todos y el filtrado fino lo hace el dominio, igual que en
-     * los motores de Android: así el comportamiento observable es el mismo en los siete.
+     * los motores de Android: así el comportamiento observable es el mismo en los ocho.
      */
     fun toVisionTypes(formats: Set<BarcodeFormat>): List<String> {
         val requested = toDomain.filterValues { it in formats }.keys.toList()

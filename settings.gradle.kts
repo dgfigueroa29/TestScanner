@@ -49,6 +49,7 @@ include(":engines:gms-code-scanner")
 include(":engines:mlkit-camerax")
 include(":engines:vision-ios")
 include(":engines:zxing-cpp")
+include(":engines:zxing-java")
 include(":engines:browser-detector")
 include(":engines:mlkit-ocr")
 

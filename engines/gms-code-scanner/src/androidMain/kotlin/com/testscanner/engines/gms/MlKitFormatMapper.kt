@@ -40,7 +40,7 @@ internal object MlKitFormatMapper {
      *
      * Devuelve `null` cuando la petición incluye formatos que ML Kit no conoce: en ese caso se
      * deja el detector en modo "todos" y el filtrado fino lo hace `FormatFilteringScannerEngine`
-     * en el dominio, que es quien garantiza el mismo comportamiento en los siete motores.
+     * en el dominio, que es quien garantiza el mismo comportamiento en los ocho motores.
      */
     fun toMlKitFormats(formats: Set<BarcodeFormat>): IntArray? {
         val mapped = formats.mapNotNull { toMlKit[it] }

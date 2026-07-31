@@ -35,7 +35,7 @@ class BrowserFormatMapperTest {
     @Test
     fun `si algun formato pedido no existe en la API no se filtra nada`() {
         // Filtrar con una lista incompleta haría que el motor dejara de ver códigos que sí sabe
-        // leer. Se detecta todo y el dominio recorta después, igual en los siete motores.
+        // leer. Se detecta todo y el dominio recorta después, igual en los ocho motores.
         val filter = BrowserFormatMapper.toBrowserFilter(
             setOf(BarcodeFormat.QrCode, BarcodeFormat.MicroQrCode),
         )

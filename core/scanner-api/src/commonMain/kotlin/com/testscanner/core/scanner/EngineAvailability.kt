@@ -27,7 +27,7 @@ sealed interface EngineAvailability {
     /**
      * Motor del catálogo aún no implementado.
      *
-     * Existe para que el catálogo esté completo desde la Fase 1: la UI muestra las siete
+     * Existe para que el catálogo esté completo desde la Fase 1: la UI muestra las ocho
      * alternativas y en qué fase llega cada una, y el registro no cambia de forma cuando un motor
      * se implementa — solo cambia lo que responde `availability()`.
      */

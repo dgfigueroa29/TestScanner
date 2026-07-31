@@ -53,6 +53,9 @@ mlkitTextRecognition = "16.0.1"
 camerax = "1.4.2"
 # Baseline de comparación: dos artefactos distintos del mismo proyecto (ADR-0008).
 zxingcpp = "3.1.1"
+# ZXing en Java puro, para escritorio. Otro proyecto que el anterior pese al nombre: este es el
+# original en Java, no el port a C++ (deuda D13).
+zxingJava = "3.5.4"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -103,6 +106,7 @@ camerax-view = { module = "androidx.camera:camera-view", version.ref = "camerax"
 
 zxingcpp-android = { module = "io.github.zxing-cpp:android", version.ref = "zxingcpp" }
 zxingcpp-native = { module = "io.github.zxing-cpp:kotlin-native", version.ref = "zxingcpp" }
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxingJava" }
 
 [plugins]
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }

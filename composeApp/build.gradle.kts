@@ -95,6 +95,7 @@ kotlin {
         }
 
         desktopMain.dependencies {
+            implementation(project(":engines:zxing-java"))
             implementation(project(":core:database"))
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutines.swing)

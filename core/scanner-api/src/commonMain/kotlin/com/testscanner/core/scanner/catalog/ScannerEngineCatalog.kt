@@ -12,7 +12,7 @@ import com.testscanner.core.scanner.ScannerEngineDescriptor
  *
  * Es el reflejo en código de `docs/ENGINES.md`; un test verifica que ambos no divergen.
  *
- * Que el catálogo esté completo desde la Fase 1 es deliberado: la UI muestra las siete
+ * Que el catálogo esté completo desde la Fase 1 es deliberado: la UI muestra las ocho
  * alternativas con sus capacidades reales y en qué fase llega cada una, y el registro no cambia de
  * forma cuando un motor se implementa — solo cambia lo que responde `availability()`.
  */
@@ -115,6 +115,29 @@ object ScannerEngineCatalog {
         ),
     )
 
+    val zxingJava = ScannerEngineDescriptor(
+        id = ScannerEngineId.ZXingJava,
+        displayName = "ZXing (Java)",
+        vendor = "Comunidad ZXing",
+        description = "El ZXing original, en Java puro. Es el único decodificador de escritorio: " +
+            "hasta que llegó, en esa plataforma solo se podía teclear el código a mano.",
+        platforms = setOf(ScannerPlatform.Desktop),
+        plannedPhase = 5,
+        requiresDependency = "com.google.zxing:core",
+        strength = "Java puro: no necesita binarios nativos ni SDK de plataforma",
+        // Que no lea de la cámara no es una limitación del decodificador sino del proyecto: no hay
+        // captura de webcam en escritorio. Se declara como límite porque es lo que el usuario ve.
+        limitation = "Solo imagen estática: en escritorio no hay captura de cámara",
+        capabilities = ScannerCapabilities(
+            // Sin Micro QR ni rMQR: `com.google.zxing.BarcodeFormat` no tiene esas constantes.
+            // El port a C++ sí las lee, y esa diferencia es justo el tipo de dato que la app busca.
+            supportedFormats = LINEAR_AND_MATRIX + BarcodeFormat.DataBar + BarcodeFormat.MaxiCode,
+            sources = setOf(ScanSource.StaticImage),
+            supportsMultipleCodes = true,
+            requiresCameraPermission = false,
+        ),
+    )
+
     val browserDetector = ScannerEngineDescriptor(
         id = ScannerEngineId.BrowserDetector,
         displayName = "BarcodeDetector API",
@@ -186,6 +209,7 @@ object ScannerEngineCatalog {
         mlKitCameraX,
         visionIos,
         zxingCpp,
+        zxingJava,
         browserDetector,
         mlKitOcr,
         manualInput,

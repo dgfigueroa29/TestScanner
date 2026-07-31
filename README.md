@@ -8,12 +8,12 @@ y Web con un único código base.
 
 ---
 
-## Estado actual — los 7 motores escritos, iOS pendiente de máquina
+## Estado actual — los 8 motores escritos, iOS pendiente de máquina
 
 | | |
 |---|---|
 | Arquitectura y SPI de motores | ✅ completos |
-| Catálogo de los 7 motores con capacidades | ✅ declarado |
+| Catálogo de los 8 motores con capacidades | ✅ declarado |
 | Selección automática + cadena de fallback | ✅ implementados y testeados |
 | Suite de contrato que todo motor debe pasar | ✅ implementada, y aplicada a los decoradores y a la cadena completa |
 | Comparador de motores con marcador en vivo (G5) | ✅ implementado y en la UI |
@@ -31,8 +31,9 @@ y Web con un único código base.
 | Acciones sobre el resultado (RF-13) | ✅ copiar, compartir y abrir, según el significado del código |
 | Navegación | ✅ propia, con backstack que sobrevive a rotar la pantalla |
 | Build de release con R8 | ✅ `minify` y `shrinkResources`, con `assembleRelease` en CI |
+| ZXing en Java (Desktop) | ✅ el único decodificador de escritorio; **verificado de verdad**, decodificando imágenes generadas en el test |
 
-El catálogo muestra las siete alternativas con su estado real; los motores aún no implementados se
+El catálogo muestra las ocho alternativas con su estado real; los motores aún no implementados se
 declaran como tales, con la fase en la que llegan. Ver `docs/ROADMAP.md`.
 
 Lo que queda fuera por ahora, y por qué:
@@ -43,13 +44,16 @@ Lo que queda fuera por ahora, y por qué:
 - **No hay tests instrumentados y no los va a haber.** Sin emulador en CI, un test que exija
   dispositivo nunca se ejecuta y da una falsa sensación de red. El ROADMAP dice exactamente qué queda
   cubierto sin dispositivo y qué no.
-- **Escritorio no tiene decodificador todavía** (deuda D13): zxing-cpp no publica artefacto JVM.
+- **Escritorio lee archivos pero no cámara**: hay decodificador (ZXing en Java) y no hay captura de
+  webcam, así que una sesión en vivo cae a la entrada manual.
+- **Web no tiene respaldo tras el navegador**: zxing-cpp no publica artefacto wasmJs, así que quien
+  cierra esa cadena es la entrada manual.
 
 > **Sin compilar con Gradle todavía.** El CI de `.github/workflows/verify.yml` es lo que dará el
 > primer veredicto completo en cuanto se abra un PR.
 > El entorno donde se desarrolló no tenía acceso a
 > `dl.google.com`, así que no hubo Android SDK ni artefactos de AGP/Compose. Lo verificado son los
-> **333 tests del núcleo puro**, compilados y ejecutados con kotlinc 2.3.20 — el mismo compilador al que apunta el build. Todo lo que necesita
+> **353 tests del núcleo puro**, compilados y ejecutados con kotlinc 2.3.20 — el mismo compilador al que apunta el build. Todo lo que necesita
 > Gradle — `build-logic`, las versiones del catálogo, los motores de plataforma y el código
 > Compose — está pendiente de la primera compilación.
 

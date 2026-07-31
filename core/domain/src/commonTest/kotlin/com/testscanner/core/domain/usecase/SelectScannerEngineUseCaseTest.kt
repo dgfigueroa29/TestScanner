@@ -193,6 +193,48 @@ class SelectScannerEngineUseCaseTest {
     }
 
     @Test
+    fun `en escritorio ZXing encabeza al pedir imagen y desaparece al pedir camara`() {
+        // Es el motor de escritorio (D13) y solo decodifica archivos. Que la prioridad lo ponga
+        // primero no puede colarlo en una sesión de cámara: ahí no hay nada que pueda hacer, y una
+        // cadena que empieza por un motor inútil deja al usuario mirando una pantalla vacía.
+        val catalog = listOf(
+            FakeScannerEngine(
+                id = ScannerEngineId.ZXingJava,
+                capabilities = FakeScannerEngine.defaultCapabilities(
+                    sources = setOf(ScanSource.StaticImage),
+                    continuous = false,
+                    torch = false,
+                ),
+                platforms = setOf(ScannerPlatform.Desktop),
+            ).status(),
+            FakeScannerEngine(
+                id = ScannerEngineId.ManualInput,
+                capabilities = FakeScannerEngine.defaultCapabilities(
+                    sources = setOf(ScanSource.ManualInput),
+                    torch = false,
+                ),
+                platforms = setOf(ScannerPlatform.Desktop),
+            ).status(),
+        )
+
+        val fromImage = useCase.select(
+            catalog = catalog,
+            request = ScanRequest(source = ScanSource.StaticImage),
+            preferredEngineId = null,
+            platform = ScannerPlatform.Desktop,
+        )
+        val fromCamera = useCase.select(
+            catalog = catalog,
+            request = ScanRequest(source = ScanSource.LiveCamera),
+            preferredEngineId = null,
+            platform = ScannerPlatform.Desktop,
+        )
+
+        assertEquals(listOf(ScannerEngineId.ZXingJava), fromImage.chain)
+        assertTrue(fromCamera.chain.isEmpty())
+    }
+
+    @Test
     fun `sin motores elegibles la cadena queda vacia`() {
         val catalog = listOf(
             FakeScannerEngine(

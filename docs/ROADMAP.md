@@ -15,7 +15,7 @@ completa, aunque todavía sin motores de cámara reales.
 - [x] Estructura de módulos `core/`, `engines/`, `feature/`, `composeApp/`, `androidApp/`
 - [x] Modelo de dominio: `Barcode`, `BarcodeFormat` (17 simbologías), `BarcodeValueType`, `Detection`
 - [x] Scanner Engine SPI completo: contrato, capacidades, disponibilidad, eventos
-- [x] Catálogo de los 7 motores con capacidades declaradas y estado por fase
+- [x] Catálogo de los 8 motores con capacidades declaradas y estado por fase
 - [x] Registro, política de selección automática y cadena de fallback
 - [x] Motor de entrada manual (100 % `commonMain`) — la app escanea desde el día uno
 - [x] Parser semántico de valores (URL, WiFi, vCard, email, teléfono, geo, producto)
@@ -28,7 +28,7 @@ completa, aunque todavía sin motores de cámara reales.
 - [x] `build-logic/` con convention plugins
 - [x] SDD, 7 ADRs y catálogo de motores documentados
 
-**Criterio de salida:** la app arranca en Android, Desktop y Web; el catálogo lista los 7 motores
+**Criterio de salida:** la app arranca en Android, Desktop y Web; el catálogo lista los 8 motores
 con su estado real; los tests de `:core:domain` y `:core:data` pasan en CI.
 
 ---
@@ -56,7 +56,7 @@ verificable desactivando Play Services.
 
 > Pendiente de la primera compilación con Gradle: el entorno donde se escribió esta fase no tenía
 > acceso a `dl.google.com`, así que las APIs de ML Kit y CameraX están sin compilar. El núcleo puro
-> sí está verificado (333 tests en verde con kotlinc).
+> sí está verificado (353 tests en verde con kotlinc).
 
 ---
 
@@ -145,6 +145,10 @@ recupera correctamente EAN-13 impresos sobre códigos dañados.
       código escaneado viene de fuera y no es de fiar
 - [ ] Play Feature Delivery para los motores pesados de Android (RNF-06)
 - [x] Historial de Web persistente (D9) y textos de compartir fuera del dominio (D15)
+- [x] `:engines:zxing-java` — decodificador de escritorio (D13). Hasta ahora, elegir un archivo en
+      escritorio no llevaba a ninguna parte: el selector existía desde RF-07 y no había quién lo
+      leyera. Es además el **primer motor real verificado de extremo a extremo sin dispositivo**: el
+      propio ZXing genera los códigos y el test los decodifica de vuelta desde los píxeles
 - [ ] Accesibilidad completa (RNF-05) y auditoría de privacidad (RNF-03)
 
 **Criterio de salida:** el usuario puede responder, dentro de la app y con datos, la pregunta
@@ -159,9 +163,10 @@ y qué lo compensa:
 
 | Se comprueba sin dispositivo | Sigue sin comprobarse |
 |---|---|
-| Que el descriptor de los siete motores es coherente: IDs únicos, fases válidas, sin prometer control de cámara con UI propia (`ScannerEngineCatalogTest`) | Que el motor **lea** un código real |
+| Que el descriptor de los ocho motores es coherente: IDs únicos, fases válidas, sin prometer control de cámara con UI propia (`ScannerEngineCatalogTest`) | Que el motor **lea** un código real |
 | Que la selección, el fallback, los límites de petición y el plazo se comportan según el contrato, incluida la cadena completa que llega al ViewModel | Que la cámara arranque, y que se libere al cancelar |
 | Que lo declarado tenga quien lo cumpla, en todo lo instanciable sin `Context` | Lo mismo en los motores de Android e iOS, que necesitan `Context` o `AVCaptureSession` |
+| Que ZXing (Java) **lea de verdad** un QR y un EAN-13 desde píxeles, filtre por formato y distinga "no hay código" de "no es una imagen" | Lo mismo en los motores que necesitan cámara |
 | Que el proyecto **compile** para Android, Escritorio y Web, incluida la build de release con R8 | — |
 
 El riesgo que queda es el de siempre en este tipo de app: el código de cámara solo se prueba
@@ -191,4 +196,4 @@ Registrada de forma explícita para que no se olvide:
 | ~~D7~~ | ~~`:androidApp` sin ProGuard/R8 configurado para release~~ | **Saldada**: `minify` y `shrinkResources` activados, con reglas cortas y justificadas, y `assembleRelease` en CI para que R8 se ejecute de verdad |
 | ~~D14~~ | ~~El motor de Web escanea pero no muestra visor~~ | **Saldada**: el `<video>` se coloca sobre el canvas desde `onGloballyPositioned`. A cambio tapa el overlay, declarado con `occludesOverlay` |
 | ~~D15~~ | ~~El texto que se copia de un WiFi lo compone el dominio~~ | **Saldada**: `shareableContent()` devuelve la estructura y la pantalla la redacta con sus recursos. La acción del ViewModel lleva el texto ya hecho |
-| D13 | Desktop y Web se quedan sin el baseline de comparación: zxing-cpp no publica artefacto JVM ni wasmJs (ADR-0008). En Desktop hoy no hay ningún decodificador; el candidato es `com.google.zxing:core`, y entraría al catálogo **como motor propio**, no con el nombre de zxing-cpp. El selector de imágenes de escritorio ya existe: lo que falta es el decodificador | Fase 5 |
+| ~~D13~~ | ~~Desktop y Web se quedan sin decodificador: zxing-cpp no publica artefacto JVM ni wasmJs~~ | **Saldada en Desktop**: `:engines:zxing-java` sobre `com.google.zxing:core`, en el catálogo **como motor propio** y no con el nombre de zxing-cpp — son proyectos distintos y confundirlos falsearía la comparación. Solo imagen estática: el decodificador está, la captura de webcam no. **Web se queda como está**: no hay artefacto wasmJs y su respaldo sigue siendo la entrada manual |

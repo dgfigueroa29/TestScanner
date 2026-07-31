@@ -13,6 +13,7 @@ esta tabla — hay un test que verifica que los IDs y las fases no divergen.
 | `MLKIT_CAMERAX` | ML Kit + CameraX | Android | Cámara | 2 ✅ | `com.google.mlkit:barcode-scanning` + `androidx.camera:*` |
 | `VISION_IOS` | Vision / AVFoundation | iOS | Cámara | 3 ✅ | Framework del sistema |
 | `ZXING_CPP` | ZXing-cpp | Android, iOS | Cámara + imagen | 3 ✅ | `io.github.zxing-cpp:android` (Android) y `:kotlin-native` (iOS) — [ADR-0008](adr/ADR-0008-baseline-zxing-cpp.md) |
+| `ZXING_JAVA` | ZXing (Java) | Desktop | Imagen | 5 ✅ | `com.google.zxing:core` |
 | `BROWSER_DETECTOR` | BarcodeDetector API | Web | Cámara + imagen | 4 ✅ | API del navegador |
 | `MLKIT_OCR` | ML Kit Text Recognition | Android, iOS | Cámara + imagen | 4 ✅ Android | `com.google.mlkit:text-recognition` |
 | `MANUAL_INPUT` | Entrada manual | Todas | Teclado | **1** | Ninguna |
@@ -23,25 +24,25 @@ esta tabla — hay un test que verifica que los IDs y las fases no divergen.
 
 Leyenda: ✅ soportado · ⚠️ parcial o dependiente de versión · ❌ no soportado
 
-| Formato | GMS | ML Kit | Vision | ZXing-cpp | Browser | OCR | Manual |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| QR Code | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Data Matrix | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ | ✅ |
-| Aztec | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ | ✅ |
-| PDF417 | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ | ✅ |
-| EAN-13 | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
-| EAN-8 | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
-| UPC-A | ✅ | ✅ | ❌¹ | ✅ | ✅ | ⚠️ | ✅ |
-| UPC-E | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
-| Code 39 | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
-| Code 93 | ✅ | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ✅ |
-| Code 128 | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
-| Codabar | ✅ | ✅ | ⚠️ | ✅ | ⚠️ | ❌ | ✅ |
-| ITF | ✅ | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ✅ |
-| DataBar / RSS | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ |
-| MaxiCode | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ |
-| Micro QR | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ |
-| rMQR | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ |
+| Formato | GMS | ML Kit | Vision | ZXing-cpp | ZXing Java | Browser | OCR | Manual |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| QR Code | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Data Matrix | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ | ✅ |
+| Aztec | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ | ✅ |
+| PDF417 | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ | ✅ |
+| EAN-13 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
+| EAN-8 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
+| UPC-A | ✅ | ✅ | ❌¹ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
+| UPC-E | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
+| Code 39 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
+| Code 93 | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ✅ |
+| Code 128 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
+| Codabar | ✅ | ✅ | ⚠️ | ✅ | ✅ | ⚠️ | ❌ | ✅ |
+| ITF | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ✅ |
+| DataBar / RSS | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ |
+| MaxiCode | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ |
+| Micro QR | ❌ | ❌ | ✅ | ✅ | ❌⁶ | ❌ | ❌ | ✅ |
+| rMQR | ❌ | ❌ | ❌ | ✅ | ❌⁶ | ❌ | ❌ | ✅ |
 
 ¹ AVFoundation no tiene un tipo UPC-A: devuelve esos códigos como EAN-13 con un cero delante, que
 es lo que son. Declararlo como soportado sería prometer una distinción que el sistema no hace.
@@ -62,6 +63,14 @@ pantalla deja de pintarlo, en lugar de ejecutar un dibujo que nadie ve.
 ⁵ `com.google.mlkit:text-recognition` es la variante *bundled*: el modelo latino viaja en el APK, a
 diferencia del detector de códigos, que sí se descarga en el primer uso.
 
+⁶ `com.google.zxing.BarcodeFormat` no tiene constantes para Micro QR ni rMQR. El port a C++ sí las
+lee, y esa diferencia entre dos motores del mismo linaje es justo el tipo de dato que la app existe
+para producir.
+
+⁷ ZXing devuelve dos puntos en los códigos lineales y cuatro en los 2D, así que no son las esquinas
+que espera el overlay. Se declara `reportsCornerPoints = false` y no se reportan: construir un
+rectángulo a partir de dos puntos sería dibujar una suposición.
+
 Las marcas ⚠️ del OCR reflejan que el motor no decodifica la simbología: **lee el número impreso
 bajo el código** y el dominio infiere el formato validando su checksum. Solo funciona con
 simbologías cuyo valor va impreso en texto (típicamente 1D de producto).
@@ -70,21 +79,21 @@ simbologías cuyo valor va impreso en texto (típicamente 1D de producto).
 
 ## Capacidades por motor
 
-| Capacidad | GMS | ML Kit | Vision | ZXing-cpp | Browser | OCR | Manual |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| Cámara en vivo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Imagen estática | ❌ | ✅ | ⏳² | ✅ | ✅ | ✅ | ❌ |
-| Múltiples códigos a la vez | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Escaneo continuo | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| UI propia del motor | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Linterna | ❌ | ✅ | ✅ | ✅ | ❌³ | ✅ | ❌ |
-| Zoom | ❌ | ✅ | ✅ | ✅ | ❌³ | ✅ | ❌ |
-| Puntos de esquina (normalizados) | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Superficie de preview propia | ❌ | ✅ | ✅ | ✅ | ✅⁴ | ✅ | ❌ |
-| Confianza reportada | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| Requiere permiso de cámara | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Requiere red | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Descarga en tiempo de ejecución | ✅ | ⚠️ | ❌ | ❌ | ❌ | ❌⁵ | ❌ |
+| Capacidad | GMS | ML Kit | Vision | ZXing-cpp | ZXing Java | Browser | OCR | Manual |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| Cámara en vivo | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| Imagen estática | ❌ | ✅ | ⏳² | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Múltiples códigos a la vez | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Escaneo continuo | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| UI propia del motor | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Linterna | ❌ | ✅ | ✅ | ✅ | ❌ | ❌³ | ✅ | ❌ |
+| Zoom | ❌ | ✅ | ✅ | ✅ | ❌ | ❌³ | ✅ | ❌ |
+| Puntos de esquina (normalizados) | ❌ | ✅ | ✅ | ✅ | ❌⁷ | ✅ | ✅ | ❌ |
+| Superficie de preview propia | ❌ | ✅ | ✅ | ✅ | ❌ | ✅⁴ | ✅ | ❌ |
+| Confianza reportada | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Requiere permiso de cámara | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| Requiere red | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Descarga en tiempo de ejecución | ✅ | ⚠️ | ❌ | ❌ | ❌ | ❌ | ❌⁵ | ❌ |
 
 `GMS_CODE_SCANNER` no requiere permiso de cámara porque el escaneo ocurre en un proceso de Google
 Play Services, fuera de la app. Es su ventaja distintiva y la razón de que encabece la prioridad
@@ -102,7 +111,7 @@ resultante como preferido + fallbacks.
 |---|---|
 | Android | `GMS_CODE_SCANNER` → `MLKIT_CAMERAX` → `ZXING_CPP` → `MLKIT_OCR` → `MANUAL_INPUT` |
 | iOS | `VISION_IOS` → `ZXING_CPP` → `MLKIT_OCR` → `MANUAL_INPUT` |
-| Desktop | `MANUAL_INPUT` |
+| Desktop | `ZXING_JAVA` (solo imagen) → `MANUAL_INPUT` |
 | Web | `BROWSER_DETECTOR` → `MANUAL_INPUT` |
 
 Excepciones de la política:
@@ -111,8 +120,11 @@ Excepciones de la política:
   descartado por capacidades y `MLKIT_CAMERAX` encabeza la cadena en Android.
 - Si el `ScanRequest` pide **imagen estática**, solo entran motores con `ScanSource.StaticImage`.
 - `MANUAL_INPUT` cierra siempre la cadena: garantiza que nunca hay un estado "no se puede escanear".
-- **Desktop no tiene decodificador** y Web no tiene respaldo tras el navegador: zxing-cpp no publica
-  artefacto JVM ni wasmJs (ADR-0008), así que listarlo en esas cadenas sería una entrada muerta.
+- **En escritorio, una petición de cámara en vivo cae directamente a `MANUAL_INPUT`**: `ZXING_JAVA`
+  no declara esa fuente, así que el selector lo descarta antes de elegirlo. El decodificador está
+  ahí, pero no hay captura de webcam que lo alimente.
+- **Web no tiene respaldo tras el navegador**: zxing-cpp no publica artefacto wasmJs (ADR-0008), así
+  que listarlo en esa cadena sería una entrada muerta. Lo que la cierra es la entrada manual.
 
 ---
 

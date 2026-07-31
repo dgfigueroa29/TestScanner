@@ -17,6 +17,7 @@ import com.testscanner.core.platform.ImagePicker
 import com.testscanner.core.platform.PlatformActions
 import com.testscanner.core.scanner.BarcodeScannerEngine
 import com.testscanner.engines.manual.ManualInputScannerEngine
+import com.testscanner.engines.zxingjava.ZXingJavaEngine
 import com.testscanner.platform.DesktopFileSaver
 import com.testscanner.platform.DesktopImagePicker
 import com.testscanner.platform.DesktopPlatformActions
@@ -24,12 +25,25 @@ import org.koin.core.module.Module
 import org.koin.dsl.module
 import java.util.prefs.Preferences
 
-/** Motores enlazados en el binario de escritorio. Fase 3 añadirá aquí ZXing-cpp. */
+/**
+ * Motores enlazados en el binario de escritorio.
+ *
+ * ZXing-cpp no está y no va a estar: no publica artefacto JVM (ADR-0008). Su hueco lo cubre el
+ * ZXing original en Java, que es otro motor y se declara como tal.
+ */
 actual fun platformModule(): Module = module {
     single { ScannerPlatform.Desktop }
 
+    single { ZXingJavaEngine() }
+    single { ManualInputScannerEngine() }
+
+    // ZXing primero: decodifica archivos, así que atiende lo que el usuario elige de disco. La
+    // entrada manual cierra la cadena, como en las otras tres plataformas.
     single<List<BarcodeScannerEngine>> {
-        listOf(ManualInputScannerEngine())
+        listOf(
+            get<ZXingJavaEngine>(),
+            get<ManualInputScannerEngine>(),
+        )
     }
 
     // En escritorio el SO gestiona el acceso a la webcam al abrirla: no hay permiso que pedir.

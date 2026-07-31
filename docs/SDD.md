@@ -134,7 +134,7 @@ Los límites del `ScanRequest` — formatos, cuántos códigos por frame, si la 
 primera lectura y el plazo máximo — los hacen cumplir **decoradores del dominio**, no cada motor.
 Los motores son desiguales en esto: el de entrada manual respeta el modo continuo porque lo
 implementa a mano, mientras que ML Kit y Vision dejan la cámara corriendo hasta que el consumidor
-cancele. Centralizarlo es lo que garantiza el mismo comportamiento observable en los siete.
+cancele. Centralizarlo es lo que garantiza el mismo comportamiento observable en los ocho.
 
 ### 3.2 Requisitos no funcionales
 
@@ -215,7 +215,7 @@ TestScanner/
 ├── core/
 │   ├── model/                         # KMP puro: Barcode, BarcodeFormat, ScanResult
 │   ├── scanner-api/                   # SPI: BarcodeScannerEngine, Capabilities, Availability
-│   │                                  #      + catálogo declarativo de los 7 motores
+│   │                                  #      + catálogo declarativo de los 8 motores
 │   ├── scanner-ui/                    # capacidad de UI del motor: CameraPreviewEngine (ADR-0007)
 │   ├── scanner-testing/               # suite de contrato que todo motor hereda (§13.2)
 │   ├── database/                      # Room KMP: historial persistente (sin target wasmJs)
@@ -232,6 +232,7 @@ TestScanner/
 │   ├── mlkit-camerax/                 # Android — CameraX + preview + linterna/zoom
 │   ├── vision-ios/                    # iOS — AVFoundation
 │   ├── zxing-cpp/                     # Android + iOS — baseline de comparación (ADR-0008)
+│   ├── zxing-java/                    # Desktop — com.google.zxing:core, solo imagen (D13)
 │   ├── browser-detector/              # Wasm/JS — BarcodeDetector del navegador
 │   └── mlkit-ocr/                     # Android — lee el número impreso bajo el código
 │
@@ -274,6 +275,7 @@ TestScanner/
 | `:engines:mlkit-camerax` | ✅ | — | — | — |
 | `:engines:vision-ios` | — | ✅ | — | — |
 | `:engines:zxing-cpp` | ✅ | ✅ | — | — |
+| `:engines:zxing-java` | — | — | ✅ | — |
 | `:engines:browser-detector` | — | — | — | ✅ |
 | `:engines:mlkit-ocr` | ✅ | — | — | — |
 | `:feature:scanner` | ✅ | ✅ | ✅ | ✅ |
@@ -704,7 +706,8 @@ Garantías de privacidad (RNF-03), verificables en revisión de código:
 | Unitario de dominio | `commonTest` | UseCases, política de selección, fallback, parser semántico, mappers de formato | kotlin-test, Turbine |
 | Unitario de presentación | `commonTest` | Reducers de ViewModel: acción → estado esperado | kotlin-test, Turbine, dispatcher de test |
 | Contrato de motor | `commonTest` | **Suite compartida** que todo motor debe pasar (§13.2), aplicada a lo instanciable sin dispositivo: el motor manual, los decoradores y la cadena completa | kotlin-test |
-| Coherencia del catálogo | `commonTest` | Que los siete descriptores sean válidos y no prometan lo que nadie implementa | kotlin-test |
+| Coherencia del catálogo | `commonTest` | Que los ocho descriptores sean válidos y no prometan lo que nadie implementa | kotlin-test |
+| Decodificación real | `jvmTest` | ZXing (Java) decodificando imágenes que el propio ZXing genera en el test | kotlin-test |
 
 Objetivo de cobertura: **≥ 80 % en `:core:domain` y `:core:data`**; la UI no se persigue por
 cobertura sino por casos de estado representativos.
@@ -782,7 +785,7 @@ esperaba leer— no aparecen en debug. Descubrirlos al preparar una release es t
 
 | Fase | Contenido | Criterio de salida |
 |---|---|---|
-| **1. Fundaciones** (este entregable) | Build KMP/CMP, version catalog, estructura de módulos, modelo de dominio, SPI completo, registro, selección + fallback, UI de catálogo y escaneo, motor de entrada manual, tests de dominio | La app arranca en Android, Desktop y Web; el catálogo lista los 7 motores con su estado; los tests de selección y fallback pasan |
+| **1. Fundaciones** (este entregable) | Build KMP/CMP, version catalog, estructura de módulos, modelo de dominio, SPI completo, registro, selección + fallback, UI de catálogo y escaneo, motor de entrada manual, tests de dominio | La app arranca en Android, Desktop y Web; el catálogo lista los 8 motores con su estado; los tests de selección y fallback pasan |
 | **2. Android real** ✅ | `:engines:gms-code-scanner`, `:engines:mlkit-camerax`, preview CameraX + overlay, permisos, convention plugins, historial con Room, CI en GitHub Actions | Escaneo real en Android con dos motores intercambiables en caliente |
 | **3. iOS** ⏸️ | Escrito: `:engines:vision-ios`, preview con `UIKitView`, shell Xcode, `:engines:zxing-cpp`, revisión de ADR-0005 · **despriorizada**: sin dispositivos Apple no se puede compilar ni verificar nada | Escaneo real en iOS; ZXing-cpp comparable entre Android e iOS |
 | **4. Web y OCR** | ✅ `:engines:browser-detector`, `:engines:mlkit-ocr` (Android), preview de Web (D14) y escaneo desde imagen (RF-07) en las cuatro plataformas · pendiente: OCR en iOS con Vision | Las cuatro plataformas escanean; OCR disponible como alternativa |

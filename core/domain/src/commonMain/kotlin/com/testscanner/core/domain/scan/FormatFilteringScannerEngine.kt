@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.map
  *
  * Existe porque el filtrado por formato es **desigual entre motores**: unos aceptan una máscara de
  * formatos en su configuración, otros devuelven todo lo que ven. Aplicar el filtro aquí garantiza
- * el mismo comportamiento observable en los siete motores, sin que cada uno lo reimplemente — y sin
+ * el mismo comportamiento observable en los ocho motores, sin que cada uno lo reimplemente — y sin
  * que el ViewModel tenga que desconfiar del motor.
  */
 class FormatFilteringScannerEngine(
