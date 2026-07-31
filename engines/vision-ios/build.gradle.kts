@@ -9,7 +9,6 @@ plugins {
 kotlin {
     jvmToolchain(libs.versions.jvmTarget.get().toInt())
 
-    iosX64()
     iosArm64()
     iosSimulatorArm64()
 

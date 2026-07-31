@@ -21,7 +21,8 @@ kotlin {
     // es por atributos de la variante y no por el nombre del target.
     jvm("desktop")
 
-    listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
+    // Sin iosX64 (simulador Intel): CMP 1.11.1 no lo publica. Ver el convention plugin.
+    listOf(iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "ComposeApp"
             isStatic = true

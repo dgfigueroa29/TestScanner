@@ -11,7 +11,8 @@ Convertir el repositorio en un proyecto Compose Multiplatform con la arquitectur
 completa, aunque todavía sin motores de cámara reales.
 
 - [x] Build KMP/CMP: Kotlin DSL, version catalog, Gradle, Kotlin, AGP (versiones al día en `libs.versions.toml`)
-- [x] Targets `android`, `iosX64/iosArm64/iosSimulatorArm64`, `jvm`, `wasmJs`
+- [x] Targets `android`, `iosArm64/iosSimulatorArm64`, `jvm`, `wasmJs` — sin `iosX64`, el
+      simulador de los Mac con Intel: Compose Multiplatform 1.11.1 ya no lo publica
 - [x] Estructura de módulos `core/`, `engines/`, `feature/`, `composeApp/`, `androidApp/`
 - [x] Modelo de dominio: `Barcode`, `BarcodeFormat` (17 simbologías), `BarcodeValueType`, `Detection`
 - [x] Scanner Engine SPI completo: contrato, capacidades, disponibilidad, eventos

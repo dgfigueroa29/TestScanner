@@ -241,7 +241,7 @@ TestScanner/
 │   └── history/                       # historial, filtrable por motor
 │
 ├── composeApp/                        # raíz CMP: App(), navegación, wiring de DI
-│                                      # targets: android, iosX64/Arm64/SimulatorArm64, jvm, wasmJs
+│                                      # targets: android, iosArm64/SimulatorArm64, jvm, wasmJs
 ├── androidApp/                        # shell Android: Application + MainActivity
 ├── iosApp/                            # shell iOS: proyecto Xcode + SwiftUI host
 └── docs/

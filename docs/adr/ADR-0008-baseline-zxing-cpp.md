@@ -19,6 +19,10 @@ El riesgo R9 se registró al no encontrar ningún binding KMP publicado. Esa afi
 |---|---|---|---|
 | `io.github.zxing-cpp:android` | 3.1.1 | Android (arm64-v8a, armeabi-v7a, x86, x86_64) | `zxingcpp.BarcodeReader` con `Options`/`Result` anidados; `read(ImageProxy)` y `read(Bitmap, Rect, Int)` |
 | `io.github.zxing-cpp:kotlin-native` | 3.1.1 | iOS arm64/x64/simulatorArm64, macOS, tvOS, watchOS, linux, androidNative | paquete `zxingcpp`: `BarcodeReader`, `Barcode`, `BarcodeFormat`, `ImageView`; el cinterop **ya viene hecho y publicado** |
+
+> El proyecto no usa el target `iosX64` aunque zxing-cpp sí lo publique: quien no lo publica es
+> Compose Multiplatform 1.11.1, y declarar ese target rompía la resolución de dependencias de
+> `commonMain` en todos los módulos con Compose. Lo descubrió el primer CI.
 | JVM / Desktop | — | **no existe publicación** | — |
 | wasmJs | — | **no existe publicación** | — |
 

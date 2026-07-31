@@ -40,7 +40,7 @@ Una vez creado, versionar el `.xcodeproj` y borrar esta sección.
 
 ## Qué le da Kotlin
 
-`:composeApp` publica el framework `ComposeApp` (`isStatic = true`) para `iosX64`, `iosArm64` e
+`:composeApp` publica el framework `ComposeApp` (`isStatic = true`) para `iosArm64` e
 `iosSimulatorArm64`, y expone `MainViewController()` en
 `composeApp/src/iosMain/kotlin/com/testscanner/MainViewController.kt`. Esa función arranca Koin de
 forma idempotente y devuelve el `UIViewController` con la UI compartida.
