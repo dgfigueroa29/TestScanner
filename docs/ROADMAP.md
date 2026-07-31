@@ -54,7 +54,7 @@ verificable desactivando Play Services.
 
 > Pendiente de la primera compilación con Gradle: el entorno donde se escribió esta fase no tenía
 > acceso a `dl.google.com`, así que las APIs de ML Kit y CameraX están sin compilar. El núcleo puro
-> sí está verificado (171 tests en verde con kotlinc).
+> sí está verificado (194 tests en verde con kotlinc).
 
 ---
 
@@ -66,10 +66,13 @@ verificable desactivando Play Services.
 - [x] `iosApp/` — fuentes Swift e `Info.plist` con `NSCameraUsageDescription`
 - [ ] `iosApp.xcodeproj` — se crea en Xcode siguiendo `iosApp/README.md` (requiere macOS)
 - [ ] Primera compilación de todo el código iOS: nada de esto se ha compilado aún
-- [ ] **Decidir el motor baseline antes de empezar** (riesgo R9 del SDD): no hay binding KMP de
-      zxing-cpp publicado. Opciones: cinterop propio, `com.google.zxing:core` sin iOS, u otro motor
-      portable
-- [ ] `:engines:zxing-cpp` — mismo decodificador en Android, iOS y Desktop
+- [x] **Motor baseline decidido** (cerraba R9): se consumen los artefactos publicados de zxing-cpp,
+      sin cinterop propio — ver [ADR-0008](adr/ADR-0008-baseline-zxing-cpp.md)
+- [ ] **Subir Kotlin a ≥ 2.2 antes del motor** (R10): los klibs publicados están compilados con
+      2.2.0 y el proyecto está en 2.1.21. Arrastra KSP y Compose Multiplatform; hacerlo con CI
+      disponible, no a ciegas
+- [ ] `:engines:zxing-cpp` — `io.github.zxing-cpp:android` en Android y `:kotlin-native` en iOS.
+      Dos `actual`: las dos superficies no comparten forma, aunque sí el núcleo C++
 - [ ] Revisión de ADR-0005: el grafo ya tiene 2 destinos; migrar a `navigation-compose` si llega a 6 o aparecen deep links
 
 - [ ] CI: `linkDebugFrameworkIosSimulatorArm64` en runner macOS
@@ -81,11 +84,21 @@ Android e iOS sobre el mismo set de imágenes de referencia.
 
 ## Fase 4 — Web y OCR
 
-- [ ] `:engines:browser-detector` — `BarcodeDetector` con detección de soporte del navegador
-- [ ] Fallback a ZXing-cpp compilado a Wasm cuando el navegador no expone la API
-- [ ] `:engines:mlkit-ocr` — Text Recognition + inferencia de formato con validación de checksum
+- [x] `:engines:browser-detector` — `BarcodeDetector` con detección de soporte del navegador y de
+      contexto seguro, más decodificación de imagen estática vía `createImageBitmap`
+- [x] `:engines:mlkit-ocr` — Text Recognition en Android + `OcrCodeInterpreter`: lee el número
+      impreso bajo el código y solo lo emite si el dígito de control cuadra
+- [ ] Preview de Web (deuda D14): Compose para Web pinta sobre un `<canvas>` y no tiene equivalente
+      de `AndroidView`, así que la superficie de vídeo exige salirse del árbol de Compose
+- [ ] OCR en iOS: ML Kit se distribuye por CocoaPods, que este proyecto no usa. La alternativa sin
+      dependencias es `VNRecognizeTextRequest` del framework Vision, reutilizando `OcrCodeInterpreter`
 - [ ] Escaneo desde imagen/galería (RF-07) en las cuatro plataformas
 - [ ] Selector de archivos multiplataforma
+- [ ] Suite de contrato contra los motores nuevos: ambos necesitan runtime real (navegador o
+      dispositivo), así que va con D6 y no en `commonTest`
+
+> El fallback web a ZXing-cpp compilado a Wasm que figuraba aquí se ha retirado: no existe
+> publicación wasmJs (ADR-0008). El respaldo del navegador es la entrada manual.
 
 **Criterio de salida:** las cuatro plataformas escanean con al menos dos motores cada una; el OCR
 recupera correctamente EAN-13 impresos sobre códigos dañados.
@@ -135,3 +148,5 @@ Registrada de forma explícita para que no se olvide:
 | D11 | La comparación necesita dos motores de cámara: hasta ZXing-cpp (Fase 3) solo es utilizable en Android | Fase 3 |
 | D9 | El historial de Web es de sesión: Room KMP no soporta wasmJs. Requiere un almacén propio sobre IndexedDB | Fase 4 |
 | D7 | `:androidApp` sin ProGuard/R8 configurado para release | Fase 2 |
+| D14 | El motor de Web escanea pero no muestra visor: sin preview el usuario no puede apuntar. Compose para Web no tiene equivalente de `AndroidView` / `UIKitView` | Fase 4 |
+| D13 | Desktop y Web se quedan sin el baseline de comparación: zxing-cpp no publica artefacto JVM ni wasmJs (ADR-0008). En Desktop hoy no hay ningún decodificador; el candidato es `com.google.zxing:core`, y entraría al catálogo **como motor propio**, no con el nombre de zxing-cpp | Fase 4, junto a RF-07 |

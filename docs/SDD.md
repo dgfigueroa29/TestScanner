@@ -4,9 +4,9 @@
 |---|---|
 | Proyecto | TestScanner |
 | Documento | Software Design Document (SDD) |
-| Versión | 1.1 |
-| Estado | Vigente — Fase 1 cerrada, Fase 2 casi cerrada |
-| Fecha | 2026-07-30 |
+| Versión | 1.2 |
+| Estado | Vigente — Fases 1, 2 y 4 (motores) cerradas; Fase 3 a la espera de subir Kotlin |
+| Fecha | 2026-07-31 |
 | Autor | Equipo TestScanner |
 | Alcance de esta versión | Migración de app Android monolítica a Compose Multiplatform + arquitectura de motores de escaneo intercambiables |
 
@@ -229,10 +229,10 @@ TestScanner/
 │   ├── manual/                        # entrada manual — motor de referencia, 100 % common
 │   ├── gms-code-scanner/              # Android — UI propia, sin permisos
 │   ├── mlkit-camerax/                 # Android — CameraX + preview + linterna/zoom
-│   ├── vision-ios/                    # (Fase 3) iOS
-│   ├── zxing-cpp/                     # (Fase 3) multiplataforma
-│   ├── browser-detector/              # (Fase 4) Wasm/JS
-│   └── mlkit-ocr/                     # (Fase 4) Android + iOS
+│   ├── vision-ios/                    # iOS — AVFoundation
+│   ├── zxing-cpp/                     # (Fase 3) Android + iOS — baseline de comparación
+│   ├── browser-detector/              # Wasm/JS — BarcodeDetector del navegador
+│   └── mlkit-ocr/                     # Android — lee el número impreso bajo el código
 │
 ├── feature/
 │   ├── scanner/                       # pantalla de escaneo, selector de motor y comparador
@@ -272,8 +272,9 @@ TestScanner/
 | `:engines:gms-code-scanner` | ✅ | — | — | — |
 | `:engines:mlkit-camerax` | ✅ | — | — | — |
 | `:engines:vision-ios` | — | ✅ | — | — |
-| `:engines:zxing-cpp` | ✅ | ✅ | ✅ | — |
+| `:engines:zxing-cpp` | ✅ | ✅ | — | — |
 | `:engines:browser-detector` | — | — | — | ✅ |
+| `:engines:mlkit-ocr` | ✅ | — | — | — |
 | `:feature:scanner` | ✅ | ✅ | ✅ | ✅ |
 | `:feature:history` | ✅ | ✅ | ✅ | ✅ |
 | `:composeApp` | ✅ | ✅ | ✅ | ✅ |
@@ -728,8 +729,8 @@ código de iOS es mayoritariamente `commonMain` compilado en ellos.
 | **1. Fundaciones** (este entregable) | Build KMP/CMP, version catalog, estructura de módulos, modelo de dominio, SPI completo, registro, selección + fallback, UI de catálogo y escaneo, motor de entrada manual, tests de dominio | La app arranca en Android, Desktop y Web; el catálogo lista los 7 motores con su estado; los tests de selección y fallback pasan |
 | **2. Android real** ✅ | `:engines:gms-code-scanner`, `:engines:mlkit-camerax`, preview CameraX + overlay, permisos, convention plugins, historial con Room, CI en GitHub Actions | Escaneo real en Android con dos motores intercambiables en caliente |
 | **3. iOS** | `:engines:vision-ios`, preview con `UIKitView`, shell Xcode, `:engines:zxing-cpp` | Escaneo real en iOS; ZXing-cpp comparable entre Android e iOS |
-| **4. Web y OCR** | `:engines:browser-detector`, `:engines:mlkit-ocr`, escaneo desde imagen (RF-07) | Las cuatro plataformas escanean; OCR disponible como alternativa |
-| **5. Producto** | ✅ `ComparingScannerEngine`, `EngineScoreboard` y pantalla de comparación (adelantados) · pendiente: exportación de historial, Play Feature Delivery, accesibilidad | G5 medible en la app |
+| **4. Web y OCR** | ✅ `:engines:browser-detector` y `:engines:mlkit-ocr` (Android) · pendiente: preview de Web (D14), OCR en iOS con Vision, escaneo desde imagen (RF-07) | Las cuatro plataformas escanean; OCR disponible como alternativa |
+| **5. Producto** | ✅ `ComparingScannerEngine`, `EngineScoreboard`, pantalla de comparación y acciones sobre el resultado (RF-13), adelantados · pendiente: exportación de historial, Play Feature Delivery, accesibilidad | G5 medible en la app |
 
 ### 14.1 Qué se elimina en la Fase 1
 
@@ -752,13 +753,14 @@ que preservar (§2.1). El historial de git conserva el estado previo.
 |---|---|---|---|
 | R1 | Divergencia de simbologías soportadas entre motores | Medio | `supportedFormats` declarativo + la UI advierte si el filtro pedido excede lo que el motor cubre |
 | R2 | El GMS Code Scanner no permite overlay ni linterna | Bajo | `providesOwnUi = true`; la UI oculta sus propios controles para ese motor |
-| R3 | `BarcodeDetector` no disponible en Safari/Firefox | Medio | Fallback automático a ZXing-cpp compilado a Wasm en la Fase 4 |
+| R3 | `BarcodeDetector` no disponible en Safari/Firefox | Medio | El motor lo comprueba en `availability()` y reporta `Unsupported` con la razón; la cadena cae a entrada manual. El fallback a ZXing-cpp en Wasm que se planteaba aquí no es viable: no existe publicación wasmJs (ADR-0008) |
 | R4 | Kotlin/Native + CMP para iOS: tiempos de build largos | Medio | Cachés de Gradle en CI, build de iOS solo en `main`, no en cada PR |
 | R5 | ML Kit *unbundled* requiere descarga en primer uso | Bajo | Estado `RequiresDownload` modelado en el SPI y comunicado en la UI |
 | R6 | Web target sin acceso a cámara en contexto no-HTTPS | Bajo | Documentado; el motor reporta `Unsupported` con la razón |
 | R7 | Sobre-modularización ralentiza el build | Medio | Convention plugins en `build-logic` (Fase 2) y medición con `--scan` |
 | R8 | Deriva entre el catálogo documentado y el código | Bajo | `docs/ENGINES.md` es la fuente; un test verifica que el registro y la tabla coinciden en IDs |
-| R9 | **No existe un binding KMP publicado de zxing-cpp.** Solo hay `io.github.zxing-cpp:android` (Android) y `com.google.zxing:core` (Java: Android y Desktop, no iOS ni Wasm). El motor que el SDD plantea como *baseline de comparación justa* no tiene artefacto | **Alto** | Decidir antes de arrancar la Fase 3: (a) cinterop propio sobre zxing-cpp, que da las tres plataformas pero cuesta trabajo de build nativo; (b) `com.google.zxing:core` en Android y Desktop y renunciar al baseline en iOS; (c) sustituir el baseline por otro motor portable. Ver R11 del ROADMAP |
+| ~~R9~~ | ~~No existe un binding KMP publicado de zxing-cpp~~ | — | **Cerrado por ADR-0008.** El inventario era incompleto: `io.github.zxing-cpp:kotlin-native:3.1.1` publica los tres targets de iOS con el cinterop hecho, y `:android:3.1.1` cubre Android. Se consumen los artefactos, sin cinterop propio. Deriva en R10 y en la deuda D13 |
+| R10 | Los klibs de `kotlin-native` están compilados con Kotlin 2.2.0 y el proyecto está en 2.1.21; un compilador no lee klibs de uno más nuevo | Medio | Subir a Kotlin ≥ 2.2 es prerrequisito de la Fase 3, con CI disponible y arrastrando KSP y CMP. El pin actual ya estaba viejo: el ecosistema va por 2.3.x |
 
 ---
 
@@ -824,3 +826,4 @@ arranca, sin esperar la promesa. Esperarla exigiría puentear promesas de JS a c
 | [ADR-0005](adr/ADR-0005-navegacion-propia.md) | Navegación propia mínima en la Fase 1 |
 | [ADR-0006](adr/ADR-0006-reestructuracion-del-build.md) | Reestructurar el build de una vez en lugar de migrar incrementalmente |
 | [ADR-0007](adr/ADR-0007-preview-como-capacidad-del-motor.md) | El preview de cámara es una capacidad del motor, no de la feature |
+| [ADR-0008](adr/ADR-0008-baseline-zxing-cpp.md) | El baseline de comparación es zxing-cpp desde artefactos publicados, en Android e iOS |

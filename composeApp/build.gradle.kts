@@ -74,6 +74,7 @@ kotlin {
             // debe cargar ML Kit ni Play Services (RNF-06).
             implementation(project(":engines:gms-code-scanner"))
             implementation(project(":engines:mlkit-camerax"))
+            implementation(project(":engines:mlkit-ocr"))
 
             // Room KMP no soporta wasmJs, así que la base de datos se enlaza en los tres targets
             // que sí la admiten; Web usa el historial en memoria de :core:data.
@@ -94,6 +95,11 @@ kotlin {
             implementation(project(":core:database"))
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutines.swing)
+        }
+
+        wasmJsMain.dependencies {
+            // El decodificador lo pone el navegador, así que este módulo no añade peso al bundle.
+            implementation(project(":engines:browser-detector"))
         }
     }
 }

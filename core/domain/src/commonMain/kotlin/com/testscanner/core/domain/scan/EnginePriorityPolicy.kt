@@ -28,13 +28,15 @@ object EnginePriorityPolicy {
             ScannerEngineId.MlKitOcr,
             ScannerEngineId.ManualInput,
         ),
+        // Escritorio se queda sin decodificador hasta que llegue RF-07: zxing-cpp no publica
+        // artefacto JVM (ADR-0008), así que listarlo aquí sería una entrada muerta.
         ScannerPlatform.Desktop to listOf(
-            ScannerEngineId.ZXingCpp,
             ScannerEngineId.ManualInput,
         ),
+        // Tampoco hay artefacto wasmJs de zxing-cpp; en Web el respaldo del BarcodeDetector es la
+        // entrada manual, no otro decodificador.
         ScannerPlatform.Web to listOf(
             ScannerEngineId.BrowserDetector,
-            ScannerEngineId.ZXingCpp,
             ScannerEngineId.ManualInput,
         ),
     )

@@ -49,8 +49,8 @@ include(":engines:gms-code-scanner")
 include(":engines:mlkit-camerax")
 include(":engines:vision-ios")
 // Fase 3: include(":engines:zxing-cpp")
-// Fase 4: include(":engines:browser-detector")
-// Fase 4: include(":engines:mlkit-ocr")
+include(":engines:browser-detector")
+include(":engines:mlkit-ocr")
 
 // Features
 include(":feature:scanner")

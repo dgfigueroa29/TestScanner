@@ -12,9 +12,9 @@ esta tabla — hay un test que verifica que los IDs y las fases no divergen.
 | `GMS_CODE_SCANNER` | Google Code Scanner | Android | Cámara (UI propia) | 2 ✅ | `com.google.android.gms:play-services-code-scanner` |
 | `MLKIT_CAMERAX` | ML Kit + CameraX | Android | Cámara | 2 ✅ | `com.google.mlkit:barcode-scanning` + `androidx.camera:*` |
 | `VISION_IOS` | Vision / AVFoundation | iOS | Cámara | 3 ✅ | Framework del sistema |
-| `ZXING_CPP` | ZXing-cpp | Android, iOS, Desktop | Cámara + imagen | 3 | Binding KMP de zxing-cpp |
-| `BROWSER_DETECTOR` | BarcodeDetector API | Web | Cámara + imagen | 4 | API del navegador |
-| `MLKIT_OCR` | ML Kit Text Recognition | Android, iOS | Cámara + imagen | 4 | `com.google.mlkit:text-recognition` |
+| `ZXING_CPP` | ZXing-cpp | Android, iOS | Cámara + imagen | 3 | `io.github.zxing-cpp:android` (Android) y `:kotlin-native` (iOS) — [ADR-0008](adr/ADR-0008-baseline-zxing-cpp.md) |
+| `BROWSER_DETECTOR` | BarcodeDetector API | Web | Cámara + imagen | 4 ✅ | API del navegador |
+| `MLKIT_OCR` | ML Kit Text Recognition | Android, iOS | Cámara + imagen | 4 ✅ Android | `com.google.mlkit:text-recognition` |
 | `MANUAL_INPUT` | Entrada manual | Todas | Teclado | **1** | Ninguna |
 
 ---
@@ -49,6 +49,16 @@ es lo que son. Declararlo como soportado sería prometer una distinción que el 
 ² El motor de iOS usa `AVCaptureMetadataOutput`, que solo trabaja sobre vídeo en vivo. La imagen
 estática llegará con RF-07 usando `VNDetectBarcodesRequest` del framework Vision.
 
+³ La `BarcodeDetector` API no controla la cámara: solo recibe imágenes. La linterna se podría pedir
+por constraints de `MediaStreamTrack`, pero solo la soportan algunos navegadores de Android; hasta
+que se implemente, el motor no declara la capacidad y la UI no muestra los controles.
+
+⁴ Compose para Web pinta sobre un `<canvas>` y no tiene equivalente de `AndroidView` / `UIKitView`,
+así que la superficie de vídeo exige manipular el DOM fuera del árbol de Compose. Es la deuda D14.
+
+⁵ `com.google.mlkit:text-recognition` es la variante *bundled*: el modelo latino viaja en el APK, a
+diferencia del detector de códigos, que sí se descarga en el primer uso.
+
 Las marcas ⚠️ del OCR reflejan que el motor no decodifica la simbología: **lee el número impreso
 bajo el código** y el dominio infiere el formato validando su checksum. Solo funciona con
 simbologías cuyo valor va impreso en texto (típicamente 1D de producto).
@@ -64,14 +74,14 @@ simbologías cuyo valor va impreso en texto (típicamente 1D de producto).
 | Múltiples códigos a la vez | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | Escaneo continuo | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | UI propia del motor | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Linterna | ❌ | ✅ | ✅ | ✅ | ⚠️ | ✅ | ❌ |
-| Zoom | ❌ | ✅ | ✅ | ✅ | ⚠️ | ✅ | ❌ |
+| Linterna | ❌ | ✅ | ✅ | ✅ | ❌³ | ✅ | ❌ |
+| Zoom | ❌ | ✅ | ✅ | ✅ | ❌³ | ✅ | ❌ |
 | Puntos de esquina (normalizados) | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Superficie de preview propia | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Superficie de preview propia | ❌ | ✅ | ✅ | ✅ | ⏳⁴ | ✅ | ❌ |
 | Confianza reportada | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | Requiere permiso de cámara | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | Requiere red | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Descarga en tiempo de ejecución | ✅ | ⚠️ | ❌ | ❌ | ❌ | ⚠️ | ❌ |
+| Descarga en tiempo de ejecución | ✅ | ⚠️ | ❌ | ❌ | ❌ | ❌⁵ | ❌ |
 
 `GMS_CODE_SCANNER` no requiere permiso de cámara porque el escaneo ocurre en un proceso de Google
 Play Services, fuera de la app. Es su ventaja distintiva y la razón de que encabece la prioridad
@@ -89,8 +99,8 @@ resultante como preferido + fallbacks.
 |---|---|
 | Android | `GMS_CODE_SCANNER` → `MLKIT_CAMERAX` → `ZXING_CPP` → `MLKIT_OCR` → `MANUAL_INPUT` |
 | iOS | `VISION_IOS` → `ZXING_CPP` → `MLKIT_OCR` → `MANUAL_INPUT` |
-| Desktop | `ZXING_CPP` → `MANUAL_INPUT` |
-| Web | `BROWSER_DETECTOR` → `ZXING_CPP` → `MANUAL_INPUT` |
+| Desktop | `MANUAL_INPUT` |
+| Web | `BROWSER_DETECTOR` → `MANUAL_INPUT` |
 
 Excepciones de la política:
 
@@ -98,6 +108,8 @@ Excepciones de la política:
   descartado por capacidades y `MLKIT_CAMERAX` encabeza la cadena en Android.
 - Si el `ScanRequest` pide **imagen estática**, solo entran motores con `ScanSource.StaticImage`.
 - `MANUAL_INPUT` cierra siempre la cadena: garantiza que nunca hay un estado "no se puede escanear".
+- **Desktop no tiene decodificador** y Web no tiene respaldo tras el navegador: zxing-cpp no publica
+  artefacto JVM ni wasmJs (ADR-0008), así que listarlo en esas cadenas sería una entrada muerta.
 
 ---
 

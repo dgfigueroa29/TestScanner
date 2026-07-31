@@ -11,20 +11,29 @@ import com.testscanner.core.permissions.AlwaysGrantedPermissionController
 import com.testscanner.core.permissions.PermissionController
 import com.testscanner.core.platform.PlatformActions
 import com.testscanner.core.scanner.BarcodeScannerEngine
+import com.testscanner.engines.browser.BrowserDetectorEngine
 import com.testscanner.engines.manual.ManualInputScannerEngine
 import com.testscanner.platform.WebPlatformActions
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
-/** Motores enlazados en el bundle web. Fase 4 añadirá aquí el BarcodeDetector del navegador. */
+/** Motores enlazados en el bundle web. */
 actual fun platformModule(): Module = module {
     single { ScannerPlatform.Web }
 
+    single { BrowserDetectorEngine() }
+    single { ManualInputScannerEngine() }
+
     single<List<BarcodeScannerEngine>> {
-        listOf(ManualInputScannerEngine())
+        listOf(
+            get<BrowserDetectorEngine>(),
+            get<ManualInputScannerEngine>(),
+        )
     }
 
-    // En web el permiso es implícito en getUserMedia(); se modelará al llegar el motor de cámara.
+    // En el navegador el permiso lo pide `getUserMedia` al abrir la sesión y no hay forma fiable de
+    // consultarlo antes, así que aquí se concede siempre y la denegación aparece donde el navegador
+    // la produce de verdad: como un fallo de sesión del motor.
     single<PermissionController> { AlwaysGrantedPermissionController() }
 
     // Room KMP no tiene target wasmJs. El historial de Web es de sesión, y eso queda visible aquí

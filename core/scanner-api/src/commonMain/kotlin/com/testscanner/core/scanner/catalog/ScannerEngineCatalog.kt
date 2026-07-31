@@ -95,11 +95,13 @@ object ScannerEngineCatalog {
         id = ScannerEngineId.ZXingCpp,
         displayName = "ZXing-cpp",
         vendor = "Comunidad ZXing",
-        description = "Decodificador nativo portado a Kotlin Multiplatform. Al ser el mismo " +
-            "algoritmo en todas las plataformas, es la referencia para comparar el resto.",
-        platforms = setOf(ScannerPlatform.Android, ScannerPlatform.Ios, ScannerPlatform.Desktop),
+        description = "El mismo decodificador nativo en Android e iOS, así que una diferencia de " +
+            "lectura entre plataformas se atribuye al dispositivo y no al motor: es la referencia " +
+            "para comparar el resto.",
+        // Desktop y Web quedan fuera: zxing-cpp no publica artefacto JVM ni wasmJs (ADR-0008).
+        platforms = setOf(ScannerPlatform.Android, ScannerPlatform.Ios),
         plannedPhase = 3,
-        requiresDependency = "binding KMP de zxing-cpp",
+        requiresDependency = "io.github.zxing-cpp:android / :kotlin-native",
         strength = "Cobertura de simbologías más amplia y 100 % offline",
         limitation = "Menos tolerante que ML Kit a códigos dañados o mal iluminados",
         capabilities = ScannerCapabilities(
@@ -153,7 +155,9 @@ object ScannerEngineCatalog {
             supportsZoom = true,
             reportsCornerPoints = true,
             reportsConfidence = true,
-            requiresRuntimeDownload = true,
+            // `com.google.mlkit:text-recognition` es la variante *bundled*: el modelo latino viaja
+            // en el APK. No hay descarga en el primer uso, a diferencia del detector de códigos.
+            requiresRuntimeDownload = false,
         ),
     )
 

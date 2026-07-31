@@ -18,6 +18,7 @@ import com.testscanner.core.scanner.BarcodeScannerEngine
 import com.testscanner.engines.gms.GmsCodeScannerEngine
 import com.testscanner.engines.manual.ManualInputScannerEngine
 import com.testscanner.engines.mlkit.MlKitCameraXEngine
+import com.testscanner.engines.ocr.MlKitOcrEngine
 import com.testscanner.platform.AndroidPlatformActions
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -40,12 +41,14 @@ actual fun platformModule(): Module = module {
 
     single { GmsCodeScannerEngine(androidContext()) }
     single { MlKitCameraXEngine(context = androidContext(), analysisExecutor = get()) }
+    single { MlKitOcrEngine(context = androidContext(), analysisExecutor = get()) }
     single { ManualInputScannerEngine() }
 
     single<List<BarcodeScannerEngine>> {
         listOf(
             get<GmsCodeScannerEngine>(),
             get<MlKitCameraXEngine>(),
+            get<MlKitOcrEngine>(),
             get<ManualInputScannerEngine>(),
         )
     }
