@@ -76,6 +76,7 @@ kotlin {
             implementation(project(":engines:gms-code-scanner"))
             implementation(project(":engines:mlkit-camerax"))
             implementation(project(":engines:mlkit-ocr"))
+            implementation(project(":engines:zxing-cpp"))
 
             // Room KMP no soporta wasmJs, así que la base de datos se enlaza en los tres targets
             // que sí la admiten; Web usa el historial en memoria de :core:data.
@@ -90,6 +91,7 @@ kotlin {
             implementation(project(":core:database"))
             // Motor de iOS: no debe enlazarse en ningún otro binario (RNF-06).
             implementation(project(":engines:vision-ios"))
+            implementation(project(":engines:zxing-cpp"))
         }
 
         desktopMain.dependencies {

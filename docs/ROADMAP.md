@@ -72,8 +72,12 @@ verificable desactivando Play Services.
       proyecto estaba en 2.1.21. Se subió a 2.3.20 exacto porque es con la que están compilados CMP
       1.11.1, Koin 4.2.2 y KSP 2.3.10 — emparejar exacto reduce la superficie de fallo. Gradle a
       8.14.5. Room y AGP se quedan: viven en el maven de Google, inalcanzable desde aquí
-- [ ] `:engines:zxing-cpp` — `io.github.zxing-cpp:android` en Android y `:kotlin-native` en iOS.
-      Dos `actual`: las dos superficies no comparten forma, aunque sí el núcleo C++
+- [x] `:engines:zxing-cpp` — `io.github.zxing-cpp:android` en Android y `:kotlin-native` en iOS.
+      Dos adaptadores y ningún `commonMain`: las dos publicaciones no comparten API, solo el núcleo
+      C++ — que es lo que hace justa la comparación. En iOS usa `AVCaptureVideoDataOutput` y no la
+      salida de metadatos, porque esa ya trae su propio decodificador dentro y el baseline dejaría
+      de serlo. Decodifica también imágenes estáticas, lo que da a iOS su primer decodificador de
+      archivos
 - [ ] Revisión de ADR-0005: el grafo ya tiene 2 destinos; migrar a `navigation-compose` si llega a 6 o aparecen deep links
 
 - [ ] CI: `linkDebugFrameworkIosSimulatorArm64` en runner macOS
@@ -89,8 +93,9 @@ Android e iOS sobre el mismo set de imágenes de referencia.
       contexto seguro, más decodificación de imagen estática vía `createImageBitmap`
 - [x] `:engines:mlkit-ocr` — Text Recognition en Android + `OcrCodeInterpreter`: lee el número
       impreso bajo el código y solo lo emite si el dígito de control cuadra
-- [ ] Preview de Web (deuda D14): Compose para Web pinta sobre un `<canvas>` y no tiene equivalente
-      de `AndroidView`, así que la superficie de vídeo exige salirse del árbol de Compose
+- [x] Preview de Web (D14): el `<video>` vive en el documento, sobre el canvas, y el composable solo
+      le dice qué rectángulo ocupar. Tapa el overlay, y eso pasa a ser una capacidad declarada
+      (`occludesOverlay`) en vez de un dibujo invisible
 - [ ] OCR en iOS: ML Kit se distribuye por CocoaPods, que este proyecto no usa. La alternativa sin
       dependencias es `VNRecognizeTextRequest` del framework Vision, reutilizando `OcrCodeInterpreter`
 - [x] Escaneo desde imagen/galería (RF-07) con selector en las cuatro plataformas: *photo picker*
@@ -148,9 +153,9 @@ Registrada de forma explícita para que no se olvide:
 | ~~D8~~ | ~~El zoom se declara como capacidad pero no hay control en la UI~~ | **Saldada**: slider derivado de `canControlZoom` |
 | ~~D10~~ | ~~RF-07 sin UI ni selector de archivos~~ | **Saldada**: `ImagePicker` en las cuatro plataformas y `DecodeImageUseCase` recorriendo la cadena de motores. Un motor bloqueado por el permiso de cámara sigue sirviendo para leer un archivo |
 | ~~D12~~ | ~~RF-13 (copiar, compartir, abrir enlace) sin implementar~~ | **Saldada**: `PlatformActions` en `:core:platform` con implementación en las cuatro plataformas. En escritorio no hay hoja de compartir y el botón no se ofrece (`canShare`) |
-| D11 | La comparación necesita dos motores de cámara: hasta ZXing-cpp (Fase 3) solo es utilizable en Android | Fase 3 |
+| ~~D11~~ | ~~La comparación necesita dos motores de cámara y solo Android los tenía~~ | **Saldada**: con ZXing-cpp, iOS tiene dos (Vision y ZXing-cpp) y Android cuatro |
 | D9 | El historial de Web es de sesión: Room KMP no soporta wasmJs. Requiere un almacén propio sobre IndexedDB | Fase 4 |
 | D7 | `:androidApp` sin ProGuard/R8 configurado para release | Fase 2 |
-| D14 | El motor de Web escanea pero no muestra visor: sin preview el usuario no puede apuntar. Compose para Web no tiene equivalente de `AndroidView` / `UIKitView` | Fase 4 |
+| ~~D14~~ | ~~El motor de Web escanea pero no muestra visor~~ | **Saldada**: el `<video>` se coloca sobre el canvas desde `onGloballyPositioned`. A cambio tapa el overlay, declarado con `occludesOverlay` |
 | D15 | El texto que se copia de un WiFi o una vCard lo compone `ResultActionsFactory` en el dominio (`Red: … · Clave: …`). Es contenido y no *chrome*, pero sigue siendo español dentro del dominio; sacarlo exige devolver una estructura y formatearla arriba | Fase 5 |
 | D13 | Desktop y Web se quedan sin el baseline de comparación: zxing-cpp no publica artefacto JVM ni wasmJs (ADR-0008). En Desktop hoy no hay ningún decodificador; el candidato es `com.google.zxing:core`, y entraría al catálogo **como motor propio**, no con el nombre de zxing-cpp. El selector de imágenes de escritorio ya existe: lo que falta es el decodificador | Fase 5 |

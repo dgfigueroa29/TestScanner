@@ -48,7 +48,7 @@ include(":engines:manual")
 include(":engines:gms-code-scanner")
 include(":engines:mlkit-camerax")
 include(":engines:vision-ios")
-// Fase 3: include(":engines:zxing-cpp")
+include(":engines:zxing-cpp")
 include(":engines:browser-detector")
 include(":engines:mlkit-ocr")
 

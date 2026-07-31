@@ -12,7 +12,7 @@ esta tabla — hay un test que verifica que los IDs y las fases no divergen.
 | `GMS_CODE_SCANNER` | Google Code Scanner | Android | Cámara (UI propia) | 2 ✅ | `com.google.android.gms:play-services-code-scanner` |
 | `MLKIT_CAMERAX` | ML Kit + CameraX | Android | Cámara | 2 ✅ | `com.google.mlkit:barcode-scanning` + `androidx.camera:*` |
 | `VISION_IOS` | Vision / AVFoundation | iOS | Cámara | 3 ✅ | Framework del sistema |
-| `ZXING_CPP` | ZXing-cpp | Android, iOS | Cámara + imagen | 3 | `io.github.zxing-cpp:android` (Android) y `:kotlin-native` (iOS) — [ADR-0008](adr/ADR-0008-baseline-zxing-cpp.md) |
+| `ZXING_CPP` | ZXing-cpp | Android, iOS | Cámara + imagen | 3 ✅ | `io.github.zxing-cpp:android` (Android) y `:kotlin-native` (iOS) — [ADR-0008](adr/ADR-0008-baseline-zxing-cpp.md) |
 | `BROWSER_DETECTOR` | BarcodeDetector API | Web | Cámara + imagen | 4 ✅ | API del navegador |
 | `MLKIT_OCR` | ML Kit Text Recognition | Android, iOS | Cámara + imagen | 4 ✅ Android | `com.google.mlkit:text-recognition` |
 | `MANUAL_INPUT` | Entrada manual | Todas | Teclado | **1** | Ninguna |
@@ -53,8 +53,11 @@ estática llegará con RF-07 usando `VNDetectBarcodesRequest` del framework Visi
 por constraints de `MediaStreamTrack`, pero solo la soportan algunos navegadores de Android; hasta
 que se implemente, el motor no declara la capacidad y la UI no muestra los controles.
 
-⁴ Compose para Web pinta sobre un `<canvas>` y no tiene equivalente de `AndroidView` / `UIKitView`,
-así que la superficie de vídeo exige manipular el DOM fuera del árbol de Compose. Es la deuda D14.
+⁴ En Web el visor no está *dentro* del árbol de Compose: no hay equivalente de `AndroidView` ni de
+`UIKitView`, así que el `<video>` vive en el documento y el composable solo le dice qué rectángulo
+ocupar. Va **encima** del canvas —el tema pinta su fondo en toda la superficie, así que detrás no se
+vería—, y por eso tapa el overlay de detección. El motor lo declara con `occludesOverlay` y la
+pantalla deja de pintarlo, en lugar de ejecutar un dibujo que nadie ve.
 
 ⁵ `com.google.mlkit:text-recognition` es la variante *bundled*: el modelo latino viaja en el APK, a
 diferencia del detector de códigos, que sí se descarga en el primer uso.
@@ -77,7 +80,7 @@ simbologías cuyo valor va impreso en texto (típicamente 1D de producto).
 | Linterna | ❌ | ✅ | ✅ | ✅ | ❌³ | ✅ | ❌ |
 | Zoom | ❌ | ✅ | ✅ | ✅ | ❌³ | ✅ | ❌ |
 | Puntos de esquina (normalizados) | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Superficie de preview propia | ❌ | ✅ | ✅ | ✅ | ⏳⁴ | ✅ | ❌ |
+| Superficie de preview propia | ❌ | ✅ | ✅ | ✅ | ✅⁴ | ✅ | ❌ |
 | Confianza reportada | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | Requiere permiso de cámara | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | Requiere red | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |

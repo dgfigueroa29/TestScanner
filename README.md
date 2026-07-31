@@ -23,10 +23,10 @@ y Web con un único código base.
 | Preferencias persistentes | ✅ las cuatro plataformas |
 | CI en GitHub Actions | ✅ detekt, tests, Android, Desktop, Web y iOS |
 | Vision / AVFoundation (iOS) | ✅ implementado, sin compilar aún |
-| BarcodeDetector del navegador (Web) | ✅ implementado, sin preview todavía (D14) |
+| BarcodeDetector del navegador (Web) | ✅ implementado, con visor sobre el canvas |
 | OCR con ML Kit Text Recognition (Android) | ✅ implementado; en iOS irá con Vision, no con ML Kit |
 | Escaneo desde imagen (RF-07) | ✅ selector en las cuatro plataformas, sin pedir permisos |
-| ZXing-cpp (Android + iOS) | ⏳ Fase 3 — baseline decidido en ADR-0008; el toolchain ya está en Kotlin 2.3.20 |
+| ZXing-cpp (Android + iOS) | ✅ implementado — el mismo decodificador C++ en ambas, que es lo que hace comparables las lecturas |
 
 El catálogo muestra las siete alternativas con su estado real; los motores aún no implementados se
 declaran como tales, con la fase en la que llegan. Ver `docs/ROADMAP.md`.

@@ -215,7 +215,11 @@ private fun CameraViewfinder(previewEngine: CameraPreviewEngine, state: ScannerS
             .background(Color.Black),
     ) {
         previewEngine.CameraPreview(Modifier.fillMaxSize())
-        ScanOverlay(detections = state.detections)
+        // En el navegador el vídeo es un elemento del DOM sobre el canvas: el overlay se dibujaría
+        // debajo y no se vería. Mejor no pintarlo que dejar código que no produce nada.
+        if (!previewEngine.occludesOverlay) {
+            ScanOverlay(detections = state.detections)
+        }
     }
 }
 

@@ -1,5 +1,7 @@
 package com.testscanner.engines.browser
 
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import com.testscanner.core.model.Barcode
 import com.testscanner.core.model.Detection
 import com.testscanner.core.model.Point
@@ -15,6 +17,7 @@ import com.testscanner.core.scanner.ScannerEngineDescriptor
 import com.testscanner.core.scanner.SystemTimeProvider
 import com.testscanner.core.scanner.TimeProvider
 import com.testscanner.core.scanner.catalog.ScannerEngineCatalog
+import com.testscanner.core.scanner.ui.CameraPreviewEngine
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlinx.coroutines.CancellationException
@@ -33,7 +36,15 @@ import kotlinx.coroutines.flow.channelFlow
  */
 class BrowserDetectorEngine(
     private val time: TimeProvider = SystemTimeProvider,
-) : BarcodeScannerEngine, ImageDecodingEngine {
+) : BarcodeScannerEngine, ImageDecodingEngine, CameraPreviewEngine {
+
+    internal val sessionHolder = BrowserSessionHolder()
+
+    /**
+     * El `<video>` es un elemento del DOM sobre el canvas, así que tapa cualquier cosa que Compose
+     * pinte encima. Ver [RenderBrowserPreview].
+     */
+    override val occludesOverlay: Boolean = true
 
     override val id: ScannerEngineId = ScannerEngineId.BrowserDetector
 
@@ -71,6 +82,8 @@ class BrowserDetectorEngine(
             return@channelFlow
         }
 
+        sessionHolder.attach(session)
+
         try {
             while (true) {
                 val now = time.nowMillis()
@@ -95,8 +108,14 @@ class BrowserDetectorEngine(
             }
         } finally {
             // Sin esto el indicador de cámara del navegador se queda encendido al salir.
+            sessionHolder.detach()
             stopCameraSession(session)
         }
+    }
+
+    @Composable
+    override fun CameraPreview(modifier: Modifier) {
+        RenderBrowserPreview(sessionHolder, modifier)
     }
 
     @OptIn(ExperimentalEncodingApi::class)

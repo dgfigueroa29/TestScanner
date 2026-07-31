@@ -33,4 +33,17 @@ interface CameraPreviewEngine {
      */
     @Composable
     fun CameraPreview(modifier: Modifier)
+
+    /**
+     * Si la superficie tapa cualquier cosa que Compose pinte encima.
+     *
+     * Es `false` en Android y iOS: allí el vídeo vive **dentro** del árbol de Compose (`AndroidView`,
+     * `UIKitView`) y el overlay se dibuja sobre él sin problema.
+     *
+     * En el navegador no hay equivalente: Compose pinta sobre un `<canvas>` y el `<video>` es un
+     * elemento del DOM que se coloca **encima**. El overlay seguiría dibujándose —en el canvas, bajo
+     * el vídeo— y simplemente no se vería. Declararlo permite que la pantalla no lo pinte, en lugar
+     * de dejar código que se ejecuta y no produce nada visible.
+     */
+    val occludesOverlay: Boolean get() = false
 }

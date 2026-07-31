@@ -51,6 +51,8 @@ playServicesCodeScanner = "16.1.0"
 mlkitBarcode = "17.3.0"
 mlkitTextRecognition = "16.0.1"
 camerax = "1.4.2"
+# Baseline de comparación: dos artefactos distintos del mismo proyecto (ADR-0008).
+zxingcpp = "3.1.1"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -98,6 +100,9 @@ camerax-core = { module = "androidx.camera:camera-core", version.ref = "camerax"
 camerax-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "camerax" }
 camerax-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "camerax" }
 camerax-view = { module = "androidx.camera:camera-view", version.ref = "camerax" }
+
+zxingcpp-android = { module = "io.github.zxing-cpp:android", version.ref = "zxingcpp" }
+zxingcpp-native = { module = "io.github.zxing-cpp:kotlin-native", version.ref = "zxingcpp" }
 
 [plugins]
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }

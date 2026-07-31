@@ -30,9 +30,8 @@ internal fun isSecureContext(): Boolean =
 /**
  * Abre la cámara trasera y deja un `<video>` reproduciendo fuera del documento.
  *
- * El elemento no se inserta en el DOM: sirve de fuente de frames para el detector, no de preview.
- * El preview de Web se resolverá aparte (deuda D14), y hacerlo aquí ataría el motor a una posición
- * concreta en la página.
+ * El elemento no se inserta en el DOM aquí: hacerlo ataría el motor a una posición concreta de la
+ * página. Lo coloca [attachSessionVideo] cuando el composable del visor sabe qué rectángulo ocupa.
  */
 internal fun startCameraSession(formatsCsv: String): Promise<JsAny> = js(
     """
@@ -70,9 +69,51 @@ internal fun stopCameraSession(session: JsAny) {
             s.video.pause();
             s.video.srcObject = null;
             s.stream.getTracks().forEach(function (t) { t.stop(); });
+            if (s.video.isConnected) s.video.remove();
         })(session)
         """,
     )
+}
+
+/**
+ * Coloca el `<video>` sobre el canvas de Compose, en el rectángulo que ocupa el visor.
+ *
+ * Va **encima** y no debajo porque el canvas no es transparente: el tema pinta su color de fondo en
+ * toda la superficie, así que un vídeo detrás no se vería. La consecuencia es que el overlay de
+ * detección queda tapado, y por eso el motor declara `occludesOverlay`.
+ *
+ * Las coordenadas son de viewport (`position: fixed`), que es lo que corresponde a la posición del
+ * composable en la ventana. Asume que el canvas ocupa la página desde el origen — cierto en esta
+ * app, donde `App()` es la raíz.
+ */
+internal fun attachSessionVideo(
+    session: JsAny,
+    left: Double,
+    top: Double,
+    width: Double,
+    height: Double,
+) {
+    js(
+        """
+        (function (s, l, t, w, h) {
+            var v = s.video;
+            v.style.position = 'fixed';
+            v.style.left = l + 'px';
+            v.style.top = t + 'px';
+            v.style.width = w + 'px';
+            v.style.height = h + 'px';
+            v.style.objectFit = 'cover';
+            v.style.zIndex = '1';
+            v.style.pointerEvents = 'none';
+            if (!v.isConnected) document.body.appendChild(v);
+        })(session, left, top, width, height)
+        """,
+    )
+}
+
+/** Saca el vídeo del documento sin apagar la cámara: la sesión puede seguir decodificando. */
+internal fun detachSessionVideo(session: JsAny) {
+    js("(function (s) { if (s.video.isConnected) s.video.remove(); })(session)")
 }
 
 /**
