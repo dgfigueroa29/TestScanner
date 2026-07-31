@@ -61,6 +61,7 @@ import com.testscanner.feature.history.resources.share_separator
 import com.testscanner.feature.history.resources.share_wifi
 import com.testscanner.feature.history.resources.share_wifi_with_password
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -234,20 +235,24 @@ private fun ResultAction.labelResource(): StringResource = when (this) {
     }
 }
 
-/** El ViewModel dice qué pasó; aquí se le pone nombre. */
-@Composable
-private fun resolve(message: HistoryMessage): String = when (message) {
-    HistoryMessage.Copied -> stringResource(Res.string.message_copied)
-    HistoryMessage.CopyFailed -> stringResource(Res.string.message_copy_failed)
-    HistoryMessage.ShareFailed -> stringResource(Res.string.message_share_failed)
-    HistoryMessage.OpenFailed -> stringResource(Res.string.message_open_failed)
-    HistoryMessage.NothingToExport -> stringResource(Res.string.message_nothing_to_export)
+/**
+ * El ViewModel dice qué pasó; aquí se le pone nombre.
+ *
+ * Es `suspend` y usa `getString` en lugar de ser `@Composable` con `stringResource`: se la llama
+ * desde dentro de un `LaunchedEffect`, que es una corrutina y **no** un contexto composable.
+ */
+private suspend fun resolve(message: HistoryMessage): String = when (message) {
+    HistoryMessage.Copied -> getString(Res.string.message_copied)
+    HistoryMessage.CopyFailed -> getString(Res.string.message_copy_failed)
+    HistoryMessage.ShareFailed -> getString(Res.string.message_share_failed)
+    HistoryMessage.OpenFailed -> getString(Res.string.message_open_failed)
+    HistoryMessage.NothingToExport -> getString(Res.string.message_nothing_to_export)
 
     // iOS y el navegador no revelan dónde acabó el archivo, así que hay dos mensajes: uno que dice
     // el destino y otro que solo confirma. Fingir una ruta sería peor que no darla.
     is HistoryMessage.Exported -> message.location
-        ?.let { stringResource(Res.string.message_exported_to, it) }
-        ?: stringResource(Res.string.message_exported)
+        ?.let { getString(Res.string.message_exported_to, it) }
+        ?: getString(Res.string.message_exported)
 
     is HistoryMessage.ExportFailed -> message.reason
 }
