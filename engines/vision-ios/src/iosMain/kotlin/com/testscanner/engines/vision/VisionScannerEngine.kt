@@ -89,7 +89,7 @@ class VisionScannerEngine(
 
         val camera = AVCaptureDevice.defaultDeviceWithMediaType(AVMediaTypeVideo)
         if (camera == null) {
-            trySend(ScanEvent.Failed(ScanError.CameraUnavailable("No hay cámara disponible")))
+            trySend(ScanEvent.Failed(ScanError.CameraUnavailable("No hay cámara disponible"), id))
             trySend(ScanEvent.SessionEnded(id))
             close()
             return@callbackFlow
@@ -100,7 +100,7 @@ class VisionScannerEngine(
         val input = AVCaptureDeviceInput.deviceInputWithDevice(camera, null)
         if (input == null || !session.canAddInput(input)) {
             trySend(
-                ScanEvent.Failed(ScanError.CameraUnavailable("No se pudo abrir la cámara trasera")),
+                ScanEvent.Failed(ScanError.CameraUnavailable("No se pudo abrir la cámara trasera"), id),
             )
             trySend(ScanEvent.SessionEnded(id))
             close()
@@ -111,7 +111,7 @@ class VisionScannerEngine(
         val output = AVCaptureMetadataOutput()
         if (!session.canAddOutput(output)) {
             trySend(
-                ScanEvent.Failed(ScanError.CameraUnavailable("No se pudo instalar el detector")),
+                ScanEvent.Failed(ScanError.CameraUnavailable("No se pudo instalar el detector"), id),
             )
             trySend(ScanEvent.SessionEnded(id))
             close()
@@ -123,7 +123,7 @@ class VisionScannerEngine(
             val now = time.nowMillis()
             val detections = codes.mapNotNull { it.toDetection(now, now - startedAtMillis) }
             if (detections.isEmpty()) {
-                trySend(ScanEvent.FrameAnalyzed(now))
+                trySend(ScanEvent.FrameAnalyzed(id, now))
             } else {
                 trySend(ScanEvent.Detected(detections))
             }

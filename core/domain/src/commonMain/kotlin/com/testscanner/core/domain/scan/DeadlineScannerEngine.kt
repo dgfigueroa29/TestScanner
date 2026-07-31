@@ -51,6 +51,7 @@ class DeadlineScannerEngine(
                 // Cancelar la sesión antes de emitir: así la cámara ya está liberada cuando el
                 // consumidor recibe el SessionEnded, y no al revés.
                 session.cancel()
+                // Sin engineId: el plazo es de la sesión entera, no de un motor concreto.
                 send(ScanEvent.Failed(ScanError.Timeout))
                 send(ScanEvent.SessionEnded(id))
             }

@@ -143,6 +143,17 @@ private fun MetricsCard(metrics: EngineMetrics, isLeader: Boolean) {
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Text(
+                text = buildString {
+                    append("${metrics.framesAnalyzed} frames")
+                    metrics.framesPerDetection?.let { append(" · $it por lectura") }
+                    if (metrics.transientFailures > 0) {
+                        append(" · ${metrics.transientFailures} fallos")
+                    }
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

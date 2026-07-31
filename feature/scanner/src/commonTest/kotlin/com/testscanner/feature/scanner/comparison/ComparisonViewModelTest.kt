@@ -2,6 +2,7 @@ package com.testscanner.feature.scanner.comparison
 
 import com.testscanner.core.domain.usecase.SelectScannerEngineUseCase
 import com.testscanner.core.domain.usecase.StartComparisonUseCase
+import com.testscanner.core.model.ScanError
 import com.testscanner.core.model.ScannerEngineId
 import com.testscanner.core.scanner.EngineAvailability
 import com.testscanner.core.scanner.ScanEvent
@@ -134,6 +135,58 @@ class ComparisonViewModelTest {
         viewModel.onAction(ComparisonAction.Start)
 
         assertEquals(ScannerEngineId.ZXingCpp, viewModel.state.value.leader?.engineId)
+    }
+
+    @Test
+    fun `los frames y los fallos llegan al marcador atribuidos a su motor`() = runTest {
+        // Antes de que ScanEvent llevara el motor, estos contadores quedaban siempre en cero
+        // porque en un stream fusionado no había forma de saber de quién venía cada evento.
+        val viewModel = viewModel(
+            FakeEngine(
+                id = ScannerEngineId.MlKitCameraX,
+                events = listOf(
+                    ScanEvent.FrameAnalyzed(ScannerEngineId.MlKitCameraX, 1),
+                    ScanEvent.FrameAnalyzed(ScannerEngineId.MlKitCameraX, 2),
+                    ScanEvent.Failed(
+                        ScanError.DecodeFailed("frame borroso"),
+                        ScannerEngineId.MlKitCameraX,
+                    ),
+                ),
+            ),
+            FakeEngine(
+                id = ScannerEngineId.ZXingCpp,
+                events = listOf(ScanEvent.FrameAnalyzed(ScannerEngineId.ZXingCpp, 1)),
+            ),
+        )
+
+        viewModel.onAction(ComparisonAction.Start)
+
+        val scoreboard = viewModel.state.value.scoreboard
+        assertEquals(2, scoreboard[ScannerEngineId.MlKitCameraX]?.framesAnalyzed)
+        assertEquals(1, scoreboard[ScannerEngineId.MlKitCameraX]?.transientFailures)
+        assertEquals(1, scoreboard[ScannerEngineId.ZXingCpp]?.framesAnalyzed)
+        assertEquals(0, scoreboard[ScannerEngineId.ZXingCpp]?.transientFailures)
+    }
+
+    @Test
+    fun `un fallo transitorio no detiene la comparacion`() = runTest {
+        // Que un motor pierda un frame no invalida lo que están midiendo los demás.
+        val viewModel = viewModel(
+            FakeEngine(
+                id = ScannerEngineId.MlKitCameraX,
+                events = listOf(
+                    ScanEvent.Failed(
+                        ScanError.DecodeFailed("borroso"),
+                        ScannerEngineId.MlKitCameraX,
+                    ),
+                ),
+            ),
+            FakeEngine(ScannerEngineId.ZXingCpp),
+        )
+
+        viewModel.onAction(ComparisonAction.Start)
+
+        assertEquals(1, viewModel.state.value.scoreboard[ScannerEngineId.MlKitCameraX]?.transientFailures)
     }
 
     @Test

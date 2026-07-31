@@ -85,7 +85,7 @@ class FallbackScannerEngine(
             }
         }
 
-        emit(ScanEvent.Failed(lastError))
+        emit(ScanEvent.Failed(lastError, engineId = engines.last().id))
         emit(ScanEvent.SessionEnded(engines.last().id))
     }
 }

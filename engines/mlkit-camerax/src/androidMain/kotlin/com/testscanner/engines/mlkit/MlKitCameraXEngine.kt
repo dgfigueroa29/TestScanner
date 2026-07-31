@@ -162,7 +162,7 @@ class MlKitCameraXEngine(
             .addOnSuccessListener { barcodes ->
                 val now = time.nowMillis()
                 if (barcodes.isEmpty()) {
-                    onEvent(ScanEvent.FrameAnalyzed(now))
+                    onEvent(ScanEvent.FrameAnalyzed(id, now))
                 } else {
                     onEvent(
                         ScanEvent.Detected(
@@ -180,7 +180,7 @@ class MlKitCameraXEngine(
             }
             .addOnFailureListener { error ->
                 // Un frame que falla es transitorio: no debe apagar la cámara ni degradar de motor.
-                onEvent(ScanEvent.Failed(ScanError.DecodeFailed(error.message.orEmpty())))
+                onEvent(ScanEvent.Failed(ScanError.DecodeFailed(error.message.orEmpty()), engineId = id))
             }
             .addOnCompleteListener { imageProxy.close() }
     }

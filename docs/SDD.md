@@ -415,6 +415,9 @@ forma cuando un motor se implementa — solo cambia su respuesta de `availabilit
 
 ```kotlin
 sealed interface ScanEvent {
+    /** Todo evento sabe de qué motor viene; `null` solo si no lo produjo ninguno en concreto. */
+    val engineId: ScannerEngineId?
+
     data object SessionStarted : ScanEvent
     data class Detected(val detections: List<Detection>) : ScanEvent
     data class FrameAnalyzed(val analyzedAtMillis: Long) : ScanEvent  // telemetría/FPS
@@ -422,6 +425,10 @@ sealed interface ScanEvent {
     data object SessionEnded : ScanEvent
 }
 ```
+
+Todos los eventos llevan el motor que los produjo. En una sesión normal es obvio — hay uno solo —
+pero el comparador (§9.4) fusiona los streams de varios motores, y ahí un evento sin autor es un
+dato perdido: las métricas de frames y de fallos por motor no se podían calcular.
 
 `Failed` es un evento, no una excepción lanzada: un fallo transitorio (un frame corrupto) no debe
 matar la sesión, y un fallo fatal se sigue de `SessionEnded`. Los errores del dominio se modelan

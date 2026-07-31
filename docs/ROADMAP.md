@@ -97,6 +97,8 @@ recupera correctamente EAN-13 impresos sobre códigos dañados.
 - [x] Comparador: ejecutar varios motores sobre la misma petición (`ComparingScannerEngine`)
 - [x] Métricas de latencia y acierto por motor (`EngineScoreboard`)
 - [x] Pantalla "Comparar" con el marcador en vivo — **cierra G5**
+- [x] Atribución de eventos al motor: `FrameAnalyzed` y `Failed` llevan `engineId`, así que las
+      métricas de frames y de fallos por motor dejan de estar siempre en cero
 - [ ] Exportación del historial (CSV/JSON) y acciones sobre resultados
 - [ ] Play Feature Delivery para los motores pesados de Android (RNF-06)
 - [ ] Accesibilidad completa (RNF-05) y auditoría de privacidad (RNF-03)

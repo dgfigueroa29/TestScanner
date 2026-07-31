@@ -73,7 +73,7 @@ class GmsCodeScannerEngine(
             .onSuccess { mlKitBarcode ->
                 val detection = mlKitBarcode?.toDetection(startedAtMillis)
                 if (detection == null) {
-                    emit(ScanEvent.Failed(ScanError.Cancelled))
+                    emit(ScanEvent.Failed(ScanError.Cancelled, engineId = id))
                 } else {
                     emit(ScanEvent.Detected(listOf(detection)))
                 }
@@ -81,10 +81,11 @@ class GmsCodeScannerEngine(
             .onFailure { throwable ->
                 emit(
                     ScanEvent.Failed(
-                        ScanError.EngineUnavailable(
+                        error = ScanError.EngineUnavailable(
                             engineId = id,
                             reason = throwable.message ?: "El escáner del sistema falló",
                         ),
+                        engineId = id,
                     ),
                 )
             }
