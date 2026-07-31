@@ -9,6 +9,7 @@ import com.testscanner.core.model.ScanSource
 import com.testscanner.core.model.ScannerEngineId
 import com.testscanner.core.model.ScannerPlatform
 import com.testscanner.core.scanner.BarcodeScannerEngine
+import com.testscanner.core.scanner.CameraControlEngine
 import com.testscanner.core.scanner.EngineAvailability
 import com.testscanner.core.scanner.ScanEvent
 import com.testscanner.core.scanner.ScannerCapabilities
@@ -28,7 +29,7 @@ class FakeScannerEngine(
     private val events: List<ScanEvent> = emptyList(),
     capabilities: ScannerCapabilities = defaultCapabilities(),
     platforms: Set<ScannerPlatform> = setOf(ScannerPlatform.Android),
-) : BarcodeScannerEngine {
+) : BarcodeScannerEngine, CameraControlEngine {
 
     var scanInvocations: Int = 0
         private set
@@ -46,6 +47,12 @@ class FakeScannerEngine(
     )
 
     override suspend fun availability(): EngineAvailability = availability
+
+    // Implementa el control de cámara porque sus capacidades por defecto lo declaran, y la suite de
+    // contrato exige que lo declarado tenga a alguien que lo cumpla. No hace nada: es un fake.
+    override suspend fun setTorch(enabled: Boolean) = Unit
+
+    override suspend fun setZoomRatio(ratio: Float) = Unit
 
     override fun scan(request: ScanRequest): Flow<ScanEvent> = flow {
         scanInvocations++

@@ -4,6 +4,7 @@ import com.testscanner.core.model.ScanError
 import com.testscanner.core.model.ScanRequest
 import com.testscanner.core.model.ScannerEngineId
 import com.testscanner.core.scanner.BarcodeScannerEngine
+import com.testscanner.core.scanner.DecoratingScannerEngine
 import com.testscanner.core.scanner.EngineAvailability
 import com.testscanner.core.scanner.ScanEvent
 import com.testscanner.core.scanner.ScannerEngineDescriptor
@@ -28,8 +29,8 @@ import kotlinx.coroutines.withTimeoutOrNull
  * cadena de tres tardaría el triple de lo que el usuario pidió.
  */
 class DeadlineScannerEngine(
-    private val delegate: BarcodeScannerEngine,
-) : BarcodeScannerEngine {
+    override val delegate: BarcodeScannerEngine,
+) : DecoratingScannerEngine {
 
     override val id: ScannerEngineId = delegate.id
 

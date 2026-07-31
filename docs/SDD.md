@@ -696,6 +696,27 @@ Esto convierte "añadir un motor" en un proceso con red de seguridad automática
 primer uso la suite detectó una carrera real en el motor de entrada manual, que perdía en silencio
 los valores enviados antes de que la sesión se suscribiera.
 
+#### Se aplica también a los decoradores
+
+Un decorador **es** un motor, así que pasa el mismo contrato. Y es donde más falta hace: los tres
+fallos de contrato que ha tenido este proyecto estaban en decoradores y no en motores — un
+`awaitClose` que impedía terminar el `Flow`, la supresión de `SessionEnded` en la cadena de fallback
+y unos límites de petición que dejaban la sesión abierta para siempre. Los motores de cámara
+necesitan un dispositivo para ejercitarse; los decoradores corren en `commonTest`, incluida **la
+cadena completa** que monta `StartScanSessionUseCase`, que es la que llega de verdad al ViewModel.
+
+#### Lo declarado tiene que tener quien lo cumpla
+
+La suite comprueba que una capacidad declarada en el descriptor la implemente alguien: si dice
+linterna, alguien es `CameraControlEngine`; si dice imagen estática, alguien es `ImageDecodingEngine`.
+Es la clase de fallo que más veces ha aparecido aquí —algo declarado que ningún código sirve— y la
+UI depende directamente de ello: dibuja el control leyendo el descriptor.
+
+Al aplicarla a los decoradores apareció el caso real: la cadena de fallback copia el descriptor del
+primer motor —linterna incluida— pero un `as? CameraControlEngine` sobre ella daba `null`, porque
+quien la implementa es el motor de dentro. De ahí salió `DecoratingScannerEngine` y la función
+`capability()`, que atraviesa la cadena en lugar de hacer un cast sobre la capa de fuera.
+
 ### 13.3 Análisis estático
 
 - **Detekt** con `detekt-formatting` (ktlint embebido), configuración compartida en

@@ -2,19 +2,23 @@ package com.testscanner.feature.scanner
 
 import com.testscanner.core.domain.repository.ScannerEngineRepository
 import com.testscanner.core.model.ScannerEngineId
+import com.testscanner.core.scanner.capability
 import com.testscanner.core.scanner.ui.CameraPreviewEngine
 
 /**
  * Resuelve si el motor activo aporta superficie de preview.
  *
  * Existe para que la pantalla no tenga que hablar con el repositorio ni el ViewModel tenga que
- * guardar objetos de UI en su estado. Es la única pieza que hace el `as?` hacia una capacidad
- * opcional, y lo hace **sin nombrar ningún motor concreto**: da igual que el preview lo aporte
- * CameraX hoy o AVFoundation mañana.
+ * guardar objetos de UI en su estado. Busca la capacidad **sin nombrar ningún motor concreto**: da
+ * igual que el preview lo aporte CameraX, AVFoundation o un `<video>` del navegador.
+ *
+ * Usa `capability()` y no un `as?` directo porque el `as?` da `null` si el motor viene envuelto en
+ * decoradores. Hoy el repositorio los devuelve sin envolver, así que da lo mismo — pero era una
+ * suposición implícita, y la suite de contrato la dejó a la vista.
  */
 class EnginePreviewResolver(
     private val repository: ScannerEngineRepository,
 ) {
     fun previewFor(engineId: ScannerEngineId?): CameraPreviewEngine? =
-        engineId?.let { repository.engine(it) as? CameraPreviewEngine }
+        engineId?.let { repository.engine(it)?.capability<CameraPreviewEngine>() }
 }

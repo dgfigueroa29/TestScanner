@@ -27,6 +27,7 @@ import com.testscanner.core.platform.PlatformActions
 import com.testscanner.core.scanner.CameraControlEngine
 import com.testscanner.core.scanner.ScanEvent
 import com.testscanner.core.scanner.TextInputEngine
+import com.testscanner.core.scanner.capability
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -218,7 +219,9 @@ class ScannerViewModel(
 
         viewModelScope.launch {
             val engine = engineRepository.engine(ScannerEngineId.ManualInput)
-            if (engine is TextInputEngine) {
+                ?.capability<TextInputEngine>()
+
+            if (engine != null) {
                 engine.submit(value)
                 _state.update { it.copy(manualInput = "") }
             } else {
@@ -350,7 +353,9 @@ class ScannerViewModel(
     }
 
     private fun cameraControlOfActiveEngine(): CameraControlEngine? =
-        _state.value.activeEngineId?.let(engineRepository::engine) as? CameraControlEngine
+        _state.value.activeEngineId
+            ?.let(engineRepository::engine)
+            ?.capability<CameraControlEngine>()
 
     /**
      * Tras conceder el permiso hay que refrescar el catálogo: la disponibilidad de los motores de

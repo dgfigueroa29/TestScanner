@@ -22,7 +22,8 @@ completa, aunque todavía sin motores de cámara reales.
 - [x] MVI de la feature de escaneo + UI de catálogo y resultados
 - [x] Design system propio (tokens, tema claro/oscuro)
 - [x] Tests de dominio: selección, fallback, parser, catálogo, comparador y marcador
-- [x] Suite de contrato de motores (`BarcodeScannerEngineContractTest`)
+- [x] Suite de contrato de motores (`BarcodeScannerEngineContractTest`), aplicada también a los
+      decoradores y a la cadena completa que llega al ViewModel
 - [x] Comparador de motores en paralelo + métricas por motor (objetivo G5)
 - [x] `build-logic/` con convention plugins
 - [x] SDD, 7 ADRs y catálogo de motores documentados
@@ -54,11 +55,16 @@ verificable desactivando Play Services.
 
 > Pendiente de la primera compilación con Gradle: el entorno donde se escribió esta fase no tenía
 > acceso a `dl.google.com`, así que las APIs de ML Kit y CameraX están sin compilar. El núcleo puro
-> sí está verificado (235 tests en verde con kotlinc).
+> sí está verificado (315 tests en verde con kotlinc).
 
 ---
 
-## Fase 3 — iOS
+## Fase 3 — iOS ⏸️ despriorizada
+
+> **Sin dispositivos Apple no se puede verificar nada de esto.** El código está escrito y sigue en
+> el repositorio, pero deja de marcar el ritmo: compilar Kotlin/Native exige macOS y probarlo exige
+> un iPhone o un simulador, así que cualquier fallo aquí solo aparecería al llegar a esa máquina.
+> Lo que se hace mientras tanto es lo que Android, Escritorio y Web sí pueden confirmar.
 
 - [x] `:engines:vision-ios` — `AVCaptureSession` + `AVCaptureMetadataOutput`, con linterna y zoom
 - [x] Preview de iOS (`UIKitView` con `AVCaptureVideoPreviewLayer`) vía `CameraPreviewEngine`
@@ -152,7 +158,7 @@ Registrada de forma explícita para que no se olvide:
 | ~~D3~~ | ~~Historial en memoria~~ | **Saldada**: Room KMP en Android, iOS y Desktop. En Web sigue en memoria porque Room no tiene target wasmJs |
 | D4 | Navegación propia sin deep links ni restauración de estado | Fase 3 (revisión ADR-0005) |
 | ~~D5~~ | ~~Strings hardcodeados en la UI~~ | **Saldada**: `composeResources` por módulo. Los ViewModels emiten mensajes semánticos (`ScannerMessage`, `HistoryMessage`) y `ResultAction` dejó de traer etiqueta: el dominio dice qué acción, la UI cómo se llama |
-| D6 | La suite de contrato existe y la pasa el motor manual, pero aún no se ejecuta contra motores de cámara reales | Fase 2 |
+| D6 | La suite de contrato la pasan el motor manual y los siete montajes de decoradores, pero los motores de cámara siguen necesitando dispositivo | Cuando haya CI con emulador |
 | ~~D8~~ | ~~El zoom se declara como capacidad pero no hay control en la UI~~ | **Saldada**: slider derivado de `canControlZoom` |
 | ~~D10~~ | ~~RF-07 sin UI ni selector de archivos~~ | **Saldada**: `ImagePicker` en las cuatro plataformas y `DecodeImageUseCase` recorriendo la cadena de motores. Un motor bloqueado por el permiso de cámara sigue sirviendo para leer un archivo |
 | ~~D12~~ | ~~RF-13 (copiar, compartir, abrir enlace) sin implementar~~ | **Saldada**: `PlatformActions` en `:core:platform` con implementación en las cuatro plataformas. En escritorio no hay hoja de compartir y el botón no se ofrece (`canShare`) |

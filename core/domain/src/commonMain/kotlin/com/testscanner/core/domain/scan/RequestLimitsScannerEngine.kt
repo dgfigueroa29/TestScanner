@@ -3,6 +3,7 @@ package com.testscanner.core.domain.scan
 import com.testscanner.core.model.ScanRequest
 import com.testscanner.core.model.ScannerEngineId
 import com.testscanner.core.scanner.BarcodeScannerEngine
+import com.testscanner.core.scanner.DecoratingScannerEngine
 import com.testscanner.core.scanner.EngineAvailability
 import com.testscanner.core.scanner.ScanEvent
 import com.testscanner.core.scanner.ScannerEngineDescriptor
@@ -25,8 +26,8 @@ import kotlinx.coroutines.flow.transformWhile
  * para expresar una sola idea.
  */
 class RequestLimitsScannerEngine(
-    private val delegate: BarcodeScannerEngine,
-) : BarcodeScannerEngine {
+    override val delegate: BarcodeScannerEngine,
+) : DecoratingScannerEngine {
 
     override val id: ScannerEngineId = delegate.id
 

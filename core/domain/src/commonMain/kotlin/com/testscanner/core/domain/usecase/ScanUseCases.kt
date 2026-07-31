@@ -25,6 +25,7 @@ import com.testscanner.core.scanner.ImageDecodingEngine
 import com.testscanner.core.scanner.ScanEvent
 import com.testscanner.core.scanner.SystemTimeProvider
 import com.testscanner.core.scanner.TimeProvider
+import com.testscanner.core.scanner.capability
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
@@ -135,7 +136,7 @@ class DecodeImageUseCase(
     ): Result<List<Detection>> {
         val decoders = selectEngine(request, preferredEngineId).chain
             .mapNotNull(engineRepository::engine)
-            .filter { it is ImageDecodingEngine }
+            .mapNotNull { it.capability<ImageDecodingEngine>() }
 
         if (decoders.isEmpty()) {
             return Result.failure(
@@ -146,9 +147,10 @@ class DecodeImageUseCase(
         val startedAtMillis = time.nowMillis()
         var lastFailure: Throwable? = null
 
-        decoders.forEach { engine ->
-            val decoded = (engine as ImageDecodingEngine).decode(image, request)
-                .map { barcodes -> barcodes.toDetections(engine.id, startedAtMillis, request) }
+        decoders.forEach { decoder ->
+            val engineId = (decoder as BarcodeScannerEngine).id
+            val decoded = decoder.decode(image, request)
+                .map { barcodes -> barcodes.toDetections(engineId, startedAtMillis, request) }
 
             decoded
                 .onSuccess { detections -> if (detections.isNotEmpty()) return Result.success(detections) }
