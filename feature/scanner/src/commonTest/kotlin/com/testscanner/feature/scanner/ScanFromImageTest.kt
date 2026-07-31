@@ -136,10 +136,7 @@ class ScanFromImageTest {
 
         viewModel.effects.test {
             viewModel.onAction(ScannerAction.ScanFromImage)
-            assertEquals(
-                ScannerEffect.ShowMessage("No se encontró ningún código en la imagen"),
-                awaitItem(),
-            )
+            assertEquals(ScannerEffect.ShowMessage(ScannerMessage.NoCodeInImage), awaitItem())
         }
     }
 
@@ -149,7 +146,10 @@ class ScanFromImageTest {
 
         viewModel.effects.test {
             viewModel.onAction(ScannerAction.ScanFromImage)
-            assertEquals(ScannerEffect.ShowMessage("No se pudo leer el archivo"), awaitItem())
+            assertEquals(
+                ScannerEffect.ShowMessage(ScannerMessage.Raw("No se pudo leer el archivo")),
+                awaitItem(),
+            )
         }
     }
 

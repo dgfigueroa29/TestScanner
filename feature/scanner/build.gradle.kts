@@ -6,6 +6,14 @@ android {
     namespace = "com.testscanner.feature.scanner"
 }
 
+// El paquete se fija a mano en lugar de dejar que se derive: así el import de `Res` es estable y
+// no depende de cómo el plugin componga el nombre a partir del grupo y el módulo.
+compose.resources {
+    publicResClass = true
+    packageOfResClass = "com.testscanner.feature.scanner.resources"
+    generateResClass = always
+}
+
 kotlin {
     sourceSets {
         commonMain.dependencies {
@@ -14,6 +22,8 @@ kotlin {
             implementation(project(":core:permissions"))
             api(project(":core:scanner-ui"))
             api(project(":core:designsystem"))
+
+            implementation(compose.components.resources)
 
             implementation(libs.lifecycle.viewmodel)
             implementation(libs.lifecycle.viewmodel.compose)

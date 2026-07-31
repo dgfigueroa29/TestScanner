@@ -1,8 +1,17 @@
 [versions]
 # Toolchain
-kotlin = "2.1.21"
+#
+# Kotlin 2.3.20 no es un capricho: es el suelo que impone consumir zxing-cpp (ADR-0008). Sus klibs
+# publicados están compilados con 2.2.0 y un compilador no lee klibs de uno más nuevo. Se eligió
+# exactamente 2.3.20 —y no la 2.3.21— porque es la versión con la que están compilados Compose
+# Multiplatform 1.11.1, Koin 4.2.2 y KSP 2.3.10: emparejar exacto reduce la
+# superficie de fallo en un build que todavía no se ha podido ejecutar.
+#
+# AGP se queda donde estaba: vive en el maven de Google, inalcanzable desde el entorno de
+# desarrollo, así que subirlo sería adivinar un número. Lo mismo con Room.
+kotlin = "2.3.20"
 agp = "8.9.2"
-composeMultiplatform = "1.8.0"
+composeMultiplatform = "1.11.1"
 jvmTarget = "17"
 
 # Android SDK
@@ -11,25 +20,28 @@ minSdk = "24"
 targetSdk = "35"
 
 # Kotlin ecosystem
-coroutines = "1.10.2"
-serialization = "1.8.1"
+coroutines = "1.11.0"
+serialization = "1.11.0"
 
 # AndroidX / Jetbrains multiplatform
 androidxActivityCompose = "1.10.1"
 androidxCoreKtx = "1.15.0"
-lifecycle = "2.9.0"
+# La que pide Koin 4.2.2; subirla más alto haría que Gradle resolviera por encima de lo que espera.
+lifecycle = "2.9.6"
 
 # DI
-koin = "4.0.4"
+koin = "4.2.2"
 
 # Persistencia
 multiplatformSettings = "1.3.0"
+# Sin verificar contra KSP 2.3.10: androidx.room solo se publica en el maven de Google.
 room = "2.7.2"
 sqlite = "2.5.2"
-ksp = "2.1.21-2.0.1"
+# KSP cambió de esquema de versiones: 2.3.10 es la compilada contra Kotlin 2.3.20.
+ksp = "2.3.10"
 
 # Test
-turbine = "1.2.0"
+turbine = "1.2.1"
 
 # Quality
 detekt = "1.23.8"

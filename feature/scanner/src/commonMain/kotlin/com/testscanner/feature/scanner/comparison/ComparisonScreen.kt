@@ -19,6 +19,24 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.testscanner.core.designsystem.Spacing
 import com.testscanner.core.domain.scan.EngineMetrics
+import com.testscanner.feature.scanner.resources.Res
+import com.testscanner.feature.scanner.resources.action_stop
+import com.testscanner.feature.scanner.resources.comparison_counts
+import com.testscanner.feature.scanner.resources.comparison_failures
+import com.testscanner.feature.scanner.resources.comparison_frames
+import com.testscanner.feature.scanner.resources.comparison_frames_per_detection
+import com.testscanner.feature.scanner.resources.comparison_hint
+import com.testscanner.feature.scanner.resources.comparison_latencies
+import com.testscanner.feature.scanner.resources.comparison_leader
+import com.testscanner.feature.scanner.resources.comparison_millis
+import com.testscanner.feature.scanner.resources.comparison_needs_two_engines
+import com.testscanner.feature.scanner.resources.comparison_no_data
+import com.testscanner.feature.scanner.resources.comparison_participants
+import com.testscanner.feature.scanner.resources.comparison_reset
+import com.testscanner.feature.scanner.resources.comparison_start
+import com.testscanner.feature.scanner.resources.comparison_title
+import com.testscanner.feature.scanner.resources.session_error
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -55,20 +73,25 @@ private fun Header(state: ComparisonState, onAction: (ComparisonAction) -> Unit)
             verticalArrangement = Arrangement.spacedBy(Spacing.sm),
         ) {
             Text(
-                text = "Comparar motores",
+                text = stringResource(Res.string.comparison_title),
                 style = MaterialTheme.typography.titleMedium,
             )
 
             if (state.notEnoughEngines) {
                 Text(
-                    text = "Hacen falta al menos dos motores disponibles para comparar. " +
-                        "Ahora mismo hay ${state.participants.size}.",
+                    text = stringResource(
+                        Res.string.comparison_needs_two_engines,
+                        state.participants.size,
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
                 Text(
-                    text = "Participan: ${state.participants.joinToString { it.id }}",
+                    text = stringResource(
+                        Res.string.comparison_participants,
+                        state.participants.joinToString { it.id },
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -76,7 +99,7 @@ private fun Header(state: ComparisonState, onAction: (ComparisonAction) -> Unit)
 
             state.error?.let {
                 Text(
-                    text = "Error: $it",
+                    text = stringResource(Res.string.session_error, it.toString()),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )
@@ -90,21 +113,22 @@ private fun Header(state: ComparisonState, onAction: (ComparisonAction) -> Unit)
                     onClick = { onAction(ComparisonAction.Start) },
                     enabled = !state.isRunning && !state.notEnoughEngines,
                 ) {
-                    Text("Comparar")
+                    Text(stringResource(Res.string.comparison_start))
                 }
                 OutlinedButton(
                     onClick = { onAction(ComparisonAction.Stop) },
                     enabled = state.isRunning,
                 ) {
-                    Text("Detener")
+                    Text(stringResource(Res.string.action_stop))
                 }
-                OutlinedButton(onClick = { onAction(ComparisonAction.Reset) }) { Text("Reiniciar") }
+                OutlinedButton(onClick = { onAction(ComparisonAction.Reset) }) {
+                    Text(stringResource(Res.string.comparison_reset))
+                }
             }
 
             if (!state.hasResults && !state.notEnoughEngines) {
                 Text(
-                    text = "Apuntá al mismo código con la comparación en marcha: cada motor lo " +
-                        "leerá por su cuenta y el marcador mostrará quién acierta antes.",
+                    text = stringResource(Res.string.comparison_hint),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -120,7 +144,11 @@ private fun MetricsCard(metrics: EngineMetrics, isLeader: Boolean) {
             verticalArrangement = Arrangement.spacedBy(Spacing.xs),
         ) {
             Text(
-                text = if (isLeader) "${metrics.engineId.id} · mejor" else metrics.engineId.id,
+                text = if (isLeader) {
+                    stringResource(Res.string.comparison_leader, metrics.engineId.id)
+                } else {
+                    metrics.engineId.id
+                },
                 style = MaterialTheme.typography.titleSmall,
                 color = if (isLeader) {
                     MaterialTheme.colorScheme.primary
@@ -129,26 +157,30 @@ private fun MetricsCard(metrics: EngineMetrics, isLeader: Boolean) {
                 },
             )
             Text(
-                text = "${metrics.uniqueValues} códigos distintos · " +
-                    "${metrics.detections} lecturas",
+                text = stringResource(
+                    Res.string.comparison_counts,
+                    metrics.uniqueValues,
+                    metrics.detections,
+                ),
                 style = MaterialTheme.typography.bodySmall,
             )
             Text(
-                text = buildString {
-                    append("primera: ")
-                    append(metrics.firstDetectionLatencyMillis?.let { "$it ms" } ?: "—")
-                    append(" · media: ")
-                    append(metrics.averageLatencyMillis?.let { "$it ms" } ?: "—")
-                },
+                text = stringResource(
+                    Res.string.comparison_latencies,
+                    metrics.firstDetectionLatencyMillis.asMillis(),
+                    metrics.averageLatencyMillis.asMillis(),
+                ),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 text = buildString {
-                    append("${metrics.framesAnalyzed} frames")
-                    metrics.framesPerDetection?.let { append(" · $it por lectura") }
+                    append(stringResource(Res.string.comparison_frames, metrics.framesAnalyzed))
+                    metrics.framesPerDetection?.let {
+                        append(stringResource(Res.string.comparison_frames_per_detection, it))
+                    }
                     if (metrics.transientFailures > 0) {
-                        append(" · ${metrics.transientFailures} fallos")
+                        append(stringResource(Res.string.comparison_failures, metrics.transientFailures))
                     }
                 },
                 style = MaterialTheme.typography.labelSmall,
@@ -157,3 +189,9 @@ private fun MetricsCard(metrics: EngineMetrics, isLeader: Boolean) {
         }
     }
 }
+
+/** Una latencia ausente se muestra como raya, no como cero: no medida no es lo mismo que rápida. */
+@Composable
+private fun Long?.asMillis(): String = this
+    ?.let { stringResource(Res.string.comparison_millis, it) }
+    ?: stringResource(Res.string.comparison_no_data)

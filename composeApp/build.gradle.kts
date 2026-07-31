@@ -55,6 +55,7 @@ kotlin {
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
+            implementation(compose.components.resources)
 
             implementation(project.dependencies.platform(libs.koin.bom))
             implementation(libs.koin.core)
@@ -102,6 +103,12 @@ kotlin {
             implementation(project(":engines:browser-detector"))
         }
     }
+}
+
+compose.resources {
+    publicResClass = true
+    packageOfResClass = "com.testscanner.resources"
+    generateResClass = always
 }
 
 android {

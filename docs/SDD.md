@@ -5,7 +5,7 @@
 | Proyecto | TestScanner |
 | Documento | Software Design Document (SDD) |
 | Versión | 1.2 |
-| Estado | Vigente — Fases 1, 2 y 4 (motores) cerradas; Fase 3 a la espera de subir Kotlin |
+| Estado | Vigente — Fases 1, 2 y 4 cerradas; Fase 3 pendiente del motor zxing-cpp |
 | Fecha | 2026-07-31 |
 | Autor | Equipo TestScanner |
 | Alcance de esta versión | Migración de app Android monolítica a Compose Multiplatform + arquitectura de motores de escaneo intercambiables |
@@ -759,9 +759,10 @@ que preservar (§2.1). El historial de git conserva el estado previo.
 | R5 | ML Kit *unbundled* requiere descarga en primer uso | Bajo | Estado `RequiresDownload` modelado en el SPI y comunicado en la UI |
 | R6 | Web target sin acceso a cámara en contexto no-HTTPS | Bajo | Documentado; el motor reporta `Unsupported` con la razón |
 | R7 | Sobre-modularización ralentiza el build | Medio | Convention plugins en `build-logic` (Fase 2) y medición con `--scan` |
+| R11 | Room 2.7.2 y AGP 8.9.2 no se pudieron contrastar con Kotlin 2.3.20 y KSP 2.3.10: ambos se publican solo en el maven de Google, inalcanzable desde el entorno donde se hizo el bump | Medio | Es lo primero que dirá el CI. Si Room no compila con KSP 2.3.10, subirlo es un cambio de una línea en el catálogo |
 | R8 | Deriva entre el catálogo documentado y el código | Bajo | `docs/ENGINES.md` es la fuente; un test verifica que el registro y la tabla coinciden en IDs |
 | ~~R9~~ | ~~No existe un binding KMP publicado de zxing-cpp~~ | — | **Cerrado por ADR-0008.** El inventario era incompleto: `io.github.zxing-cpp:kotlin-native:3.1.1` publica los tres targets de iOS con el cinterop hecho, y `:android:3.1.1` cubre Android. Se consumen los artefactos, sin cinterop propio. Deriva en R10 y en la deuda D13 |
-| R10 | Los klibs de `kotlin-native` están compilados con Kotlin 2.2.0 y el proyecto está en 2.1.21; un compilador no lee klibs de uno más nuevo | Medio | Subir a Kotlin ≥ 2.2 es prerrequisito de la Fase 3, con CI disponible y arrastrando KSP y CMP. El pin actual ya estaba viejo: el ecosistema va por 2.3.x |
+| ~~R10~~ | ~~Los klibs de `kotlin-native` están compilados con Kotlin 2.2.0 y el proyecto está en 2.1.21~~ | — | **Cerrado**: toolchain en Kotlin 2.3.20, CMP 1.11.1, KSP 2.3.10, Gradle 8.14.5 |
 
 ---
 
@@ -816,7 +817,23 @@ arranca, sin esperar la promesa. Esperarla exigiría puentear promesas de JS a c
 
 ---
 
-### 9.6 Escaneo desde imagen (RF-07)
+### 9.6 Textos de la interfaz
+
+Los textos viven en `composeResources` **por módulo**: cada feature tiene su `strings.xml` y no hay
+un fichero global que crezca sin dueño.
+
+Lo que no es evidente es qué pasa con los textos que no nace en un `@Composable`. Un ViewModel que
+emite `"Copiado"` ata la lógica al idioma y, peor, obliga a los tests a afirmar sobre una frase: una
+coma de más rompe un test que no verificaba nada sobre la coma. Por eso los efectos llevan un
+**mensaje semántico** (`ScannerMessage`, `HistoryMessage`) y la pantalla lo traduce. Queda una
+puerta abierta —`Raw`— para el texto que produce la plataforma, como el motivo que devuelve el
+selector de imágenes del sistema: sustituirlo por un mensaje genérico perdería la única pista útil.
+
+Por el mismo motivo `ResultAction` dejó de traer `label`. El dominio decide **qué** acciones tienen
+sentido y de qué clase es cada una (`OpenKind.Phone` y no `"Llamar"`); cómo se llaman en pantalla es
+de la UI. Antes una decisión de dominio venía con el idioma pegado.
+
+### 9.7 Escaneo desde imagen (RF-07)
 
 Escanear una foto no es una variante menor de escanear con la cámara: es la salida cuando el código
 está en una captura de pantalla, en un PDF, en un correo — o cuando el usuario ha negado el permiso

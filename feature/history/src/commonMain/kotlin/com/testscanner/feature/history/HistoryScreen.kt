@@ -23,8 +23,29 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.testscanner.core.designsystem.LocalSnackbarHostState
 import com.testscanner.core.designsystem.Spacing
+import com.testscanner.core.domain.scan.OpenKind
+import com.testscanner.core.domain.scan.ResultAction
 import com.testscanner.core.domain.scan.ResultActionsFactory
 import com.testscanner.core.model.Detection
+import com.testscanner.feature.history.resources.Res
+import com.testscanner.feature.history.resources.history_clear
+import com.testscanner.feature.history.resources.history_empty
+import com.testscanner.feature.history.resources.history_filter_all
+import com.testscanner.feature.history.resources.history_row_latency
+import com.testscanner.feature.history.resources.history_row_meta
+import com.testscanner.feature.history.resources.message_copied
+import com.testscanner.feature.history.resources.message_copy_failed
+import com.testscanner.feature.history.resources.message_open_failed
+import com.testscanner.feature.history.resources.message_share_failed
+import com.testscanner.feature.history.resources.result_copy
+import com.testscanner.feature.history.resources.result_open_email
+import com.testscanner.feature.history.resources.result_open_link
+import com.testscanner.feature.history.resources.result_open_map
+import com.testscanner.feature.history.resources.result_open_phone
+import com.testscanner.feature.history.resources.result_open_sms
+import com.testscanner.feature.history.resources.result_share
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -35,7 +56,7 @@ fun HistoryScreen(viewModel: HistoryViewModel = koinViewModel()) {
     LaunchedEffect(viewModel) {
         viewModel.effects.collect { effect ->
             when (effect) {
-                is HistoryEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.text)
+                is HistoryEffect.ShowMessage -> snackbarHostState.showSnackbar(resolve(effect.message))
             }
         }
     }
@@ -54,7 +75,7 @@ fun HistoryContent(
 
         state.isEmpty -> Centered(modifier) {
             Text(
-                text = "Todavía no escaneaste nada",
+                text = stringResource(Res.string.history_empty),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -88,7 +109,7 @@ private fun EngineFilters(state: HistoryState, onAction: (HistoryAction) -> Unit
                 FilterChip(
                     selected = state.engineFilter == null,
                     onClick = { onAction(HistoryAction.FilterByEngine(null)) },
-                    label = { Text("Todos") },
+                    label = { Text(stringResource(Res.string.history_filter_all)) },
                 )
             }
             items(state.presentEngines, key = { it.id }) { engineId ->
@@ -100,7 +121,9 @@ private fun EngineFilters(state: HistoryState, onAction: (HistoryAction) -> Unit
             }
         }
 
-        OutlinedButton(onClick = { onAction(HistoryAction.Clear) }) { Text("Borrar") }
+        OutlinedButton(onClick = { onAction(HistoryAction.Clear) }) {
+            Text(stringResource(Res.string.history_clear))
+        }
     }
 }
 
@@ -120,10 +143,16 @@ private fun HistoryRow(
             Text(detection.barcode.rawValue, style = MaterialTheme.typography.bodyMedium)
             Text(
                 text = buildString {
-                    append(detection.barcode.format.displayName)
-                    append(" · ")
-                    append(detection.engineId.id)
-                    detection.latencyMillis?.let { append(" · $it ms") }
+                    append(
+                        stringResource(
+                            Res.string.history_row_meta,
+                            detection.barcode.format.displayName,
+                            detection.engineId.id,
+                        ),
+                    )
+                    detection.latencyMillis?.let {
+                        append(stringResource(Res.string.history_row_latency, it))
+                    }
                 },
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -134,7 +163,7 @@ private fun HistoryRow(
                     TextButton(
                         onClick = { onAction(HistoryAction.RunResultAction(detection, action)) },
                     ) {
-                        Text(action.label)
+                        Text(stringResource(action.labelResource()))
                     }
                 }
             }
@@ -151,4 +180,26 @@ private fun Centered(modifier: Modifier, content: @Composable () -> Unit) {
     ) {
         content()
     }
+}
+
+/** Cómo se llama en pantalla cada acción sobre el resultado (RF-13). */
+private fun ResultAction.labelResource(): StringResource = when (this) {
+    ResultAction.Copy -> Res.string.result_copy
+    ResultAction.Share -> Res.string.result_share
+    is ResultAction.Open -> when (kind) {
+        OpenKind.Link -> Res.string.result_open_link
+        OpenKind.Email -> Res.string.result_open_email
+        OpenKind.Phone -> Res.string.result_open_phone
+        OpenKind.Sms -> Res.string.result_open_sms
+        OpenKind.Map -> Res.string.result_open_map
+    }
+}
+
+/** El ViewModel dice qué pasó; aquí se le pone nombre. */
+@Composable
+private fun resolve(message: HistoryMessage): String = when (message) {
+    HistoryMessage.Copied -> stringResource(Res.string.message_copied)
+    HistoryMessage.CopyFailed -> stringResource(Res.string.message_copy_failed)
+    HistoryMessage.ShareFailed -> stringResource(Res.string.message_share_failed)
+    HistoryMessage.OpenFailed -> stringResource(Res.string.message_open_failed)
 }

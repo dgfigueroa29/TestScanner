@@ -3,19 +3,18 @@ package com.testscanner.core.domain.scan
 import com.testscanner.core.model.Barcode
 import com.testscanner.core.model.BarcodeValueType
 
-/** Algo que el usuario puede hacer con un código ya leído (RF-13). */
+/**
+ * Algo que el usuario puede hacer con un código ya leído (RF-13).
+ *
+ * No lleva etiqueta. El dominio decide **qué** acciones tienen sentido; cómo se llaman en pantalla
+ * es cosa de la UI, que es quien tiene los recursos traducibles. Antes el texto venía de aquí, y eso
+ * ataba una decisión de dominio al idioma de la app.
+ */
 sealed interface ResultAction {
 
-    /** Etiqueta para el botón. Vive en el dominio porque depende de *qué* es el valor. */
-    val label: String
+    data object Copy : ResultAction
 
-    data object Copy : ResultAction {
-        override val label: String get() = "Copiar"
-    }
-
-    data object Share : ResultAction {
-        override val label: String get() = "Compartir"
-    }
+    data object Share : ResultAction
 
     /**
      * Abrir el contenido en la app que corresponda.
@@ -23,9 +22,15 @@ sealed interface ResultAction {
      * [uri] no siempre es el `rawValue`: un teléfono leído como texto plano no se puede abrir, pero
      * el mismo valor interpretado como [BarcodeValueType.Phone] se abre con `tel:`. Esa traducción
      * es justamente lo que aporta el parseo semántico del dominio.
+     *
+     * [kind] existe para que la UI pueda decir "Llamar" en vez de "Abrir" sin volver a inspeccionar
+     * el `valueType`: la clasificación ya se hizo aquí y repetirla sería duplicar la decisión.
      */
-    data class Open(val uri: String, override val label: String) : ResultAction
+    data class Open(val uri: String, val kind: OpenKind) : ResultAction
 }
+
+/** Qué clase de destino abre una [ResultAction.Open]. La UI lo traduce a un texto. */
+enum class OpenKind { Link, Email, Phone, Sms, Map }
 
 /**
  * Decide qué se puede hacer con un código, a partir de **lo que significa** y no de su formato.
@@ -66,23 +71,23 @@ object ResultActionsFactory {
     }
 
     private fun openActionFor(value: BarcodeValueType): ResultAction.Open? = when (value) {
-        is BarcodeValueType.Url -> ResultAction.Open(value.url, "Abrir enlace")
+        is BarcodeValueType.Url -> ResultAction.Open(value.url, OpenKind.Link)
 
         is BarcodeValueType.Email -> ResultAction.Open(
             uri = buildString {
                 append("mailto:${value.address}")
                 value.subject?.let { append("?subject=$it") }
             },
-            label = "Escribir",
+            kind = OpenKind.Email,
         )
 
-        is BarcodeValueType.Phone -> ResultAction.Open("tel:${value.number}", "Llamar")
+        is BarcodeValueType.Phone -> ResultAction.Open("tel:${value.number}", OpenKind.Phone)
 
-        is BarcodeValueType.Sms -> ResultAction.Open("sms:${value.number}", "Enviar SMS")
+        is BarcodeValueType.Sms -> ResultAction.Open("sms:${value.number}", OpenKind.Sms)
 
         is BarcodeValueType.GeoPoint -> ResultAction.Open(
             uri = "geo:${value.latitude},${value.longitude}",
-            label = "Ver en el mapa",
+            kind = OpenKind.Map,
         )
 
         // Un GTIN no es una URL. Buscarlo en un catálogo de productos sería inventar un destino que

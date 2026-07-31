@@ -195,11 +195,7 @@ class ScannerViewModel(
 
             is ScanEvent.EngineSwitched -> {
                 _state.update { it.copy(switchedFrom = event.from, activeEngineId = event.to) }
-                _effects.emit(
-                    ScannerEffect.ShowMessage(
-                        "Se cambió a otro motor porque el anterior no pudo continuar",
-                    ),
-                )
+                _effects.emit(ScannerEffect.ShowMessage(ScannerMessage.EngineSwitched))
             }
 
             is ScanEvent.Failed -> if (event.error.isFatal) {
@@ -226,7 +222,7 @@ class ScannerViewModel(
                 engine.submit(value)
                 _state.update { it.copy(manualInput = "") }
             } else {
-                _effects.emit(ScannerEffect.ShowMessage("La entrada manual no está disponible"))
+                _effects.emit(ScannerEffect.ShowMessage(ScannerMessage.ManualInputUnavailable))
             }
         }
     }
@@ -255,7 +251,7 @@ class ScannerViewModel(
                     is PickImageResult.Cancelled -> Unit
 
                     is PickImageResult.Failed ->
-                        _effects.emit(ScannerEffect.ShowMessage(picked.reason))
+                        _effects.emit(ScannerEffect.ShowMessage(ScannerMessage.Raw(picked.reason)))
 
                     is PickImageResult.Picked -> decodePickedImage(picked.image)
                 }
@@ -276,7 +272,7 @@ class ScannerViewModel(
         decodeImage(image, request, preferences.preferredEngineId)
             .onSuccess { detections ->
                 if (detections.isEmpty()) {
-                    _effects.emit(ScannerEffect.ShowMessage("No se encontró ningún código en la imagen"))
+                    _effects.emit(ScannerEffect.ShowMessage(ScannerMessage.NoCodeInImage))
                     return@onSuccess
                 }
                 // La imagen es una sesión puntual: sus resultados sustituyen a los anteriores, igual
@@ -291,11 +287,8 @@ class ScannerViewModel(
                 detections.forEach { saveDetection(it) }
             }
             .onFailure { failure ->
-                _effects.emit(
-                    ScannerEffect.ShowMessage(
-                        failure.message ?: "No se pudo leer la imagen",
-                    ),
-                )
+                val reason = failure.message?.let(ScannerMessage::Raw) ?: ScannerMessage.NoCodeInImage
+                _effects.emit(ScannerEffect.ShowMessage(reason))
             }
     }
 
@@ -310,22 +303,22 @@ class ScannerViewModel(
         viewModelScope.launch {
             val text = ResultActionsFactory.shareableText(detection.barcode)
 
-            val (succeeded, failureMessage) = when (action) {
+            val (succeeded, failure) = when (action) {
                 ResultAction.Copy ->
-                    platformActions.copyToClipboard(text) to "No se pudo copiar al portapapeles"
+                    platformActions.copyToClipboard(text) to ScannerMessage.CopyFailed
 
                 ResultAction.Share ->
-                    platformActions.share(text) to "No se pudo abrir la hoja de compartir"
+                    platformActions.share(text) to ScannerMessage.ShareFailed
 
                 is ResultAction.Open ->
-                    platformActions.openUrl(action.uri) to "Ninguna app puede abrir esto"
+                    platformActions.openUrl(action.uri) to ScannerMessage.OpenFailed
             }
 
             // Compartir y abrir son visibles por sí mismos: aparece una hoja o cambia de app.
             // Copiar no muestra nada, así que es la única que necesita confirmación.
-            val message = when {
-                !succeeded -> failureMessage
-                action == ResultAction.Copy -> "Copiado"
+            val message: ScannerMessage? = when {
+                !succeeded -> failure
+                action == ResultAction.Copy -> ScannerMessage.Copied
                 else -> null
             }
 
@@ -369,11 +362,7 @@ class ScannerViewModel(
             engineRepository.refresh()
 
             if (!status.isGranted) {
-                _effects.emit(
-                    ScannerEffect.ShowMessage(
-                        "Sin permiso de cámara solo quedan disponibles los motores que no la usan",
-                    ),
-                )
+                _effects.emit(ScannerEffect.ShowMessage(ScannerMessage.CameraPermissionDenied))
             }
         }
     }

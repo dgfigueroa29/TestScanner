@@ -46,7 +46,7 @@ class ResultActionsFactoryTest {
         val action = openAction(barcode("https://a.b", BarcodeValueType.Url("https://a.b")))
 
         assertEquals("https://a.b", action?.uri)
-        assertEquals("Abrir enlace", action?.label)
+        assertEquals(OpenKind.Link, action?.kind)
     }
 
     @Test
@@ -55,7 +55,7 @@ class ResultActionsFactoryTest {
         val action = openAction(barcode("+34600111222", BarcodeValueType.Phone("+34600111222")))
 
         assertEquals("tel:+34600111222", action?.uri)
-        assertEquals("Llamar", action?.label)
+        assertEquals(OpenKind.Phone, action?.kind)
     }
 
     @Test

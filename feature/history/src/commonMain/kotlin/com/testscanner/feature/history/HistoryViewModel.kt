@@ -66,20 +66,20 @@ class HistoryViewModel(
         viewModelScope.launch {
             val text = ResultActionsFactory.shareableText(detection.barcode)
 
-            val (succeeded, failureMessage) = when (action) {
+            val (succeeded, failure) = when (action) {
                 ResultAction.Copy ->
-                    platformActions.copyToClipboard(text) to "No se pudo copiar al portapapeles"
+                    platformActions.copyToClipboard(text) to HistoryMessage.CopyFailed
 
                 ResultAction.Share ->
-                    platformActions.share(text) to "No se pudo abrir la hoja de compartir"
+                    platformActions.share(text) to HistoryMessage.ShareFailed
 
                 is ResultAction.Open ->
-                    platformActions.openUrl(action.uri) to "Ninguna app puede abrir esto"
+                    platformActions.openUrl(action.uri) to HistoryMessage.OpenFailed
             }
 
-            val message = when {
-                !succeeded -> failureMessage
-                action == ResultAction.Copy -> "Copiado"
+            val message: HistoryMessage? = when {
+                !succeeded -> failure
+                action == ResultAction.Copy -> HistoryMessage.Copied
                 else -> null
             }
 

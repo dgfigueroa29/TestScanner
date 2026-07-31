@@ -1,6 +1,7 @@
 package com.testscanner.feature.scanner
 
 import app.cash.turbine.test
+import com.testscanner.core.domain.scan.OpenKind
 import com.testscanner.core.domain.scan.ResultAction
 import com.testscanner.core.domain.usecase.DecodeImageUseCase
 import com.testscanner.core.domain.usecase.ObserveEngineCatalogUseCase
@@ -112,7 +113,7 @@ class ResultActionsIntegrationTest {
     fun `abrir usa el destino que decidio el dominio`() = runTest {
         val viewModel = viewModel()
         val detection = urlDetection()
-        val open = ResultAction.Open("https://ejemplo.com", "Abrir enlace")
+        val open = ResultAction.Open("https://ejemplo.com", OpenKind.Link)
 
         viewModel.onAction(ScannerAction.RunResultAction(detection, open))
 
@@ -125,7 +126,7 @@ class ResultActionsIntegrationTest {
 
         viewModel.effects.test {
             viewModel.onAction(ScannerAction.RunResultAction(urlDetection(), ResultAction.Copy))
-            assertEquals(ScannerEffect.ShowMessage("Copiado"), awaitItem())
+            assertEquals(ScannerEffect.ShowMessage(ScannerMessage.Copied), awaitItem())
         }
     }
 
@@ -134,9 +135,9 @@ class ResultActionsIntegrationTest {
         val viewModel = viewModel(succeeds = false)
 
         viewModel.effects.test {
-            val open = ResultAction.Open("algo://raro", "Abrir")
+            val open = ResultAction.Open("algo://raro", OpenKind.Link)
             viewModel.onAction(ScannerAction.RunResultAction(urlDetection(), open))
-            assertEquals(ScannerEffect.ShowMessage("Ninguna app puede abrir esto"), awaitItem())
+            assertEquals(ScannerEffect.ShowMessage(ScannerMessage.OpenFailed), awaitItem())
         }
     }
 

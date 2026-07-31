@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos del historial (deuda D5). Ver la nota del mismo fichero en :feature:scanner. -->
+<resources>
+    <string name="history_empty">Todavía no escaneaste nada</string>
+    <string name="history_filter_all">Todos</string>
+    <string name="history_clear">Borrar</string>
+    <string name="history_row_meta">%1$s · %2$s</string>
+    <string name="history_row_latency"> · %1$d ms</string>
+
+    <!-- Acciones sobre el resultado (RF-13) -->
+    <string name="result_copy">Copiar</string>
+    <string name="result_share">Compartir</string>
+    <string name="result_open_link">Abrir enlace</string>
+    <string name="result_open_email">Escribir</string>
+    <string name="result_open_phone">Llamar</string>
+    <string name="result_open_sms">Enviar SMS</string>
+    <string name="result_open_map">Ver en el mapa</string>
+
+    <!-- Mensajes de una sola vez -->
+    <string name="message_copied">Copiado</string>
+    <string name="message_copy_failed">No se pudo copiar al portapapeles</string>
+    <string name="message_share_failed">No se pudo abrir la hoja de compartir</string>
+    <string name="message_open_failed">Ninguna app puede abrir esto</string>
+</resources>

@@ -29,5 +29,5 @@ sealed interface HistoryAction {
 
 /** Eventos de una sola vez del historial. */
 sealed interface HistoryEffect {
-    data class ShowMessage(val text: String) : HistoryEffect
+    data class ShowMessage(val message: HistoryMessage) : HistoryEffect
 }

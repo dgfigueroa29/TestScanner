@@ -92,5 +92,5 @@ sealed interface ScannerAction {
  * ejecuta `PlatformActions` (RF-13), y lo único que vuelve aquí es si hay algo que contar.
  */
 sealed interface ScannerEffect {
-    data class ShowMessage(val text: String) : ScannerEffect
+    data class ShowMessage(val message: ScannerMessage) : ScannerEffect
 }

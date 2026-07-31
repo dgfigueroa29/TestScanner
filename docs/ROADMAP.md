@@ -10,7 +10,7 @@ criterio de salida se cumple en CI.
 Convertir el repositorio en un proyecto Compose Multiplatform con la arquitectura de motores
 completa, aunque todavía sin motores de cámara reales.
 
-- [x] Build KMP/CMP: Kotlin DSL, version catalog, Gradle 8.13, Kotlin 2.1, AGP 8.9
+- [x] Build KMP/CMP: Kotlin DSL, version catalog, Gradle, Kotlin, AGP (versiones al día en `libs.versions.toml`)
 - [x] Targets `android`, `iosX64/iosArm64/iosSimulatorArm64`, `jvm`, `wasmJs`
 - [x] Estructura de módulos `core/`, `engines/`, `feature/`, `composeApp/`, `androidApp/`
 - [x] Modelo de dominio: `Barcode`, `BarcodeFormat` (17 simbologías), `BarcodeValueType`, `Detection`
@@ -68,9 +68,10 @@ verificable desactivando Play Services.
 - [ ] Primera compilación de todo el código iOS: nada de esto se ha compilado aún
 - [x] **Motor baseline decidido** (cerraba R9): se consumen los artefactos publicados de zxing-cpp,
       sin cinterop propio — ver [ADR-0008](adr/ADR-0008-baseline-zxing-cpp.md)
-- [ ] **Subir Kotlin a ≥ 2.2 antes del motor** (R10): los klibs publicados están compilados con
-      2.2.0 y el proyecto está en 2.1.21. Arrastra KSP y Compose Multiplatform; hacerlo con CI
-      disponible, no a ciegas
+- [x] **Kotlin 2.3.20** (cerraba R10): los klibs de zxing-cpp están compilados con 2.2.0 y el
+      proyecto estaba en 2.1.21. Se subió a 2.3.20 exacto porque es con la que están compilados CMP
+      1.11.1, Koin 4.2.2 y KSP 2.3.10 — emparejar exacto reduce la superficie de fallo. Gradle a
+      8.14.5. Room y AGP se quedan: viven en el maven de Google, inalcanzable desde aquí
 - [ ] `:engines:zxing-cpp` — `io.github.zxing-cpp:android` en Android y `:kotlin-native` en iOS.
       Dos `actual`: las dos superficies no comparten forma, aunque sí el núcleo C++
 - [ ] Revisión de ADR-0005: el grafo ya tiene 2 destinos; migrar a `navigation-compose` si llega a 6 o aparecen deep links
@@ -142,7 +143,7 @@ Registrada de forma explícita para que no se olvide:
 | ~~D2~~ | ~~Preferencias en memoria, no persistidas~~ | **Saldada**: `multiplatform-settings` en las cuatro plataformas |
 | ~~D3~~ | ~~Historial en memoria~~ | **Saldada**: Room KMP en Android, iOS y Desktop. En Web sigue en memoria porque Room no tiene target wasmJs |
 | D4 | Navegación propia sin deep links ni restauración de estado | Fase 3 (revisión ADR-0005) |
-| D5 | Strings hardcodeados en la UI, sin `composeResources` | Fase 2 |
+| ~~D5~~ | ~~Strings hardcodeados en la UI~~ | **Saldada**: `composeResources` por módulo. Los ViewModels emiten mensajes semánticos (`ScannerMessage`, `HistoryMessage`) y `ResultAction` dejó de traer etiqueta: el dominio dice qué acción, la UI cómo se llama |
 | D6 | La suite de contrato existe y la pasa el motor manual, pero aún no se ejecuta contra motores de cámara reales | Fase 2 |
 | ~~D8~~ | ~~El zoom se declara como capacidad pero no hay control en la UI~~ | **Saldada**: slider derivado de `canControlZoom` |
 | ~~D10~~ | ~~RF-07 sin UI ni selector de archivos~~ | **Saldada**: `ImagePicker` en las cuatro plataformas y `DecodeImageUseCase` recorriendo la cadena de motores. Un motor bloqueado por el permiso de cámara sigue sirviendo para leer un archivo |
@@ -151,4 +152,5 @@ Registrada de forma explícita para que no se olvide:
 | D9 | El historial de Web es de sesión: Room KMP no soporta wasmJs. Requiere un almacén propio sobre IndexedDB | Fase 4 |
 | D7 | `:androidApp` sin ProGuard/R8 configurado para release | Fase 2 |
 | D14 | El motor de Web escanea pero no muestra visor: sin preview el usuario no puede apuntar. Compose para Web no tiene equivalente de `AndroidView` / `UIKitView` | Fase 4 |
+| D15 | El texto que se copia de un WiFi o una vCard lo compone `ResultActionsFactory` en el dominio (`Red: … · Clave: …`). Es contenido y no *chrome*, pero sigue siendo español dentro del dominio; sacarlo exige devolver una estructura y formatearla arriba | Fase 5 |
 | D13 | Desktop y Web se quedan sin el baseline de comparación: zxing-cpp no publica artefacto JVM ni wasmJs (ADR-0008). En Desktop hoy no hay ningún decodificador; el candidato es `com.google.zxing:core`, y entraría al catálogo **como motor propio**, no con el nombre de zxing-cpp. El selector de imágenes de escritorio ya existe: lo que falta es el decodificador | Fase 5 |
