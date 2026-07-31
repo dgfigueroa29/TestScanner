@@ -30,4 +30,8 @@
     <string name="message_exported">Historial exportado</string>
     <string name="message_exported_to">Guardado en %1$s</string>
     <string name="message_nothing_to_export">No hay nada que exportar</string>
+    <!-- Accesibilidad (RNF-05): mismo motivo que en la pantalla de escaneo. -->
+    <string name="a11y_copy_value">Copiar %1$s</string>
+    <string name="a11y_share_value">Compartir %1$s</string>
+    <string name="a11y_open_value">Abrir %1$s</string>
 </resources>

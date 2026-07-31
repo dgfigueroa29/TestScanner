@@ -29,8 +29,10 @@ y Web con un único código base.
 | Exportación del historial | ✅ CSV y JSON, guardado en las cuatro plataformas |
 | ZXing-cpp (Android + iOS) | ✅ implementado — el mismo decodificador C++ en ambas, que es lo que hace comparables las lecturas |
 | Acciones sobre el resultado (RF-13) | ✅ copiar, compartir y abrir, según el significado del código |
-| Navegación | ✅ propia, con backstack que sobrevive a rotar la pantalla |
+| Navegación | ✅ propia, con backstack que sobrevive a que el sistema mate el proceso |
 | Build de release con R8 | ✅ `minify` y `shrinkResources`, con `assembleRelease` en CI |
+| Accesibilidad (RNF-05) | ✅ contraste AA **verificado por test**, y semántica para lectores de pantalla |
+| Privacidad (RNF-03) | ✅ auditada: sin trazas, sin cliente HTTP, sin analítica y sin permiso `INTERNET` |
 | ZXing en Java (Desktop) | ✅ el único decodificador de escritorio; **verificado de verdad**, decodificando imágenes generadas en el test |
 
 El catálogo muestra las ocho alternativas con su estado real; los motores aún no implementados se

@@ -86,9 +86,10 @@ verificable desactivando Play Services.
       de serlo. Decodifica también imágenes estáticas, lo que da a iOS su primer decodificador de
       archivos
 - [x] Revisión de ADR-0005 (cerraba D4): tres destinos y ningún deep link, así que la navegación
-      propia se queda. El defecto real era otro y se corrigió: el backstack no sobrevivía a rotar la
-      pantalla. Ahora se guarda por ids estables — escritos a mano, porque R8 ofusca los nombres de
-      clase
+      propia se queda. El defecto real era otro y se corrigió: el backstack no sobrevivía a que se
+      recreara la Activity. No al rotar —el manifiesto declara `configChanges` para eso— sino a que
+      el sistema mate el proceso, o a un cambio de tamaño de letra o de idioma. Ahora se guarda por
+      ids estables, escritos a mano porque R8 ofusca los nombres de clase
 
 - [ ] CI: `linkDebugFrameworkIosSimulatorArm64` en runner macOS
 
@@ -149,7 +150,17 @@ recupera correctamente EAN-13 impresos sobre códigos dañados.
       escritorio no llevaba a ninguna parte: el selector existía desde RF-07 y no había quién lo
       leyera. Es además el **primer motor real verificado de extremo a extremo sin dispositivo**: el
       propio ZXing genera los códigos y el test los decodifica de vuelta desde los píxeles
-- [ ] Accesibilidad completa (RNF-05) y auditoría de privacidad (RNF-03)
+- [x] Accesibilidad (RNF-05): el contraste pasa de intención a **test** — la paleta se extrae a
+      `ScannerPalette`, sin Compose, y `ContrastTest` mide WCAG en `commonTest`. De paso apareció que
+      los catorce roles `on*` estaban en los morados por defecto de Material. Y semántica donde solo
+      había posición: el visor, el estado de sesión como región viva, los botones de acción con el
+      valor dentro y el interruptor fusionado con su etiqueta
+- [x] Auditoría de privacidad (RNF-03) con dos hallazgos, no solo una lista de garantías: el `fetch`
+      del motor de Web resultó ser sobre un data URL local, y aun así se le puso guardia; y la
+      ausencia de `INTERNET` en el manifiesto, que es la garantía más fuerte que hay, no estaba
+      escrita en ninguna parte
+- [ ] Objetivos táctiles medidos sobre un dispositivo: los componentes de Material aplican 48 dp por
+      su cuenta y no hay clickables propios, pero comprobarlo exige ejecutar la app
 
 **Criterio de salida:** el usuario puede responder, dentro de la app y con datos, la pregunta
 "¿qué motor funciona mejor para este código en este dispositivo?".
@@ -185,7 +196,7 @@ Registrada de forma explícita para que no se olvide:
 | ~~D1~~ | ~~Sin convention plugins: cada módulo repite su configuración KMP~~ | **Saldada**: `build-logic/` con `testscanner.kmp.library`, `.kmp.compose` y `.android.application` |
 | ~~D2~~ | ~~Preferencias en memoria, no persistidas~~ | **Saldada**: `multiplatform-settings` en las cuatro plataformas |
 | ~~D3~~ | ~~Historial en memoria~~ | **Saldada**: Room KMP en Android, iOS y Desktop. En Web sigue en memoria porque Room no tiene target wasmJs |
-| ~~D4~~ | ~~Navegación propia sin deep links ni restauración de estado~~ | **Saldada**: hecha la revisión de ADR-0005, el umbral (seis destinos o deep links) no se alcanza y la navegación propia se mantiene. Lo que sí era un defecto era la restauración: rotar devolvía al escáner. `Navigator` guarda y restaura el backstack por ids estables y `MainActivity` lo pasa por `onSaveInstanceState` |
+| ~~D4~~ | ~~Navegación propia sin deep links ni restauración de estado~~ | **Saldada**: hecha la revisión de ADR-0005, el umbral (seis destinos o deep links) no se alcanza y la navegación propia se mantiene. Lo que sí era un defecto era la restauración: al recrearse la Activity —muerte del proceso, cambio de idioma o de tamaño de letra; no al rotar, que el manifiesto ya cubre— se volvía al escáner. `Navigator` guarda y restaura el backstack por ids estables y `MainActivity` lo pasa por `onSaveInstanceState` |
 | ~~D5~~ | ~~Strings hardcodeados en la UI~~ | **Saldada**: `composeResources` por módulo. Los ViewModels emiten mensajes semánticos (`ScannerMessage`, `HistoryMessage`) y `ResultAction` dejó de traer etiqueta: el dominio dice qué acción, la UI cómo se llama |
 | ~~D6~~ | ~~La suite de contrato no se ejecuta contra motores de cámara reales~~ | **Cerrada como no-objetivo**: no habrá emulador en CI, así que ningún test puede exigir dispositivo. Lo cubre lo que sí corre sin él — ver más abajo |
 | ~~D8~~ | ~~El zoom se declara como capacidad pero no hay control en la UI~~ | **Saldada**: slider derivado de `canControlZoom` |

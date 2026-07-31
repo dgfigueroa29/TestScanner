@@ -69,9 +69,9 @@ class Navigator(initial: Destination = Destination.Scanner) {
     /**
      * Backstack como ids, para que la plataforma lo guarde donde sepa (parte de la deuda D4).
      *
-     * Sin esto, rotar el teléfono devolvía al usuario a la pantalla de escaneo: Android recrea la
-     * Activity y el backstack vivía solo en memoria. No es un problema de la navegación propia
-     * —`navigation-compose` tampoco lo resuelve solo— sino de no haberlo guardado nunca.
+     * Sin esto, cualquier recreación devolvía al usuario a la pantalla de escaneo: el backstack
+     * vivía solo en memoria. No es un problema de la navegación propia —`navigation-compose`
+     * tampoco lo resuelve solo— sino de no haberlo guardado nunca.
      */
     fun saveState(): List<String> = _backstack.value.map { it.id }
 

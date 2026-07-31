@@ -33,6 +33,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.testscanner.core.designsystem.LocalSnackbarHostState
 import com.testscanner.core.designsystem.Spacing
@@ -46,6 +51,13 @@ import com.testscanner.core.model.Detection
 import com.testscanner.core.scanner.EngineAvailability
 import com.testscanner.core.scanner.ui.CameraPreviewEngine
 import com.testscanner.feature.scanner.resources.Res
+import com.testscanner.feature.scanner.resources.a11y_copy_value
+import com.testscanner.feature.scanner.resources.a11y_detections_in_view
+import com.testscanner.feature.scanner.resources.a11y_no_detections
+import com.testscanner.feature.scanner.resources.a11y_open_value
+import com.testscanner.feature.scanner.resources.a11y_share_value
+import com.testscanner.feature.scanner.resources.a11y_viewfinder
+import com.testscanner.feature.scanner.resources.a11y_zoom
 import com.testscanner.feature.scanner.resources.action_auto
 import com.testscanner.feature.scanner.resources.action_dismiss
 import com.testscanner.feature.scanner.resources.action_grant_camera
@@ -211,12 +223,24 @@ fun ScannerContent(
  */
 @Composable
 private fun CameraViewfinder(previewEngine: CameraPreviewEngine, state: ScannerState) {
+    // Ni la superficie nativa ni el Canvas del overlay producen semántica: para un lector de
+    // pantalla, el visor es un agujero. Describirlo con cuántos códigos hay dentro es lo que
+    // convierte el encuadre en información y no en un rectángulo mudo (RNF-05).
+    val inView = if (state.detections.isEmpty()) {
+        stringResource(Res.string.a11y_no_detections)
+    } else {
+        stringResource(Res.string.a11y_detections_in_view, state.detections.size)
+    }
+    // El texto se arma fuera del `semantics`: su lambda no es composable y `stringResource` sí.
+    val description = "${stringResource(Res.string.a11y_viewfinder)}. $inView"
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(VIEWFINDER_ASPECT_RATIO)
             .clip(RoundedCornerShape(Spacing.md))
-            .background(Color.Black),
+            .background(Color.Black)
+            .semantics { contentDescription = description },
     ) {
         previewEngine.CameraPreview(Modifier.fillMaxSize())
         // En el navegador el vídeo es un elemento del DOM sobre el canvas: el overlay se dibujaría
@@ -269,6 +293,9 @@ private fun SessionControls(state: ScannerState, onAction: (ScannerAction) -> Un
             modifier = Modifier.padding(Spacing.md),
             verticalArrangement = Arrangement.spacedBy(Spacing.sm),
         ) {
+            // Región viva: cuando la sesión arranca, cambia de motor o termina, el lector de
+            // pantalla lo anuncia solo. Sin esto, quien no ve la pantalla no tiene forma de saber
+            // que algo pasó — y la degradación de motor es justo lo que la app quiere hacer visible.
             Text(
                 text = when (state.sessionStatus) {
                     SessionStatus.Idle -> stringResource(Res.string.session_idle)
@@ -279,6 +306,7 @@ private fun SessionControls(state: ScannerState, onAction: (ScannerAction) -> Un
                     SessionStatus.Finished -> stringResource(Res.string.session_finished)
                 },
                 style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             )
 
             state.switchedFrom?.let {
@@ -340,9 +368,12 @@ private fun SessionControls(state: ScannerState, onAction: (ScannerAction) -> Un
                 }
             }
 
+            // El interruptor y su etiqueta se fusionan en un solo nodo: por separado, el lector de
+            // pantalla enfoca el Switch y dice "activado" sin decir activado *qué*.
             Row(
                 horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.semantics(mergeDescendants = true) {},
             ) {
                 Switch(
                     checked = state.continuous,
@@ -373,14 +404,19 @@ private fun SessionControls(state: ScannerState, onAction: (ScannerAction) -> Un
             }
 
             if (state.canControlZoom) {
-                Text(
-                    text = stringResource(Res.string.zoom_ratio, state.zoomRatio.toInt()),
-                    style = MaterialTheme.typography.labelMedium,
-                )
+                val zoomLabel = stringResource(Res.string.zoom_ratio, state.zoomRatio.toInt())
+                val zoomName = stringResource(Res.string.a11y_zoom)
+                Text(text = zoomLabel, style = MaterialTheme.typography.labelMedium)
+                // Un Slider sin nombre se anuncia como un porcentaje suelto. Con el nombre y el
+                // aumento en el estado, se lee "Zoom de la cámara, 3×" en vez de "60 %".
                 Slider(
                     value = state.zoomRatio,
                     onValueChange = { onAction(ScannerAction.SetZoom(it)) },
                     valueRange = MIN_ZOOM..MAX_ZOOM,
+                    modifier = Modifier.semantics {
+                        contentDescription = zoomName
+                        stateDescription = zoomLabel
+                    },
                 )
             }
 
@@ -523,8 +559,12 @@ private fun DetectionRow(
 
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 actions.forEach { action ->
+                    // Con varios resultados en pantalla, todos los botones se llaman igual. La
+                    // descripción incluye el valor para que "Copiar" diga qué se copia (RNF-05).
+                    val spoken = stringResource(action.spokenResource(), detection.barcode.rawValue)
                     TextButton(
                         onClick = { onAction(ScannerAction.RunResultAction(action, shareable)) },
+                        modifier = Modifier.semantics { contentDescription = spoken },
                     ) {
                         Text(stringResource(action.labelResource()))
                     }
@@ -551,6 +591,13 @@ private fun EngineAvailability.label(): String = when (this) {
         stringResource(Res.string.availability_planned, plannedPhase)
 
     is EngineAvailability.Failed -> stringResource(Res.string.availability_failed)
+}
+
+/** Cómo la anuncia un lector de pantalla, con el valor dentro para poder distinguir un botón de otro. */
+private fun ResultAction.spokenResource(): StringResource = when (this) {
+    ResultAction.Copy -> Res.string.a11y_copy_value
+    ResultAction.Share -> Res.string.a11y_share_value
+    is ResultAction.Open -> Res.string.a11y_open_value
 }
 
 /** Cómo se llama en pantalla cada acción sobre el resultado (RF-13). */

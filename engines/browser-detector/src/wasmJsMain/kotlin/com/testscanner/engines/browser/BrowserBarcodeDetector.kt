@@ -126,6 +126,9 @@ internal fun detachSessionVideo(session: JsAny) {
 internal fun detectDataUrl(formatsCsv: String, dataUrl: String): Promise<JsAny> = js(
     """
     (function (f, u) {
+        // RNF-03: solo data URLs. El bitmap se arma con los bytes que ya están en memoria; si
+        // alguna vez llegara aquí una URL remota, `fetch` sacaría la imagen del dispositivo.
+        if (u.indexOf('data:') !== 0) throw new Error('solo se decodifican data URLs');
         var formats = f ? f.split(',') : undefined;
         var detector = new BarcodeDetector(formats ? { formats: formats } : undefined);
         return fetch(u)
@@ -163,6 +166,7 @@ internal fun sessionFrameHeight(session: JsAny): Int = js("session.video.videoHe
 internal fun imageSize(dataUrl: String): Promise<JsAny> = js(
     """
     (function (u) {
+        if (u.indexOf('data:') !== 0) throw new Error('solo se decodifican data URLs');
         return fetch(u)
             .then(function (r) { return r.blob(); })
             .then(function (b) { return createImageBitmap(b); })

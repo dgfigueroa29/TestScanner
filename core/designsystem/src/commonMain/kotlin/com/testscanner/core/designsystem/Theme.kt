@@ -15,29 +15,44 @@ import androidx.compose.ui.unit.dp
  * fondo de pantalla del usuario es incompatible con una app cuya UI se superpone a un preview de
  * cámara, donde el contraste tiene que estar garantizado (RNF-05).
  */
-private val ScannerBlue = Color(0xFF2563EB)
-private val ScannerBlueDark = Color(0xFF93B4FF)
-private val ScannerTeal = Color(0xFF0F766E)
-private val ScannerTealDark = Color(0xFF5EEAD4)
-private val ScannerAmber = Color(0xFFB45309)
-private val ScannerAmberDark = Color(0xFFFCD34D)
-
+// Los colores viven en `ScannerPalette`, que no depende de Compose. Así el contraste se mide con
+// aritmética en `commonTest` (`ContrastTest`) en lugar de quedar como una intención del documento.
+//
+// Los roles `on*` se fijan **todos**, y no es cosmético: al declarar solo `primary`, `secondary` y
+// `tertiary`, los `on*` se quedaban en los valores por defecto de Material —un morado y un granate
+// de una paleta que no es esta—, así que el texto de un botón primario en modo oscuro salía morado.
 private val LightColors = lightColorScheme(
-    primary = ScannerBlue,
-    secondary = ScannerTeal,
-    tertiary = ScannerAmber,
-    background = Color(0xFFF8FAFC),
-    surface = Color(0xFFFFFFFF),
-    surfaceVariant = Color(0xFFE7EBF0),
+    primary = Color(ScannerPalette.Light.PRIMARY),
+    onPrimary = Color(ScannerPalette.Light.ON_PRIMARY),
+    secondary = Color(ScannerPalette.Light.SECONDARY),
+    onSecondary = Color(ScannerPalette.Light.ON_SECONDARY),
+    tertiary = Color(ScannerPalette.Light.TERTIARY),
+    onTertiary = Color(ScannerPalette.Light.ON_TERTIARY),
+    background = Color(ScannerPalette.Light.BACKGROUND),
+    onBackground = Color(ScannerPalette.Light.ON_BACKGROUND),
+    surface = Color(ScannerPalette.Light.SURFACE),
+    onSurface = Color(ScannerPalette.Light.ON_SURFACE),
+    surfaceVariant = Color(ScannerPalette.Light.SURFACE_VARIANT),
+    onSurfaceVariant = Color(ScannerPalette.Light.ON_SURFACE_VARIANT),
+    error = Color(ScannerPalette.Light.ERROR),
+    onError = Color(ScannerPalette.Light.ON_ERROR),
 )
 
 private val DarkColors = darkColorScheme(
-    primary = ScannerBlueDark,
-    secondary = ScannerTealDark,
-    tertiary = ScannerAmberDark,
-    background = Color(0xFF0B1020),
-    surface = Color(0xFF141A2A),
-    surfaceVariant = Color(0xFF232B3E),
+    primary = Color(ScannerPalette.Dark.PRIMARY),
+    onPrimary = Color(ScannerPalette.Dark.ON_PRIMARY),
+    secondary = Color(ScannerPalette.Dark.SECONDARY),
+    onSecondary = Color(ScannerPalette.Dark.ON_SECONDARY),
+    tertiary = Color(ScannerPalette.Dark.TERTIARY),
+    onTertiary = Color(ScannerPalette.Dark.ON_TERTIARY),
+    background = Color(ScannerPalette.Dark.BACKGROUND),
+    onBackground = Color(ScannerPalette.Dark.ON_BACKGROUND),
+    surface = Color(ScannerPalette.Dark.SURFACE),
+    onSurface = Color(ScannerPalette.Dark.ON_SURFACE),
+    surfaceVariant = Color(ScannerPalette.Dark.SURFACE_VARIANT),
+    onSurfaceVariant = Color(ScannerPalette.Dark.ON_SURFACE_VARIANT),
+    error = Color(ScannerPalette.Dark.ERROR),
+    onError = Color(ScannerPalette.Dark.ON_ERROR),
 )
 
 /** Espaciados del sistema de diseño. Evita `dp` sueltos repartidos por las pantallas. */

@@ -20,6 +20,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.testscanner.core.designsystem.LocalSnackbarHostState
 import com.testscanner.core.designsystem.Spacing
@@ -30,6 +32,9 @@ import com.testscanner.core.domain.scan.ResultActionsFactory
 import com.testscanner.core.domain.scan.ShareableContent
 import com.testscanner.core.model.Detection
 import com.testscanner.feature.history.resources.Res
+import com.testscanner.feature.history.resources.a11y_copy_value
+import com.testscanner.feature.history.resources.a11y_open_value
+import com.testscanner.feature.history.resources.a11y_share_value
 import com.testscanner.feature.history.resources.history_clear
 import com.testscanner.feature.history.resources.history_empty
 import com.testscanner.feature.history.resources.history_export_csv
@@ -182,8 +187,12 @@ private fun HistoryRow(
 
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 actions.forEach { action ->
+                    // El historial es una lista larga de botones que se llaman igual. Sin el valor
+                    // dentro de la descripción, un lector de pantalla los hace indistinguibles.
+                    val spoken = stringResource(action.spokenResource(), detection.barcode.rawValue)
                     TextButton(
                         onClick = { onAction(HistoryAction.RunResultAction(action, shareable)) },
+                        modifier = Modifier.semantics { contentDescription = spoken },
                     ) {
                         Text(stringResource(action.labelResource()))
                     }
@@ -202,6 +211,13 @@ private fun Centered(modifier: Modifier, content: @Composable () -> Unit) {
     ) {
         content()
     }
+}
+
+/** Cómo la anuncia un lector de pantalla, con el valor dentro para distinguir un botón de otro. */
+private fun ResultAction.spokenResource(): StringResource = when (this) {
+    ResultAction.Copy -> Res.string.a11y_copy_value
+    ResultAction.Share -> Res.string.a11y_share_value
+    is ResultAction.Open -> Res.string.a11y_open_value
 }
 
 /** Cómo se llama en pantalla cada acción sobre el resultado (RF-13). */

@@ -601,6 +601,11 @@ y fallaría en release — el peor sitio donde descubrirlo. `MainActivity` lo gu
 `onSaveInstanceState`; viaja como ids y no como objetos, con lo que `Destination` no necesita ser
 `Parcelable` y el estado guardado no queda atado a su representación interna.
 
+El caso que cubre no es la rotación: la Activity declara `configChanges` para orientación y tamaño
+—a propósito, para no reiniciar la cámara al girar— así que rotar nunca la recreó. Cubre la muerte
+del proceso en segundo plano y los cambios de configuración que la Activity no declara, como el
+tamaño de letra o el idioma del sistema.
+
 ---
 
 ## 10. Inyección de dependencias
@@ -694,6 +699,68 @@ Garantías de privacidad (RNF-03), verificables en revisión de código:
 - El historial guarda el **valor decodificado**, nunca la imagen.
 - El caso `RequiresDownload` (ML Kit) se comunica explícitamente al usuario antes de descargar.
 - La app declara `android:usesCleartextTraffic="false"` y no incluye SDK de analítica de terceros.
+
+#### Auditoría, con lo que se comprobó y lo que salió
+
+No basta con enumerar garantías: lo que sigue es el resultado de buscarlas en el código, incluidos
+los dos hallazgos.
+
+| Se comprobó | Resultado |
+|---|---|
+| Ninguna traza escribe lo escaneado | No hay una sola llamada a `println`, `Log`, `console.log` ni `printStackTrace` en todo el repositorio |
+| Ningún cliente HTTP | No hay Ktor, OkHttp, Retrofit ni `URLConnection`; el catálogo de versiones tampoco los declara |
+| Ninguna analítica | Sin Firebase, Crashlytics ni equivalentes, ni en código ni en el catálogo |
+| Permisos declarados | Solo `CAMERA`, con `uses-feature` no obligatorio. **No se declara `INTERNET`**, que es la garantía más fuerte: aunque alguien añadiera una llamada de red, en Android no saldría |
+| Lo que se persiste | La tabla de Room y el DTO de Web guardan valor, formato, motor, fuente, instante y latencia. No hay campo donde quepa un píxel |
+| Lo que sale del dispositivo | Solo por acción explícita del usuario: compartir, abrir un enlace o exportar el historial a un archivo que él elige |
+
+**Hallazgo 1 — `fetch` en el motor de Web.** El decodificador del navegador llama a `fetch`, que es
+exactamente lo que una auditoría busca. Resultó ser sobre un **data URL** construido en el momento a
+partir de los bytes que ya están en memoria: `createImageBitmap` necesita un `Blob` y esa es la vía
+sin arrastrar `kotlinx-browser`. No sale nada del dispositivo. Aun así se añadió un guardia que
+rechaza cualquier URL que no empiece por `data:`, para que la propiedad se compruebe leyendo cuatro
+líneas en vez de razonando sobre el llamante.
+
+**Hallazgo 2 — falta declarar la ausencia de red.** No declarar `INTERNET` ya impide la salida en
+Android, pero es una garantía silenciosa: no aparece en ninguna parte y el próximo que añada una
+dependencia puede reintroducirla sin darse cuenta. Queda anotado aquí como la invariante que hay que
+defender.
+
+---
+
+### 12.1 Accesibilidad (RNF-05)
+
+El requisito pedía tres cosas: contraste AA, objetivos táctiles ≥ 48 dp y lectores de pantalla en
+los resultados. Estado de cada una:
+
+**Contraste.** Deja de ser una intención y pasa a ser un test. La paleta vive en `ScannerPalette`,
+que **no depende de Compose**, y `Contrast` implementa la fórmula de WCAG 2.1; `ContrastTest` mide
+todos los pares y falla por debajo de 4.5:1. Corre en `commonTest`, sin renderizar y sin
+dispositivo. Se miden además los pares que **la UI usa de hecho** —`primary`, `tertiary` y `error`
+como color de texto sobre la tarjeta—, que ninguna convención de Material cubre.
+
+Al extraer la paleta apareció un defecto que el contraste no habría detectado: solo se declaraban
+`primary`, `secondary` y `tertiary`, así que todos los roles `on*` se quedaban en los valores por
+defecto de Material —de una paleta morada que no es esta—. El texto de un botón primario en modo
+oscuro salía morado. Ahora se declaran los catorce.
+
+**Lectores de pantalla.** Cuatro arreglos, todos por el mismo motivo: había información que solo
+existía como posición o como color.
+
+- El **visor** no producía semántica alguna: ni la superficie nativa ni el `Canvas` del overlay. Se
+  describe con cuántos códigos hay dentro.
+- El **estado de la sesión** es una región viva (`liveRegion`), así que arrancar, degradar de motor
+  y terminar se anuncian solos. La degradación es justo lo que el objetivo G4 quiere hacer visible.
+- Los **botones de acción** repetían etiqueta en cada resultado: con cinco lecturas en pantalla, un
+  lector decía "Copiar" cinco veces sin decir qué. Ahora la descripción lleva el valor dentro.
+- El **interruptor de escaneo continuo** y su etiqueta se fusionan en un nodo; por separado, el
+  lector enfocaba el `Switch` y decía "activado" sin decir activado qué. El **slider de zoom** gana
+  nombre y estado, para que lea "Zoom de la cámara, 3×" en lugar de un porcentaje suelto.
+
+**Objetivos táctiles.** Todo lo pulsable son componentes de Material 3, que aplican
+`minimumInteractiveComponentSize` (48 dp) por su cuenta; no hay ni un `Modifier.clickable` propio en
+el repositorio, que es donde se rompería. No está medido sobre un dispositivo, y eso no cambia
+mientras no haya emulador.
 
 ---
 

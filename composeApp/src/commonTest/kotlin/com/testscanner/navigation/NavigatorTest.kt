@@ -52,7 +52,7 @@ class NavigatorTest {
 
     @Test
     fun `guardar y restaurar deja el backstack igual`() {
-        // Es el caso de rotar el teléfono: la Activity se recrea y el Navigator es otro objeto.
+        // Es el caso de que el sistema recree la Activity: el Navigator es otro objeto.
         val navigator = Navigator()
         navigator.navigateTo(Destination.History)
         navigator.navigateTo(Destination.Comparison)

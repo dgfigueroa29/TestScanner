@@ -92,4 +92,13 @@
     <string name="comparison_failures"> · %1$d fallos</string>
     <string name="comparison_no_data">—</string>
     <string name="comparison_millis">%1$d ms</string>
+    <!-- Accesibilidad (RNF-05). Los botones de acción repiten etiqueta en cada resultado: sin
+         estas descripciones, un lector de pantalla anuncia "Copiar" cinco veces sin decir qué. -->
+    <string name="a11y_viewfinder">Visor de la cámara</string>
+    <string name="a11y_no_detections">Ningún código en el visor</string>
+    <string name="a11y_detections_in_view">%1$d códigos en el visor</string>
+    <string name="a11y_copy_value">Copiar %1$s</string>
+    <string name="a11y_share_value">Compartir %1$s</string>
+    <string name="a11y_open_value">Abrir %1$s</string>
+    <string name="a11y_zoom">Zoom de la cámara</string>
 </resources>

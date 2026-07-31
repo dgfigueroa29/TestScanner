@@ -108,9 +108,14 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // Rotar la pantalla recrea la Activity, y con ella el Navigator: sin esto el usuario volvía
-        // al escáner desde donde estuviera. El backstack viaja como ids y no como objetos porque
-        // `Destination` no es `Parcelable` y no hay razón para que lo sea (ADR-0005).
+        // Recrear la Activity recrea el Navigator, y con él se perdía el backstack. Girar el
+        // teléfono **no** entra ahí: el manifiesto declara `configChanges` para orientación y
+        // tamaño, precisamente para no reiniciar la cámara al rotar. Lo que sí la recrea es que el
+        // sistema mate el proceso en segundo plano, y los cambios de configuración que la Activity
+        // no declara — el tamaño de letra o el idioma del sistema.
+        //
+        // El backstack viaja como ids y no como objetos porque `Destination` no es `Parcelable` y no
+        // hay razón para que lo sea (ADR-0005).
         savedInstanceState?.getStringArrayList(KEY_BACKSTACK)?.let(navigator::restoreState)
 
         // El botón atrás del sistema desapila en el Navigator; cuando ya no hay nada que desapilar
