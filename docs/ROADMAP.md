@@ -26,7 +26,7 @@ completa, aunque todavía sin motores de cámara reales.
       decoradores y a la cadena completa que llega al ViewModel
 - [x] Comparador de motores en paralelo + métricas por motor (objetivo G5)
 - [x] `build-logic/` con convention plugins
-- [x] SDD, 7 ADRs y catálogo de motores documentados
+- [x] SDD, 9 ADRs y catálogo de motores documentados
 
 **Criterio de salida:** la app arranca en Android, Desktop y Web; el catálogo lista los 8 motores
 con su estado real; los tests de `:core:domain` y `:core:data` pasan en CI.
@@ -56,7 +56,7 @@ verificable desactivando Play Services.
 
 > Pendiente de la primera compilación con Gradle: el entorno donde se escribió esta fase no tenía
 > acceso a `dl.google.com`, así que las APIs de ML Kit y CameraX están sin compilar. El núcleo puro
-> sí está verificado (353 tests en verde con kotlinc).
+> sí está verificado (358 tests en verde con kotlinc).
 
 ---
 
@@ -144,7 +144,11 @@ recupera correctamente EAN-13 impresos sobre códigos dañados.
       está viendo, no todo: un archivo que no se parece a la pantalla es una sorpresa. El CSV
       neutraliza los valores que una hoja de cálculo ejecutaría como fórmula — el contenido de un
       código escaneado viene de fuera y no es de fiar
-- [ ] Play Feature Delivery para los motores pesados de Android (RNF-06)
+- [x] Play Feature Delivery (RNF-06): **decidido aplazarlo**, no olvidado — ver
+      [ADR-0009](adr/ADR-0009-play-feature-delivery-aplazado.md). Un módulo de característica
+      dinámica no puede ser un módulo KMP, el mecanismo solo funciona distribuyendo por Play, y no
+      hay ninguna medición del APK con la que decidir qué partir. RNF-06 queda **cumplido entre
+      plataformas y no cumplido dentro de Android**, dicho en vez de dado por hecho
 - [x] Historial de Web persistente (D9) y textos de compartir fuera del dominio (D15)
 - [x] `:engines:zxing-java` — decodificador de escritorio (D13). Hasta ahora, elegir un archivo en
       escritorio no llevaba a ninguna parte: el selector existía desde RF-07 y no había quién lo

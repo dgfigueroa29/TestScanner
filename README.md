@@ -48,6 +48,9 @@ Lo que queda fuera por ahora, y por qué:
   cubierto sin dispositivo y qué no.
 - **Escritorio lee archivos pero no cámara**: hay decodificador (ZXing en Java) y no hay captura de
   webcam, así que una sesión en vivo cae a la entrada manual.
+- **El APK de Android carga con los cuatro motores de la plataforma.** RNF-06 se cumple entre
+  plataformas y no dentro de Android; Play Feature Delivery se aplazó a conciencia y con condición
+  de entrada ([ADR-0009](docs/adr/ADR-0009-play-feature-delivery-aplazado.md)).
 - **Web no tiene respaldo tras el navegador**: zxing-cpp no publica artefacto wasmJs, así que quien
   cierra esa cadena es la entrada manual.
 
@@ -55,7 +58,7 @@ Lo que queda fuera por ahora, y por qué:
 > primer veredicto completo en cuanto se abra un PR.
 > El entorno donde se desarrolló no tenía acceso a
 > `dl.google.com`, así que no hubo Android SDK ni artefactos de AGP/Compose. Lo verificado son los
-> **353 tests del núcleo puro**, compilados y ejecutados con kotlinc 2.3.20 — el mismo compilador al que apunta el build. Todo lo que necesita
+> **358 tests del núcleo puro**, compilados y ejecutados con kotlinc 2.3.20 — el mismo compilador al que apunta el build. Todo lo que necesita
 > Gradle — `build-logic`, las versiones del catálogo, los motores de plataforma y el código
 > Compose — está pendiente de la primera compilación.
 

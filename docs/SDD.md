@@ -477,8 +477,15 @@ falsos, sin cámara, sin dispositivo y sin Compose.
 
 Cada motor es un módulo Gradle propio y se agrega desde el *source set* correspondiente de
 `:composeApp`. Un target no enlaza SDKs que no puede usar: el binario de Desktop no contiene ML
-Kit, el de iOS no contiene Google Play Services. Para Android, los motores pesados (ML Kit
-*bundled*) se documentan como candidatos a **Play Feature Delivery** en la Fase 5.
+Kit, el de iOS no contiene Google Play Services.
+
+**Dentro de Android, en cambio, no se cumple**: el APK enlaza los cuatro motores de la plataforma
+aunque el usuario use uno solo, y R8 no puede quitarlos porque están registrados explícitamente en
+el grafo de Koin. Play Feature Delivery era la salida prevista y **se aplaza a conciencia**
+([ADR-0009](adr/ADR-0009-play-feature-delivery-aplazado.md)): un módulo de característica dinámica
+no puede ser un módulo KMP, el mecanismo solo se ejecuta distribuyendo por Play, y no hay ninguna
+medición del APK con la que decidir qué conviene partir. Se retoma cuando haya distribución y
+medición; hasta entonces el incumplimiento queda escrito y acotado en lugar de darse por resuelto.
 
 ---
 
@@ -1043,3 +1050,4 @@ exactamente la misma: si divergieran, el botón aparecería y no encontraría de
 | [ADR-0006](adr/ADR-0006-reestructuracion-del-build.md) | Reestructurar el build de una vez en lugar de migrar incrementalmente |
 | [ADR-0007](adr/ADR-0007-preview-como-capacidad-del-motor.md) | El preview de cámara es una capacidad del motor, no de la feature |
 | [ADR-0008](adr/ADR-0008-baseline-zxing-cpp.md) | El baseline de comparación es zxing-cpp desde artefactos publicados, en Android e iOS |
+| [ADR-0009](adr/ADR-0009-play-feature-delivery-aplazado.md) | Play Feature Delivery se aplaza: incompatible con KMP, exige Play Store y no hay medición |
