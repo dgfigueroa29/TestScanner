@@ -222,7 +222,8 @@ TestScanner/
 │   ├── domain/                        # UseCases, interfaces de Repository y decoradores del SPI
 │   ├── data/                          # Registry, preferencias e historial
 │   ├── designsystem/                  # CMP: tema, tokens, componentes reutilizables
-│   └── permissions/                   # expect/actual: permiso de cámara
+│   ├── permissions/                   # expect/actual: permiso de cámara
+│   └── platform/                      # PlatformActions: portapapeles, compartir, abrir enlace
 │
 ├── engines/
 │   ├── manual/                        # entrada manual — motor de referencia, 100 % common
@@ -266,6 +267,7 @@ TestScanner/
 | `:core:data` | ✅ | ✅ | ✅ | ✅ |
 | `:core:designsystem` | ✅ | ✅ | ✅ | ✅ |
 | `:core:permissions` | ✅ | ✅ | ✅ | ✅ |
+| `:core:platform` | ✅ | ✅ | ✅ | ✅ |
 | `:engines:manual` | ✅ | ✅ | ✅ | ✅ |
 | `:engines:gms-code-scanner` | ✅ | — | — | — |
 | `:engines:mlkit-camerax` | ✅ | — | — | — |
@@ -773,6 +775,41 @@ antes deja de emitir, y el marcador refleja esa diferencia — que es precisamen
 
 Lo que **sí** se excluye es comparar entre fuentes distintas: la entrada manual no participa en una
 comparación de cámara, porque no es un decodificador y contrastarla no mide nada.
+
+---
+
+### 9.5 Acciones sobre el resultado (RF-13)
+
+Escanear un QR con una URL y no poder abrirla deja el resultado en un callejón sin salida. RF-13
+cierra el ciclo con tres acciones: **copiar**, **compartir** y **abrir**.
+
+El reparto de responsabilidades es lo que hace que esto no se repita cuatro veces:
+
+| Quién | Qué decide |
+|---|---|
+| `:core:domain` — `ResultActionsFactory` | **Qué** acciones tiene sentido ofrecer y **con qué texto** |
+| `:core:platform` — `PlatformActions` | **Cómo** las ejecuta cada sistema operativo |
+| ViewModel | Une las dos mitades y avisa si la acción no prosperó |
+
+Las acciones se derivan de `BarcodeValueType` (§6.3), **no** del formato: un QR con una URL ofrece
+"Abrir enlace"; el mismo QR con texto plano, no. `Email`, `Phone`, `Sms` y `GeoPoint` se traducen a
+sus esquemas (`mailto:`, `tel:`, `sms:`, `geo:`); `Product` no ofrece abrir porque un EAN no apunta
+a ningún sitio: elegir un buscador sería una decisión de producto disfrazada de detalle técnico.
+
+Copiar tampoco usa el valor crudo cuando hay algo mejor: `shareableText` de un QR de WiFi devuelve
+`Red: X · Clave: Y`, porque pegarle a alguien `WIFI:T:WPA;S:…;;` no le sirve de nada.
+
+`PlatformActions` es **una sola interfaz**, no tres segregadas como las capacidades de los motores
+(§7.2). La diferencia es real: un motor puede implementar unas capacidades y otras no, y la UI
+necesita distinguirlo en tiempo de compilación; la plataforma, en cambio, es una sola y siempre está
+presente. Lo único desigual es compartir — **en escritorio no existe una hoja de compartir** — y eso
+se resuelve con la bandera `canShare`, que llega al estado y hace que el botón simplemente no se
+ofrezca. Los métodos devuelven `Boolean` en lugar de lanzar porque fallar al copiar no es
+excepcional: el portapapeles puede estar bloqueado y el navegador puede negar el permiso.
+
+Compromiso registrado en Web: `copyToClipboard` y `share` devuelven `true` en cuanto la llamada
+arranca, sin esperar la promesa. Esperarla exigiría puentear promesas de JS a corrutinas para un
+`Boolean` cuyo único uso es decidir si mostrar un aviso.
 
 ---
 

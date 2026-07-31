@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.testscanner.core.domain.repository.ScanPreferencesRepository
 import com.testscanner.core.domain.repository.ScannerEngineRepository
+import com.testscanner.core.domain.scan.ResultAction
+import com.testscanner.core.domain.scan.ResultActionsFactory
 import com.testscanner.core.domain.usecase.ObserveEngineCatalogUseCase
 import com.testscanner.core.domain.usecase.ObserveScanPreferencesUseCase
 import com.testscanner.core.domain.usecase.SaveDetectionUseCase
@@ -11,11 +13,13 @@ import com.testscanner.core.domain.usecase.SetPreferredEngineUseCase
 import com.testscanner.core.domain.usecase.SetScanFormatsUseCase
 import com.testscanner.core.domain.usecase.StartScanSessionUseCase
 import com.testscanner.core.model.BarcodeFormat
+import com.testscanner.core.model.Detection
 import com.testscanner.core.model.Permission
 import com.testscanner.core.model.ScanRequest
 import com.testscanner.core.model.ScanSource
 import com.testscanner.core.model.ScannerEngineId
 import com.testscanner.core.permissions.PermissionController
+import com.testscanner.core.platform.PlatformActions
 import com.testscanner.core.scanner.CameraControlEngine
 import com.testscanner.core.scanner.ScanEvent
 import com.testscanner.core.scanner.TextInputEngine
@@ -46,9 +50,10 @@ class ScannerViewModel(
     private val preferencesRepository: ScanPreferencesRepository,
     private val engineRepository: ScannerEngineRepository,
     private val permissionController: PermissionController,
+    private val platformActions: PlatformActions,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(ScannerState())
+    private val _state = MutableStateFlow(ScannerState(canShare = platformActions.canShare))
     val state: StateFlow<ScannerState> = _state.asStateFlow()
 
     private val _effects = MutableSharedFlow<ScannerEffect>()
@@ -71,6 +76,7 @@ class ScannerViewModel(
             is ScannerAction.SetContinuous -> setContinuous(action.enabled)
             is ScannerAction.ManualInputChanged -> _state.update { it.copy(manualInput = action.value) }
             ScannerAction.SubmitManualInput -> submitManualInput()
+            is ScannerAction.RunResultAction -> runResultAction(action.detection, action.action)
             ScannerAction.ToggleTorch -> toggleTorch()
             is ScannerAction.SetZoom -> setZoom(action.ratio)
             ScannerAction.RequestCameraPermission -> requestCameraPermission()
@@ -215,6 +221,40 @@ class ScannerViewModel(
             } else {
                 _effects.emit(ScannerEffect.ShowMessage("La entrada manual no está disponible"))
             }
+        }
+    }
+
+    /**
+     * Ejecuta una acción sobre un resultado (RF-13).
+     *
+     * El dominio decide **qué** se puede hacer con el código y la plataforma **cómo**; el ViewModel
+     * solo une las dos mitades y avisa si la acción no prosperó — el portapapeles puede estar
+     * bloqueado y no abrirse ninguna app para un esquema.
+     */
+    private fun runResultAction(detection: Detection, action: ResultAction) {
+        viewModelScope.launch {
+            val text = ResultActionsFactory.shareableText(detection.barcode)
+
+            val (succeeded, failureMessage) = when (action) {
+                ResultAction.Copy ->
+                    platformActions.copyToClipboard(text) to "No se pudo copiar al portapapeles"
+
+                ResultAction.Share ->
+                    platformActions.share(text) to "No se pudo abrir la hoja de compartir"
+
+                is ResultAction.Open ->
+                    platformActions.openUrl(action.uri) to "Ninguna app puede abrir esto"
+            }
+
+            // Compartir y abrir son visibles por sí mismos: aparece una hoja o cambia de app.
+            // Copiar no muestra nada, así que es la única que necesita confirmación.
+            val message = when {
+                !succeeded -> failureMessage
+                action == ResultAction.Copy -> "Copiado"
+                else -> null
+            }
+
+            message?.let { _effects.emit(ScannerEffect.ShowMessage(it)) }
         }
     }
 

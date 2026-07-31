@@ -13,10 +13,12 @@ import com.testscanner.core.domain.repository.ScanPreferencesRepository
 import com.testscanner.core.model.ScannerPlatform
 import com.testscanner.core.permissions.AndroidPermissionController
 import com.testscanner.core.permissions.PermissionController
+import com.testscanner.core.platform.PlatformActions
 import com.testscanner.core.scanner.BarcodeScannerEngine
 import com.testscanner.engines.gms.GmsCodeScannerEngine
 import com.testscanner.engines.manual.ManualInputScannerEngine
 import com.testscanner.engines.mlkit.MlKitCameraXEngine
+import com.testscanner.platform.AndroidPlatformActions
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import org.koin.android.ext.koin.androidContext
@@ -62,4 +64,7 @@ actual fun platformModule(): Module = module {
             androidContext().getSharedPreferences("testscanner", Context.MODE_PRIVATE),
         ) }
     single<ScanPreferencesRepository> { SettingsScanPreferencesRepository(get()) }
+
+    // Acciones sobre el resultado (RF-13): copiar, compartir y abrir.
+    single<PlatformActions> { AndroidPlatformActions(androidContext()) }
 }

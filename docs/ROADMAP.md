@@ -54,7 +54,7 @@ verificable desactivando Play Services.
 
 > Pendiente de la primera compilación con Gradle: el entorno donde se escribió esta fase no tenía
 > acceso a `dl.google.com`, así que las APIs de ML Kit y CameraX están sin compilar. El núcleo puro
-> sí está verificado (82 tests en verde con kotlinc).
+> sí está verificado (171 tests en verde con kotlinc).
 
 ---
 
@@ -105,7 +105,10 @@ recupera correctamente EAN-13 impresos sobre códigos dañados.
 - [x] Filtro de formatos en pantalla (RF-06), y `DismissError` / `Refresh` cableados
 - [x] Atribución de eventos al motor: `FrameAnalyzed` y `Failed` llevan `engineId`, así que las
       métricas de frames y de fallos por motor dejan de estar siempre en cero
-- [ ] Exportación del historial (CSV/JSON) y acciones sobre resultados
+- [x] Acciones sobre el resultado (RF-13): copiar, compartir y abrir, derivadas del **significado**
+      del código y no de su formato (`ResultActionsFactory`), ejecutadas por `PlatformActions` en las
+      cuatro plataformas. Sin esto, escanear un QR con una URL no llevaba a ningún lado
+- [ ] Exportación del historial (CSV/JSON)
 - [ ] Play Feature Delivery para los motores pesados de Android (RNF-06)
 - [ ] Accesibilidad completa (RNF-05) y auditoría de privacidad (RNF-03)
 
@@ -128,7 +131,7 @@ Registrada de forma explícita para que no se olvide:
 | D6 | La suite de contrato existe y la pasa el motor manual, pero aún no se ejecuta contra motores de cámara reales | Fase 2 |
 | ~~D8~~ | ~~El zoom se declara como capacidad pero no hay control en la UI~~ | **Saldada**: slider derivado de `canControlZoom` |
 | D10 | RF-07 (escanear desde imagen) está en el dominio y en el motor ML Kit, pero sin UI ni selector de archivos | Fase 4 |
-| D12 | RF-13 (copiar, compartir, abrir enlace) sin implementar: necesita portapapeles y hoja de compartir con `expect/actual` en las cuatro plataformas | Fase 5 |
+| ~~D12~~ | ~~RF-13 (copiar, compartir, abrir enlace) sin implementar~~ | **Saldada**: `PlatformActions` en `:core:platform` con implementación en las cuatro plataformas. En escritorio no hay hoja de compartir y el botón no se ofrece (`canShare`) |
 | D11 | La comparación necesita dos motores de cámara: hasta ZXing-cpp (Fase 3) solo es utilizable en Android | Fase 3 |
 | D9 | El historial de Web es de sesión: Room KMP no soporta wasmJs. Requiere un almacén propio sobre IndexedDB | Fase 4 |
 | D7 | `:androidApp` sin ProGuard/R8 configurado para release | Fase 2 |

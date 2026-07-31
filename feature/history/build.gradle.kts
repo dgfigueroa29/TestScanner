@@ -10,6 +10,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(project(":core:domain"))
+            implementation(project(":core:platform"))
             api(project(":core:designsystem"))
 
             implementation(libs.lifecycle.viewmodel)

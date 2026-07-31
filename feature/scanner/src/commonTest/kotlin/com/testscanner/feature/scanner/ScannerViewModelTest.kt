@@ -10,6 +10,7 @@ import com.testscanner.core.domain.usecase.StartScanSessionUseCase
 import com.testscanner.core.model.BarcodeFormat
 import com.testscanner.core.model.ScanError
 import com.testscanner.core.model.ScannerEngineId
+import com.testscanner.core.platform.NoOpPlatformActions
 import com.testscanner.core.scanner.EngineAvailability
 import com.testscanner.core.scanner.ScanEvent
 import kotlinx.coroutines.Dispatchers
@@ -60,6 +61,7 @@ class ScannerViewModelTest {
             preferencesRepository = preferences,
             engineRepository = engines,
             permissionController = permissions,
+            platformActions = NoOpPlatformActions(),
         )
     }
 

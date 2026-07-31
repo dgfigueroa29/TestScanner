@@ -14,6 +14,7 @@ import com.testscanner.core.model.ScannerEngineId
 import com.testscanner.core.model.ScannerPlatform
 import com.testscanner.core.permissions.PermissionController
 import com.testscanner.core.permissions.PermissionStatus
+import com.testscanner.core.platform.PlatformActions
 import com.testscanner.core.scanner.BarcodeScannerEngine
 import com.testscanner.core.scanner.EngineAvailability
 import com.testscanner.core.scanner.ScanEvent
@@ -143,3 +144,29 @@ fun detectionOf(
     engineId = engineId,
     detectedAtMillis = atMillis,
 )
+
+/** Registra qué se pidió hacer, para poder afirmarlo en los tests sin plataforma. */
+class FakePlatformActions(
+    override val canShare: Boolean = true,
+    private val succeeds: Boolean = true,
+) : PlatformActions {
+
+    val copied = mutableListOf<String>()
+    val shared = mutableListOf<String>()
+    val opened = mutableListOf<String>()
+
+    override suspend fun copyToClipboard(text: String): Boolean {
+        copied += text
+        return succeeds
+    }
+
+    override suspend fun share(text: String): Boolean {
+        shared += text
+        return succeeds
+    }
+
+    override suspend fun openUrl(url: String): Boolean {
+        opened += url
+        return succeeds
+    }
+}

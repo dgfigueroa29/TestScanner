@@ -15,17 +15,31 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.testscanner.core.designsystem.LocalSnackbarHostState
 import com.testscanner.core.designsystem.Spacing
+import com.testscanner.core.domain.scan.ResultActionsFactory
 import com.testscanner.core.model.Detection
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun HistoryScreen(viewModel: HistoryViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val snackbarHostState = LocalSnackbarHostState.current
+
+    LaunchedEffect(viewModel) {
+        viewModel.effects.collect { effect ->
+            when (effect) {
+                is HistoryEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.text)
+            }
+        }
+    }
+
     HistoryContent(state = state, onAction = viewModel::onAction)
 }
 
@@ -50,7 +64,9 @@ fun HistoryContent(
             EngineFilters(state, onAction)
 
             LazyColumn(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                items(state.visible, key = { it.id }) { HistoryRow(it) }
+                items(state.visible, key = { it.id }) { detection ->
+                    HistoryRow(detection, canShare = state.canShare, onAction = onAction)
+                }
             }
         }
     }
@@ -89,9 +105,18 @@ private fun EngineFilters(state: HistoryState, onAction: (HistoryAction) -> Unit
 }
 
 @Composable
-private fun HistoryRow(detection: Detection) {
+private fun HistoryRow(
+    detection: Detection,
+    canShare: Boolean,
+    onAction: (HistoryAction) -> Unit,
+) {
+    val actions = ResultActionsFactory.actionsFor(detection.barcode, canShare)
+
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(Spacing.md)) {
+        Column(
+            modifier = Modifier.padding(Spacing.md),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+        ) {
             Text(detection.barcode.rawValue, style = MaterialTheme.typography.bodyMedium)
             Text(
                 text = buildString {
@@ -103,6 +128,16 @@ private fun HistoryRow(detection: Detection) {
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                actions.forEach { action ->
+                    TextButton(
+                        onClick = { onAction(HistoryAction.RunResultAction(detection, action)) },
+                    ) {
+                        Text(action.label)
+                    }
+                }
+            }
         }
     }
 }

@@ -32,7 +32,7 @@ declaran como tales, con la fase en la que llegan. Ver `docs/ROADMAP.md`.
 > primer veredicto completo en cuanto se abra un PR.
 > El entorno donde se desarrolló no tenía acceso a
 > `dl.google.com`, así que no hubo Android SDK ni artefactos de AGP/Compose. Lo verificado son los
-> **82 tests del núcleo puro**, compilados y ejecutados con kotlinc 2.1.21. Todo lo que necesita
+> **171 tests del núcleo puro**, compilados y ejecutados con kotlinc 2.1.21. Todo lo que necesita
 > Gradle — `build-logic`, las versiones del catálogo, los dos motores de Android y el código
 > Compose — está pendiente de la primera compilación.
 

@@ -1,5 +1,6 @@
 package com.testscanner.feature.history
 
+import com.testscanner.core.domain.scan.ResultAction
 import com.testscanner.core.model.Detection
 import com.testscanner.core.model.ScannerEngineId
 
@@ -8,6 +9,7 @@ data class HistoryState(
     val detections: List<Detection> = emptyList(),
     /** `null` = sin filtro. Filtrar por motor es lo que hace comparable el historial (G5). */
     val engineFilter: ScannerEngineId? = null,
+    val canShare: Boolean = false,
 ) {
     val visible: List<Detection>
         get() = engineFilter?.let { id -> detections.filter { it.engineId == id } } ?: detections
@@ -21,5 +23,11 @@ data class HistoryState(
 
 sealed interface HistoryAction {
     data class FilterByEngine(val id: ScannerEngineId?) : HistoryAction
+    data class RunResultAction(val detection: Detection, val action: ResultAction) : HistoryAction
     data object Clear : HistoryAction
+}
+
+/** Eventos de una sola vez del historial. */
+sealed interface HistoryEffect {
+    data class ShowMessage(val text: String) : HistoryEffect
 }

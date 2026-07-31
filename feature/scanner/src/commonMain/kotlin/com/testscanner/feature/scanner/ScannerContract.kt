@@ -1,6 +1,7 @@
 package com.testscanner.feature.scanner
 
 import com.testscanner.core.domain.model.EngineStatus
+import com.testscanner.core.domain.scan.ResultAction
 import com.testscanner.core.model.BarcodeFormat
 import com.testscanner.core.model.Detection
 import com.testscanner.core.model.ScanError
@@ -29,6 +30,8 @@ data class ScannerState(
     val manualInput: String = "",
     val torchEnabled: Boolean = false,
     val zoomRatio: Float = 1f,
+    /** Si el sistema ofrece hoja de compartir; en escritorio no la hay. */
+    val canShare: Boolean = false,
     val error: ScanError? = null,
 ) {
     val usableEngines: List<EngineStatus> get() = catalog.filter { it.isUsable }
@@ -61,6 +64,7 @@ sealed interface ScannerAction {
     data class SetContinuous(val enabled: Boolean) : ScannerAction
     data class ManualInputChanged(val value: String) : ScannerAction
     data object SubmitManualInput : ScannerAction
+    data class RunResultAction(val detection: Detection, val action: ResultAction) : ScannerAction
     data object ToggleTorch : ScannerAction
     data class SetZoom(val ratio: Float) : ScannerAction
     data object RequestCameraPermission : ScannerAction

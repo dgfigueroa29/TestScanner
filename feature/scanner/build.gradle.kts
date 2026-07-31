@@ -10,6 +10,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(project(":core:domain"))
+            implementation(project(":core:platform"))
             implementation(project(":core:permissions"))
             api(project(":core:scanner-ui"))
             api(project(":core:designsystem"))

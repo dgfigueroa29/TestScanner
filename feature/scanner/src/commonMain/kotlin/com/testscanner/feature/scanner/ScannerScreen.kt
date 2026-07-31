@@ -24,8 +24,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -36,6 +36,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.testscanner.core.designsystem.LocalSnackbarHostState
 import com.testscanner.core.designsystem.Spacing
 import com.testscanner.core.domain.model.EngineStatus
+import com.testscanner.core.domain.scan.ResultActionsFactory
 import com.testscanner.core.model.BarcodeFormat
 import com.testscanner.core.model.Detection
 import com.testscanner.core.scanner.EngineAvailability
@@ -132,7 +133,9 @@ fun ScannerContent(
                     modifier = Modifier.padding(top = Spacing.md),
                 )
             }
-            items(state.detections, key = { it.id }) { DetectionRow(it) }
+            items(state.detections, key = { it.id }) { detection ->
+                DetectionRow(detection, canShare = state.canShare, onAction = onAction)
+            }
         }
     }
 }
@@ -373,10 +376,25 @@ private fun EngineCard(
     }
 }
 
+/**
+ * Resultado con sus acciones (RF-13).
+ *
+ * Las acciones salen de `ResultActionsFactory`, así que dependen de **qué significa** el código y no
+ * de su formato: un QR con una URL ofrece "Abrir enlace" y el mismo QR con texto plano no.
+ */
 @Composable
-private fun DetectionRow(detection: Detection) {
+private fun DetectionRow(
+    detection: Detection,
+    canShare: Boolean,
+    onAction: (ScannerAction) -> Unit,
+) {
+    val actions = ResultActionsFactory.actionsFor(detection.barcode, canShare)
+
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(Spacing.md)) {
+        Column(
+            modifier = Modifier.padding(Spacing.md),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+        ) {
             Text(detection.barcode.rawValue, style = MaterialTheme.typography.bodyMedium)
             Text(
                 text = "${detection.barcode.format.displayName} · ${detection.engineId.id}" +
@@ -384,6 +402,16 @@ private fun DetectionRow(detection: Detection) {
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                actions.forEach { action ->
+                    TextButton(
+                        onClick = { onAction(ScannerAction.RunResultAction(detection, action)) },
+                    ) {
+                        Text(action.label)
+                    }
+                }
+            }
         }
     }
 }

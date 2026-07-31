@@ -12,9 +12,11 @@ import com.testscanner.core.domain.repository.ScanPreferencesRepository
 import com.testscanner.core.model.ScannerPlatform
 import com.testscanner.core.permissions.IosPermissionController
 import com.testscanner.core.permissions.PermissionController
+import com.testscanner.core.platform.PlatformActions
 import com.testscanner.core.scanner.BarcodeScannerEngine
 import com.testscanner.engines.manual.ManualInputScannerEngine
 import com.testscanner.engines.vision.VisionScannerEngine
+import com.testscanner.platform.IosPlatformActions
 import org.koin.core.module.Module
 import org.koin.dsl.module
 import platform.Foundation.NSUserDefaults
@@ -41,4 +43,7 @@ actual fun platformModule(): Module = module {
     // aquí no hay excepciones como sí las hay con el historial.
     single<Settings> { NSUserDefaultsSettings(NSUserDefaults.standardUserDefaults) }
     single<ScanPreferencesRepository> { SettingsScanPreferencesRepository(get()) }
+
+    // Acciones sobre el resultado (RF-13): copiar, compartir y abrir.
+    single<PlatformActions> { IosPlatformActions() }
 }

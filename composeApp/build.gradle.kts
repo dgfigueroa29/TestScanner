@@ -44,6 +44,7 @@ kotlin {
             implementation(project(":core:data"))
             implementation(project(":core:domain"))
             implementation(project(":core:permissions"))
+            implementation(project(":core:platform"))
             implementation(project(":core:designsystem"))
             implementation(project(":feature:scanner"))
             implementation(project(":feature:history"))
