@@ -38,16 +38,15 @@ dependencyResolutionManagement {
         }
         mavenCentral()
 
-        // El target wasmJs necesita descargar Node y Yarn, y el plugin de Kotlin los declara como
-        // repositorios **del proyecto**. Con `FAIL_ON_PROJECT_REPOS` eso rompe la build entera:
+        // El target wasmJs descarga tres herramientas —Node, Yarn y Binaryen— y el plugin de Kotlin
+        // declara sus repositorios a nivel de proyecto, que es lo que `PREFER_SETTINGS` ignora. Hay
+        // que replicarlos aquí o la build no encuentra de dónde bajarlas.
         //
-        //     Could not determine the dependencies of task ':kotlinWasmNodeJsSetup'.
-        //     > repository 'Distributions at https://nodejs.org/dist' was added by unknown code
-        //
-        // Se declaran aquí en lugar de relajar el modo. Mantener `FAIL_ON_PROJECT_REPOS` vale la
-        // pena: es lo que impide que un módulo se traiga dependencias de un repositorio que nadie
-        // más ve. El `content` acota cada uno a su único artefacto, así que no compiten con Maven
-        // Central para nada más.
+        // Son tres hoy. Una actualización de Kotlin podría añadir una cuarta, y entonces el job de
+        // Web volverá a fallar con un "Could not find ..." sobre un artefacto con pinta rara. Es el
+        // precio de no dejar que cualquier módulo declare repositorios por su cuenta, y el fallo al
+        // menos es ruidoso e inmediato. El `content` acota cada uno a su único artefacto, así que
+        // ninguno compite con Maven Central para nada más.
         ivy("https://nodejs.org/dist/") {
             name = "Node Distributions at https://nodejs.org/dist"
             patternLayout { artifact("v[revision]/[artifact](-v[revision]-[classifier]).[ext]") }
@@ -59,6 +58,12 @@ dependencyResolutionManagement {
             patternLayout { artifact("v[revision]/[artifact](-v[revision]).[ext]") }
             metadataSources { artifact() }
             content { includeModule("com.yarnpkg", "yarn") }
+        }
+        ivy("https://github.com/WebAssembly/binaryen/releases/download") {
+            name = "Binaryen Distributions at https://github.com/WebAssembly/binaryen/releases/download"
+            patternLayout { artifact("version_[revision]/[module]-version_[revision]-[classifier].[ext]") }
+            metadataSources { artifact() }
+            content { includeModule("com.github.webassembly", "binaryen") }
         }
     }
 }
