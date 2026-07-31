@@ -16,6 +16,9 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
         }
         commonTest.dependencies {
+            // La suite de contrato se aplica también a los decoradores del dominio (SDD §13.2), así
+            // que `DecoratorContractTest` hereda de ella y necesita el módulo de fixtures.
+            implementation(project(":core:scanner-testing"))
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.turbine)
         }
