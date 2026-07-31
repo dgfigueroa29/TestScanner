@@ -12,10 +12,12 @@ import com.testscanner.core.domain.repository.ScanPreferencesRepository
 import com.testscanner.core.model.ScannerPlatform
 import com.testscanner.core.permissions.IosPermissionController
 import com.testscanner.core.permissions.PermissionController
+import com.testscanner.core.platform.ImagePicker
 import com.testscanner.core.platform.PlatformActions
 import com.testscanner.core.scanner.BarcodeScannerEngine
 import com.testscanner.engines.manual.ManualInputScannerEngine
 import com.testscanner.engines.vision.VisionScannerEngine
+import com.testscanner.platform.IosImagePicker
 import com.testscanner.platform.IosPlatformActions
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -46,4 +48,7 @@ actual fun platformModule(): Module = module {
 
     // Acciones sobre el resultado (RF-13): copiar, compartir y abrir.
     single<PlatformActions> { IosPlatformActions() }
+
+    // Escaneo desde imagen (RF-07).
+    single<ImagePicker> { IosImagePicker() }
 }

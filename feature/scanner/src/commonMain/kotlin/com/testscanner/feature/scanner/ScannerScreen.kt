@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -246,6 +247,25 @@ private fun SessionControls(state: ScannerState, onAction: (ScannerAction) -> Un
                 OutlinedButton(onClick = { onAction(ScannerAction.StopSession) }) { Text("Detener") }
                 OutlinedButton(onClick = { onAction(ScannerAction.SelectEngine(null)) }) {
                     Text("Auto")
+                }
+            }
+
+            // Escanear desde imagen se ofrece solo si algún motor disponible declara la fuente
+            // (RF-07). En escritorio, donde hoy solo hay entrada manual, el botón no aparece.
+            if (state.canScanFromImage) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedButton(
+                        onClick = { onAction(ScannerAction.ScanFromImage) },
+                        enabled = !state.isDecodingImage,
+                    ) {
+                        Text("Desde imagen")
+                    }
+                    if (state.isDecodingImage) {
+                        CircularProgressIndicator(modifier = Modifier.size(Spacing.lg))
+                    }
                 }
             }
 

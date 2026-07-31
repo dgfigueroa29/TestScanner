@@ -9,14 +9,18 @@ import com.testscanner.core.model.Barcode
 import com.testscanner.core.model.BarcodeFormat
 import com.testscanner.core.model.Detection
 import com.testscanner.core.model.Permission
+import com.testscanner.core.model.ScanImage
 import com.testscanner.core.model.ScanRequest
 import com.testscanner.core.model.ScannerEngineId
 import com.testscanner.core.model.ScannerPlatform
 import com.testscanner.core.permissions.PermissionController
 import com.testscanner.core.permissions.PermissionStatus
+import com.testscanner.core.platform.ImagePicker
+import com.testscanner.core.platform.PickImageResult
 import com.testscanner.core.platform.PlatformActions
 import com.testscanner.core.scanner.BarcodeScannerEngine
 import com.testscanner.core.scanner.EngineAvailability
+import com.testscanner.core.scanner.ImageDecodingEngine
 import com.testscanner.core.scanner.ScanEvent
 import com.testscanner.core.scanner.ScannerEngineDescriptor
 import com.testscanner.core.scanner.catalog.ScannerEngineCatalog
@@ -31,7 +35,9 @@ class FakeEngine(
     override val id: ScannerEngineId,
     private val availability: EngineAvailability = EngineAvailability.Available,
     private val events: List<ScanEvent> = emptyList(),
-) : BarcodeScannerEngine {
+    /** Qué devuelve al decodificar una imagen. `null` = este motor no sabe hacerlo. */
+    private val decoded: Result<List<Barcode>>? = null,
+) : BarcodeScannerEngine, ImageDecodingEngine {
 
     override val descriptor: ScannerEngineDescriptor = ScannerEngineCatalog.byId(id)
 
@@ -42,6 +48,9 @@ class FakeEngine(
         events.forEach { emit(it) }
         emit(ScanEvent.SessionEnded(id))
     }
+
+    override suspend fun decode(image: ScanImage, request: ScanRequest): Result<List<Barcode>> =
+        decoded ?: Result.failure(IllegalStateException("$id no decodifica imágenes"))
 
     fun status(): EngineStatus = EngineStatus(descriptor, availability, installed = true)
 }
@@ -144,6 +153,20 @@ fun detectionOf(
     engineId = engineId,
     detectedAtMillis = atMillis,
 )
+
+/** Selector de imágenes controlable: devuelve lo que se le diga, sin tocar la plataforma. */
+class FakeImagePicker(
+    private val result: PickImageResult = PickImageResult.Cancelled,
+) : ImagePicker {
+
+    var invocations: Int = 0
+        private set
+
+    override suspend fun pickImage(): PickImageResult {
+        invocations++
+        return result
+    }
+}
 
 /** Registra qué se pidió hacer, para poder afirmarlo en los tests sin plataforma. */
 class FakePlatformActions(

@@ -7,6 +7,7 @@ import com.testscanner.core.domain.model.RejectionReason
 import com.testscanner.core.domain.repository.ScannerEngineRepository
 import com.testscanner.core.domain.scan.EnginePriorityPolicy
 import com.testscanner.core.model.ScanRequest
+import com.testscanner.core.model.ScanSource
 import com.testscanner.core.model.ScannerEngineId
 import com.testscanner.core.model.ScannerPlatform
 import kotlinx.coroutines.flow.first
@@ -49,7 +50,7 @@ class SelectScannerEngineUseCase(
 
         catalog.forEach { status ->
             when {
-                !status.isUsable -> rejected += RejectedEngine(
+                !status.isUsableFor(request) -> rejected += RejectedEngine(
                     id = status.id,
                     reason = RejectionReason.NotAvailable(status.availability),
                 )
@@ -89,6 +90,14 @@ class SelectScannerEngineUseCase(
         preferredEngineId == null || preferredEngineId !in ordered -> ordered
         else -> listOf(preferredEngineId) + ordered.filterNot { it == preferredEngineId }
     }
+
+    /**
+     * Decodificar una imagen no necesita cámara, así que un motor bloqueado por ese permiso sigue
+     * sirviendo para ello. La regla vive en [EngineStatus.canDecodeImages] para que la UI aplique
+     * exactamente la misma y no ofrezca un botón que aquí se descartaría.
+     */
+    private fun EngineStatus.isUsableFor(request: ScanRequest): Boolean =
+        if (request.source == ScanSource.StaticImage) canDecodeImages else isUsable
 
     private fun missingCapabilities(status: EngineStatus, request: ScanRequest): List<String> {
         val capabilities = status.descriptor.capabilities

@@ -2,6 +2,7 @@ package com.testscanner.feature.scanner
 
 import app.cash.turbine.test
 import com.testscanner.core.domain.scan.ResultAction
+import com.testscanner.core.domain.usecase.DecodeImageUseCase
 import com.testscanner.core.domain.usecase.ObserveEngineCatalogUseCase
 import com.testscanner.core.domain.usecase.ObserveScanPreferencesUseCase
 import com.testscanner.core.domain.usecase.SaveDetectionUseCase
@@ -54,10 +55,12 @@ class ResultActionsIntegrationTest {
             setScanFormats = SetScanFormatsUseCase(preferences),
             startScanSession = StartScanSessionUseCase(engines, SelectScannerEngineUseCase(engines)),
             saveDetection = SaveDetectionUseCase(FakeHistoryRepository()),
+            decodeImage = DecodeImageUseCase(engines, SelectScannerEngineUseCase(engines)),
             preferencesRepository = preferences,
             engineRepository = engines,
             permissionController = FakePermissionController(),
             platformActions = platform,
+            imagePicker = FakeImagePicker(),
         )
     }
 

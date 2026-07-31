@@ -6,6 +6,7 @@ import com.testscanner.core.domain.repository.ScanPreferencesRepository
 import com.testscanner.core.domain.repository.ScannerEngineRepository
 import com.testscanner.core.domain.scan.ResultAction
 import com.testscanner.core.domain.scan.ResultActionsFactory
+import com.testscanner.core.domain.usecase.DecodeImageUseCase
 import com.testscanner.core.domain.usecase.ObserveEngineCatalogUseCase
 import com.testscanner.core.domain.usecase.ObserveScanPreferencesUseCase
 import com.testscanner.core.domain.usecase.SaveDetectionUseCase
@@ -15,10 +16,13 @@ import com.testscanner.core.domain.usecase.StartScanSessionUseCase
 import com.testscanner.core.model.BarcodeFormat
 import com.testscanner.core.model.Detection
 import com.testscanner.core.model.Permission
+import com.testscanner.core.model.ScanImage
 import com.testscanner.core.model.ScanRequest
 import com.testscanner.core.model.ScanSource
 import com.testscanner.core.model.ScannerEngineId
 import com.testscanner.core.permissions.PermissionController
+import com.testscanner.core.platform.ImagePicker
+import com.testscanner.core.platform.PickImageResult
 import com.testscanner.core.platform.PlatformActions
 import com.testscanner.core.scanner.CameraControlEngine
 import com.testscanner.core.scanner.ScanEvent
@@ -47,10 +51,12 @@ class ScannerViewModel(
     private val setScanFormats: SetScanFormatsUseCase,
     private val startScanSession: StartScanSessionUseCase,
     private val saveDetection: SaveDetectionUseCase,
+    private val decodeImage: DecodeImageUseCase,
     private val preferencesRepository: ScanPreferencesRepository,
     private val engineRepository: ScannerEngineRepository,
     private val permissionController: PermissionController,
     private val platformActions: PlatformActions,
+    private val imagePicker: ImagePicker,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ScannerState(canShare = platformActions.canShare))
@@ -76,6 +82,7 @@ class ScannerViewModel(
             is ScannerAction.SetContinuous -> setContinuous(action.enabled)
             is ScannerAction.ManualInputChanged -> _state.update { it.copy(manualInput = action.value) }
             ScannerAction.SubmitManualInput -> submitManualInput()
+            ScannerAction.ScanFromImage -> scanFromImage()
             is ScannerAction.RunResultAction -> runResultAction(action.detection, action.action)
             ScannerAction.ToggleTorch -> toggleTorch()
             is ScannerAction.SetZoom -> setZoom(action.ratio)
@@ -222,6 +229,74 @@ class ScannerViewModel(
                 _effects.emit(ScannerEffect.ShowMessage("La entrada manual no está disponible"))
             }
         }
+    }
+
+    /**
+     * Escanea una imagen elegida por el usuario (RF-07).
+     *
+     * Detiene la sesión en vivo antes de abrir el selector: en Android la cámara y el selector del
+     * sistema compiten por la pantalla, y dejarla corriendo detrás gastaría batería mientras el
+     * usuario busca la foto.
+     *
+     * No pide permiso de galería a propósito. El selector moderno de cada plataforma —el *photo
+     * picker* de Android, `PHPicker` en iOS, el diálogo de archivos en escritorio y web— corre
+     * fuera de la app y devuelve solo lo que el usuario elige, así que **no hay nada que pedir**.
+     * Es la misma ventaja que hace que el Google Code Scanner encabece la cadena en Android.
+     */
+    private fun scanFromImage() {
+        if (_state.value.isDecodingImage) return
+
+        stopSession()
+        _state.update { it.copy(isDecodingImage = true, error = null) }
+
+        viewModelScope.launch {
+            try {
+                when (val picked = imagePicker.pickImage()) {
+                    is PickImageResult.Cancelled -> Unit
+
+                    is PickImageResult.Failed ->
+                        _effects.emit(ScannerEffect.ShowMessage(picked.reason))
+
+                    is PickImageResult.Picked -> decodePickedImage(picked.image)
+                }
+            } finally {
+                _state.update { it.copy(isDecodingImage = false) }
+            }
+        }
+    }
+
+    private suspend fun decodePickedImage(image: ScanImage) {
+        val preferences = preferencesRepository.current()
+        val request = ScanRequest(
+            formats = preferences.formats,
+            source = ScanSource.StaticImage,
+            allowMultiple = true,
+        )
+
+        decodeImage(image, request, preferences.preferredEngineId)
+            .onSuccess { detections ->
+                if (detections.isEmpty()) {
+                    _effects.emit(ScannerEffect.ShowMessage("No se encontró ningún código en la imagen"))
+                    return@onSuccess
+                }
+                // La imagen es una sesión puntual: sus resultados sustituyen a los anteriores, igual
+                // que al arrancar una sesión de cámara.
+                _state.update {
+                    it.copy(
+                        detections = detections,
+                        activeEngineId = detections.first().engineId,
+                        sessionStatus = SessionStatus.Finished,
+                    )
+                }
+                detections.forEach { saveDetection(it) }
+            }
+            .onFailure { failure ->
+                _effects.emit(
+                    ScannerEffect.ShowMessage(
+                        failure.message ?: "No se pudo leer la imagen",
+                    ),
+                )
+            }
     }
 
     /**

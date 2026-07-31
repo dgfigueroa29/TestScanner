@@ -223,7 +223,8 @@ TestScanner/
 │   ├── data/                          # Registry, preferencias e historial
 │   ├── designsystem/                  # CMP: tema, tokens, componentes reutilizables
 │   ├── permissions/                   # expect/actual: permiso de cámara
-│   └── platform/                      # PlatformActions: portapapeles, compartir, abrir enlace
+│   └── platform/                      # servicios del sistema: portapapeles, compartir,
+│                                      #   abrir enlace y selector de imágenes
 │
 ├── engines/
 │   ├── manual/                        # entrada manual — motor de referencia, 100 % common
@@ -812,6 +813,43 @@ excepcional: el portapapeles puede estar bloqueado y el navegador puede negar el
 Compromiso registrado en Web: `copyToClipboard` y `share` devuelven `true` en cuanto la llamada
 arranca, sin esperar la promesa. Esperarla exigiría puentear promesas de JS a corrutinas para un
 `Boolean` cuyo único uso es decidir si mostrar un aviso.
+
+---
+
+### 9.6 Escaneo desde imagen (RF-07)
+
+Escanear una foto no es una variante menor de escanear con la cámara: es la salida cuando el código
+está en una captura de pantalla, en un PDF, en un correo — o cuando el usuario ha negado el permiso
+de cámara.
+
+El reparto es el mismo que en RF-13: `:core:platform` expone `ImagePicker` —**cómo** se elige el
+archivo— y `:core:domain` decide **qué** hacer con él. `PickImageResult` distingue tres salidas, y
+la distinción no es cosmética: *cancelar* es la salida más frecuente de un selector de archivos, y
+tratarla como error haría que la app mostrara un fallo cada vez que el usuario cambia de idea.
+
+**Ningún selector pide permisos.** El *photo picker* de Android, `UIImagePickerController` en iOS,
+el diálogo de archivos de escritorio y el `<input type=file>` del navegador corren todos **fuera del
+proceso de la app** y devuelven únicamente lo que el usuario elige. Pedir `READ_MEDIA_IMAGES` daría
+acceso a la galería entera para leer una sola foto.
+
+`DecodeImageUseCase` recorre la cadena de motores igual que `FallbackScannerEngine` hace en vivo, y
+aquí importa más: el caso de uso natural del OCR es una etiqueta dañada que el decodificador no ve y
+cuyo número impreso sí es legible. Sin cadena, ese motor no llegaría a ejecutarse nunca.
+
+Devuelve `Detection` y no `Barcode` porque **qué motor lo leyó es el dato que este producto existe
+para dar**, y aplica el mismo filtrado por formato y la misma interpretación semántica que la sesión
+en vivo: un QR con una URL debe ofrecer "Abrir enlace" venga de donde venga.
+
+#### Una excepción con nombre
+
+`EngineStatus.canDecodeImages` deja pasar a los motores bloqueados **solo** por el permiso de
+cámara. El archivo ya está en el dispositivo y no hay cámara que abrir, así que negar el permiso no
+debería cerrar también esta vía — que es justo la alternativa que le queda al usuario. La excepción
+es estrecha a propósito: un modelo sin descargar o un motor de una fase futura sí bloquean, porque
+ahí no hay nada que ejecutar.
+
+La regla vive en el dominio y no en la pantalla para que el selector de motores y la UI apliquen
+exactamente la misma: si divergieran, el botón aparecería y no encontraría decodificador.
 
 ---
 

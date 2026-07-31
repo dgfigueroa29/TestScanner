@@ -13,12 +13,14 @@ import com.testscanner.core.domain.repository.ScanPreferencesRepository
 import com.testscanner.core.model.ScannerPlatform
 import com.testscanner.core.permissions.AndroidPermissionController
 import com.testscanner.core.permissions.PermissionController
+import com.testscanner.core.platform.ImagePicker
 import com.testscanner.core.platform.PlatformActions
 import com.testscanner.core.scanner.BarcodeScannerEngine
 import com.testscanner.engines.gms.GmsCodeScannerEngine
 import com.testscanner.engines.manual.ManualInputScannerEngine
 import com.testscanner.engines.mlkit.MlKitCameraXEngine
 import com.testscanner.engines.ocr.MlKitOcrEngine
+import com.testscanner.platform.AndroidImagePicker
 import com.testscanner.platform.AndroidPlatformActions
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -70,4 +72,9 @@ actual fun platformModule(): Module = module {
 
     // Acciones sobre el resultado (RF-13): copiar, compartir y abrir.
     single<PlatformActions> { AndroidPlatformActions(androidContext()) }
+
+    // Escaneo desde imagen (RF-07). Se expone también por su tipo concreto porque la Activity le
+    // presta su launcher, igual que hace con el controlador de permisos.
+    single { AndroidImagePicker(androidContext()) }
+    single<ImagePicker> { get<AndroidImagePicker>() }
 }

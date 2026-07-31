@@ -1,5 +1,6 @@
 package com.testscanner.feature.scanner
 
+import com.testscanner.core.domain.usecase.DecodeImageUseCase
 import com.testscanner.core.domain.usecase.ObserveEngineCatalogUseCase
 import com.testscanner.core.domain.usecase.ObserveScanPreferencesUseCase
 import com.testscanner.core.domain.usecase.SaveDetectionUseCase
@@ -58,10 +59,12 @@ class ScannerViewModelTest {
             setScanFormats = SetScanFormatsUseCase(preferences),
             startScanSession = StartScanSessionUseCase(engines, select),
             saveDetection = SaveDetectionUseCase(history),
+            decodeImage = DecodeImageUseCase(engines, select),
             preferencesRepository = preferences,
             engineRepository = engines,
             permissionController = permissions,
             platformActions = NoOpPlatformActions(),
+            imagePicker = FakeImagePicker(),
         )
     }
 

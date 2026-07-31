@@ -54,7 +54,7 @@ verificable desactivando Play Services.
 
 > Pendiente de la primera compilación con Gradle: el entorno donde se escribió esta fase no tenía
 > acceso a `dl.google.com`, así que las APIs de ML Kit y CameraX están sin compilar. El núcleo puro
-> sí está verificado (194 tests en verde con kotlinc).
+> sí está verificado (215 tests en verde con kotlinc).
 
 ---
 
@@ -92,8 +92,10 @@ Android e iOS sobre el mismo set de imágenes de referencia.
       de `AndroidView`, así que la superficie de vídeo exige salirse del árbol de Compose
 - [ ] OCR en iOS: ML Kit se distribuye por CocoaPods, que este proyecto no usa. La alternativa sin
       dependencias es `VNRecognizeTextRequest` del framework Vision, reutilizando `OcrCodeInterpreter`
-- [ ] Escaneo desde imagen/galería (RF-07) en las cuatro plataformas
-- [ ] Selector de archivos multiplataforma
+- [x] Escaneo desde imagen/galería (RF-07) con selector en las cuatro plataformas: *photo picker*
+      en Android, `UIImagePickerController` en iOS, `JFileChooser` en escritorio e `<input
+      type=file>` en Web. Ninguno pide permisos: los cuatro corren fuera de la app y devuelven solo
+      lo elegido
 - [ ] Suite de contrato contra los motores nuevos: ambos necesitan runtime real (navegador o
       dispositivo), así que va con D6 y no en `commonTest`
 
@@ -143,10 +145,10 @@ Registrada de forma explícita para que no se olvide:
 | D5 | Strings hardcodeados en la UI, sin `composeResources` | Fase 2 |
 | D6 | La suite de contrato existe y la pasa el motor manual, pero aún no se ejecuta contra motores de cámara reales | Fase 2 |
 | ~~D8~~ | ~~El zoom se declara como capacidad pero no hay control en la UI~~ | **Saldada**: slider derivado de `canControlZoom` |
-| D10 | RF-07 (escanear desde imagen) está en el dominio y en el motor ML Kit, pero sin UI ni selector de archivos | Fase 4 |
+| ~~D10~~ | ~~RF-07 sin UI ni selector de archivos~~ | **Saldada**: `ImagePicker` en las cuatro plataformas y `DecodeImageUseCase` recorriendo la cadena de motores. Un motor bloqueado por el permiso de cámara sigue sirviendo para leer un archivo |
 | ~~D12~~ | ~~RF-13 (copiar, compartir, abrir enlace) sin implementar~~ | **Saldada**: `PlatformActions` en `:core:platform` con implementación en las cuatro plataformas. En escritorio no hay hoja de compartir y el botón no se ofrece (`canShare`) |
 | D11 | La comparación necesita dos motores de cámara: hasta ZXing-cpp (Fase 3) solo es utilizable en Android | Fase 3 |
 | D9 | El historial de Web es de sesión: Room KMP no soporta wasmJs. Requiere un almacén propio sobre IndexedDB | Fase 4 |
 | D7 | `:androidApp` sin ProGuard/R8 configurado para release | Fase 2 |
 | D14 | El motor de Web escanea pero no muestra visor: sin preview el usuario no puede apuntar. Compose para Web no tiene equivalente de `AndroidView` / `UIKitView` | Fase 4 |
-| D13 | Desktop y Web se quedan sin el baseline de comparación: zxing-cpp no publica artefacto JVM ni wasmJs (ADR-0008). En Desktop hoy no hay ningún decodificador; el candidato es `com.google.zxing:core`, y entraría al catálogo **como motor propio**, no con el nombre de zxing-cpp | Fase 4, junto a RF-07 |
+| D13 | Desktop y Web se quedan sin el baseline de comparación: zxing-cpp no publica artefacto JVM ni wasmJs (ADR-0008). En Desktop hoy no hay ningún decodificador; el candidato es `com.google.zxing:core`, y entraría al catálogo **como motor propio**, no con el nombre de zxing-cpp. El selector de imágenes de escritorio ya existe: lo que falta es el decodificador | Fase 5 |
