@@ -78,7 +78,8 @@ verificable desactivando Play Services.
 - [x] **Kotlin 2.3.20** (cerraba R10): los klibs de zxing-cpp están compilados con 2.2.0 y el
       proyecto estaba en 2.1.21. Se subió a 2.3.20 exacto porque es con la que están compilados CMP
       1.11.1, Koin 4.2.2 y KSP 2.3.10 — emparejar exacto reduce la superficie de fallo. Gradle a
-      8.14.5. Room y AGP se quedan: viven en el maven de Google, inalcanzable desde aquí
+      8.14.5. Room y AGP se quedaron donde estaban por no poder contrastarlos desde aquí; el primer
+      CI zanjó la duda y AGP subió a 8.10.0, que es el mínimo que exige KSP 2.3.10 (riesgo R11)
 - [x] `:engines:zxing-cpp` — `io.github.zxing-cpp:android` en Android y `:kotlin-native` en iOS.
       Dos adaptadores y ningún `commonMain`: las dos publicaciones no comparten API, solo el núcleo
       C++ — que es lo que hace justa la comparación. En iOS usa `AVCaptureVideoDataOutput` y no la

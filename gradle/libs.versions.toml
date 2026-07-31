@@ -7,10 +7,19 @@
 # Multiplatform 1.11.1, Koin 4.2.2 y KSP 2.3.10: emparejar exacto reduce la
 # superficie de fallo en un build que todavía no se ha podido ejecutar.
 #
-# AGP se queda donde estaba: vive en el maven de Google, inalcanzable desde el entorno de
-# desarrollo, así que subirlo sería adivinar un número. Lo mismo con Room.
+# AGP estuvo en 8.9.2 mientras no hubo forma de contrastarlo: vive en el maven de Google,
+# inalcanzable desde el entorno de desarrollo, así que subirlo habría sido adivinar un número. Ese
+# era el riesgo R11 del SDD, y el primer CI lo confirmó con el número exacto:
+#
+#     Failed to apply plugin 'com.google.devtools.ksp'.
+#     > The minimum supported AGP version is 8.10.0.
+#
+# Se sube a 8.10.0 y no más: es el mínimo que KSP 2.3.10 exige —lo dice su propio mensaje, así que
+# no hay que suponer que la versión exista— y el salto más corto desde 8.9.2. Subir de más
+# introduciría cambios de comportamiento que nadie ha pedido en una build que apenas empieza a
+# compilar. Gradle 8.14.5 cumple de sobra el mínimo que AGP 8.10 pide.
 kotlin = "2.3.20"
-agp = "8.9.2"
+agp = "8.10.0"
 composeMultiplatform = "1.11.1"
 jvmTarget = "17"
 
