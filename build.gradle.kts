@@ -2,6 +2,12 @@ import io.gitlab.arturbosch.detekt.Detekt
 import io.gitlab.arturbosch.detekt.extensions.DetektExtension
 
 plugins {
+    // Aporta `clean` en la raíz. Antes se registraba a mano, y eso rompía la build: el target
+    // wasmJs de `:composeApp` aplica sus plugins de Node y Yarn **al proyecto raíz**, que a su vez
+    // aplican `LifecycleBasePlugin`, que registra su propio `clean`. Dos tareas con el mismo nombre
+    // y la configuración se caía entera con "Cannot add task 'clean'". Aplicar `base` es lo mismo
+    // que hacía la tarea a mano, pero de forma idempotente: quien llegue después no colisiona.
+    base
     alias(libs.plugins.kotlinMultiplatform) apply false
     alias(libs.plugins.kotlinAndroid) apply false
     alias(libs.plugins.kotlinSerialization) apply false
@@ -40,8 +46,4 @@ allprojects {
             md.required.set(false)
         }
     }
-}
-
-tasks.register<Delete>("clean") {
-    delete(rootProject.layout.buildDirectory)
 }
