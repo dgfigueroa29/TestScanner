@@ -34,17 +34,13 @@ jobs:
       - name: Detekt
         run: ./gradlew detekt
 
+      # Sin rutas de proyecto a propósito: Gradle ejecuta la tarea en **todos** los módulos que la
+      # tengan. La lista escrita a mano que había aquí antes ya se había quedado corta —los tests de
+      # `:core:designsystem` y `:engines:zxing-java` existían y no los corría nadie—, y un test que
+      # no se ejecuta es peor que no tenerlo. `desktopTest` va aparte porque el target JVM de
+      # `:composeApp` se llama `desktop`.
       - name: Tests multiplataforma del núcleo y las features
-        run: >-
-          ./gradlew
-          :core:model:jvmTest
-          :core:scanner-api:jvmTest
-          :core:domain:jvmTest
-          :core:data:jvmTest
-          :engines:manual:jvmTest
-          :feature:scanner:jvmTest
-          :feature:history:jvmTest
-          :composeApp:desktopTest
+        run: ./gradlew jvmTest desktopTest
 
       - name: Publicar informes
         if: always()
