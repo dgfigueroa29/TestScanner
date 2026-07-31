@@ -67,8 +67,12 @@ sealed interface ScannerAction {
     data object DismissError : ScannerAction
 }
 
-/** Eventos de una sola vez. No forman parte del estado: no deben re-emitirse al recomponer. */
+/**
+ * Eventos de una sola vez. No forman parte del estado: no deben re-emitirse al recomponer.
+ *
+ * Solo hay un caso porque solo hay uno que ocurra. Había un `OpenUrl` declarado que ningún código
+ * emitía nunca; volverá cuando RF-13 (copiar, compartir, abrir enlace) exista de verdad.
+ */
 sealed interface ScannerEffect {
     data class ShowMessage(val text: String) : ScannerEffect
-    data class OpenUrl(val url: String) : ScannerEffect
 }

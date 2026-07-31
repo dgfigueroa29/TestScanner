@@ -130,6 +130,12 @@ incremental y justifica reestructurar el build de una sola vez.
 | RF-14 | Control de linterna y zoom cuando el motor lo soporte | Could |
 | RF-15 | La sesión puede tener un plazo máximo tras el cual se cierra sola | Could |
 
+Los límites del `ScanRequest` — formatos, cuántos códigos por frame, si la sesión sigue tras la
+primera lectura y el plazo máximo — los hacen cumplir **decoradores del dominio**, no cada motor.
+Los motores son desiguales en esto: el de entrada manual respeta el modo continuo porque lo
+implementa a mano, mientras que ML Kit y Vision dejan la cámara corriendo hasta que el consumidor
+cancele. Centralizarlo es lo que garantiza el mismo comportamiento observable en los siete.
+
 ### 3.2 Requisitos no funcionales
 
 | ID | Requisito | Criterio |

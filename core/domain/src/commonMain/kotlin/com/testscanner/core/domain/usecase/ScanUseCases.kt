@@ -7,6 +7,7 @@ import com.testscanner.core.domain.repository.ScanPreferences
 import com.testscanner.core.domain.repository.ScanPreferencesRepository
 import com.testscanner.core.domain.repository.ScannerEngineRepository
 import com.testscanner.core.domain.scan.FallbackScannerEngine
+import com.testscanner.core.domain.scan.enforcingRequestLimits
 import com.testscanner.core.domain.scan.filteringFormats
 import com.testscanner.core.domain.scan.interpretingValues
 import com.testscanner.core.domain.scan.withDeadline
@@ -78,13 +79,16 @@ class StartScanSessionUseCase(
         }
 
         // El orden de los decoradores importa, y en dos niveles distintos:
-        //  - Por motor: primero se filtra por formato lo que reporta y solo lo que sobrevive se
+        //  - Por motor: primero se filtra por formato lo que reporta, después se aplican los
+        //    límites del request (cuántos códigos y si la sesión sigue), y solo lo que sobrevive se
         //    interpreta semánticamente. Envolver la cadena entera dejaría el fallback fuera del
         //    filtrado.
         //  - Sobre la cadena: el plazo. Si fuera por motor, una cadena de tres tardaría el triple
         //    de lo que el usuario pidió.
         val chain: BarcodeScannerEngine = FallbackScannerEngine(
-            engines.map { engine -> engine.filteringFormats().interpretingValues() },
+            engines.map { engine ->
+                engine.filteringFormats().enforcingRequestLimits().interpretingValues()
+            },
         ).withDeadline()
 
         emitAll(chain.scan(request))

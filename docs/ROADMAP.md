@@ -97,6 +97,12 @@ recupera correctamente EAN-13 impresos sobre códigos dañados.
 - [x] Comparador: ejecutar varios motores sobre la misma petición (`ComparingScannerEngine`)
 - [x] Métricas de latencia y acierto por motor (`EngineScoreboard`)
 - [x] Pantalla "Comparar" con el marcador en vivo — **cierra G5**
+- [x] `ScanRequest.continuous` y `allowMultiple` se respetan de verdad (`RequestLimitsScannerEngine`):
+      antes solo los cumplía el motor manual, así que el interruptor de escaneo continuo no tenía
+      efecto sobre la cámara y una sesión puntual no terminaba nunca
+- [x] Los `ScannerEffect` llegan a la UI vía un `SnackbarHost` único en la raíz: se emitían a un
+      flujo que nadie colectaba
+- [x] Filtro de formatos en pantalla (RF-06), y `DismissError` / `Refresh` cableados
 - [x] Atribución de eventos al motor: `FrameAnalyzed` y `Failed` llevan `engineId`, así que las
       métricas de frames y de fallos por motor dejan de estar siempre en cero
 - [ ] Exportación del historial (CSV/JSON) y acciones sobre resultados
@@ -122,6 +128,7 @@ Registrada de forma explícita para que no se olvide:
 | D6 | La suite de contrato existe y la pasa el motor manual, pero aún no se ejecuta contra motores de cámara reales | Fase 2 |
 | ~~D8~~ | ~~El zoom se declara como capacidad pero no hay control en la UI~~ | **Saldada**: slider derivado de `canControlZoom` |
 | D10 | RF-07 (escanear desde imagen) está en el dominio y en el motor ML Kit, pero sin UI ni selector de archivos | Fase 4 |
+| D12 | RF-13 (copiar, compartir, abrir enlace) sin implementar: necesita portapapeles y hoja de compartir con `expect/actual` en las cuatro plataformas | Fase 5 |
 | D11 | La comparación necesita dos motores de cámara: hasta ZXing-cpp (Fase 3) solo es utilizable en Android | Fase 3 |
 | D9 | El historial de Web es de sesión: Room KMP no soporta wasmJs. Requiere un almacén propio sobre IndexedDB | Fase 4 |
 | D7 | `:androidApp` sin ProGuard/R8 configurado para release | Fase 2 |

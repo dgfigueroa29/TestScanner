@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AssistChip
@@ -23,15 +24,19 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.testscanner.core.designsystem.LocalSnackbarHostState
 import com.testscanner.core.designsystem.Spacing
 import com.testscanner.core.domain.model.EngineStatus
+import com.testscanner.core.model.BarcodeFormat
 import com.testscanner.core.model.Detection
 import com.testscanner.core.scanner.EngineAvailability
 import com.testscanner.core.scanner.ui.CameraPreviewEngine
@@ -48,6 +53,22 @@ fun ScannerScreen(
     previewResolver: EnginePreviewResolver = koinInject(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val snackbarHostState = LocalSnackbarHostState.current
+
+    // La disponibilidad cambia mientras la pantalla no está: el usuario concede el permiso desde
+    // los ajustes, ML Kit termina de descargar su modelo, otra app suelta la cámara. Sin refrescar
+    // al volver, el catálogo mostraría un estado viejo.
+    LaunchedEffect(viewModel) { viewModel.onAction(ScannerAction.Refresh) }
+
+    // Sin esto los mensajes del ViewModel se emitían a un SharedFlow que nadie escuchaba, incluido
+    // el aviso de degradación de motor, que es la señal visible del objetivo G4.
+    LaunchedEffect(viewModel) {
+        viewModel.effects.collect { effect ->
+            when (effect) {
+                is ScannerEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.text)
+            }
+        }
+    }
 
     ScannerContent(
         state = state,
@@ -83,6 +104,8 @@ fun ScannerContent(
         }
 
         item { SessionControls(state, onAction) }
+
+        item { FormatFilters(state, onAction) }
 
         item {
             Text(
@@ -134,6 +157,42 @@ private fun CameraViewfinder(previewEngine: CameraPreviewEngine, state: ScannerS
     }
 }
 
+/**
+ * Filtro de formatos (RF-06).
+ *
+ * Se dibuja desde `BarcodeFormat.known`, así que añadir una simbología al modelo la hace aparecer
+ * aquí sin tocar esta pantalla — el mismo principio que la ficha de motor.
+ */
+@Composable
+private fun FormatFilters(state: ScannerState, onAction: (ScannerAction) -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(Spacing.md),
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+        ) {
+            Text(
+                text = "Formatos (${state.formats.size} de ${BarcodeFormat.known.size})",
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Text(
+                text = "Quitar formatos acelera la detección y evita lecturas cruzadas. " +
+                    "Si los quitás todos vuelven todos: una petición sin formatos no es válida.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                items(BarcodeFormat.known.toList(), key = { it.id }) { format ->
+                    FilterChip(
+                        selected = format in state.formats,
+                        onClick = { onAction(ScannerAction.ToggleFormat(format)) },
+                        label = { Text(format.displayName) },
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun SessionControls(state: ScannerState, onAction: (ScannerAction) -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
@@ -159,12 +218,21 @@ private fun SessionControls(state: ScannerState, onAction: (ScannerAction) -> Un
                 )
             }
 
-            state.error?.let {
-                Text(
-                    text = "Error: $it",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
+            state.error?.let { error ->
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Error: $error",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = { onAction(ScannerAction.DismissError) }) {
+                        Text("Descartar")
+                    }
+                }
             }
 
             Row(
