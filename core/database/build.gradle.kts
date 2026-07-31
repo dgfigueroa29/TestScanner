@@ -19,7 +19,13 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(project(":core:domain"))
-            implementation(libs.room.runtime)
+            // `api` y no `implementation`: los tipos públicos de este módulo **son** tipos de Room.
+            // `ScanDatabase` hereda de `RoomDatabase` y `DatabaseBuilderFactory.create()` devuelve
+            // un `RoomDatabase.Builder`, así que quien los use necesita ver esas clases. Con
+            // `implementation`, `:composeApp` fallaba al montar el grafo con "Cannot access class
+            // 'androidx.room.RoomDatabase.Builder'".
+            api(libs.room.runtime)
+            // El driver sí se queda como detalle interno: solo se usa dentro de `build()`.
             implementation(libs.sqlite.bundled)
         }
         commonTest.dependencies {
