@@ -7,8 +7,7 @@ import platform.AVFoundation.AVCaptureTorchModeOff
 import platform.AVFoundation.AVCaptureTorchModeOn
 import platform.AVFoundation.hasTorch
 import platform.AVFoundation.isTorchModeSupported
-import platform.AVFoundation.lockForConfiguration
-import platform.AVFoundation.unlockForConfiguration
+import platform.AVFoundation.torchMode
 import platform.AVFoundation.videoZoomFactor
 
 /**
@@ -66,7 +65,12 @@ internal class ZXingCameraSessionHolder {
         }
     }
 
-    /** Dejar el dispositivo bloqueado impide que otra app lo use hasta que muera el proceso. */
+    /**
+     * Dejar el dispositivo bloqueado impide que otra app lo use hasta que muera el proceso.
+     *
+     * `lockForConfiguration` y `unlockForConfiguration` no se importan: son miembros de
+     * `AVCaptureDevice`, no extensiones. Ver la nota en el holder de `:engines:vision-ios`.
+     */
     private inline fun withLockedDevice(camera: AVCaptureDevice, block: (AVCaptureDevice) -> Unit) {
         if (!camera.lockForConfiguration(null)) return
         try {

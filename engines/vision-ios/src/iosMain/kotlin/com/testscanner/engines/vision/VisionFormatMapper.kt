@@ -25,6 +25,12 @@ import platform.AVFoundation.AVMetadataObjectTypeUPCECode
  */
 internal object VisionFormatMapper {
 
+    /**
+     * Las constantes `AVMetadataObjectType*` llegan de cinterop como `String?`: el binding no puede
+     * saber que Apple no las declara nulas nunca. Se descartan las nulas en lugar de forzarlas con
+     * `!!` — si alguna faltara, ese formato simplemente no se ofrece, en vez de tumbar el motor al
+     * cargarlo.
+     */
     private val toDomain: Map<String, BarcodeFormat> = mapOf(
         AVMetadataObjectTypeEAN13Code to BarcodeFormat.Ean13,
         AVMetadataObjectTypeEAN8Code to BarcodeFormat.Ean8,
@@ -38,7 +44,7 @@ internal object VisionFormatMapper {
         AVMetadataObjectTypeDataMatrixCode to BarcodeFormat.DataMatrix,
         AVMetadataObjectTypeAztecCode to BarcodeFormat.Aztec,
         AVMetadataObjectTypePDF417Code to BarcodeFormat.Pdf417,
-    )
+    ).entries.mapNotNull { (type, format) -> type?.let { it to format } }.toMap()
 
     /** Todos los tipos que sabemos traducir, para configurar `metadataObjectTypes`. */
     val allSupportedTypes: List<String> = toDomain.keys.toList()
