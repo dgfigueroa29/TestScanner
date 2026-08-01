@@ -38,7 +38,6 @@ import platform.AVFoundation.AVCaptureSessionPresetHigh
 import platform.AVFoundation.AVMediaTypeVideo
 import platform.AVFoundation.AVMetadataMachineReadableCodeObject
 import platform.AVFoundation.authorizationStatusForMediaType
-import platform.AVFoundation.defaultDeviceWithMediaType
 import platform.darwin.NSObject
 import platform.darwin.dispatch_get_main_queue
 
@@ -87,6 +86,9 @@ class VisionScannerEngine(
     override fun scan(request: ScanRequest): Flow<ScanEvent> = callbackFlow {
         val startedAtMillis = time.nowMillis()
 
+        // Sin import: `defaultDeviceWithMediaType:` es un método de clase de la interfaz principal
+        // de `AVCaptureDevice`, así que cinterop lo pone en el companion. `authorizationStatusForMediaType`
+        // sí lo lleva, porque viene de una categoría y se traduce a extensión.
         val camera = AVCaptureDevice.defaultDeviceWithMediaType(AVMediaTypeVideo)
         if (camera == null) {
             trySend(ScanEvent.Failed(ScanError.CameraUnavailable("No hay cámara disponible"), id))
@@ -167,6 +169,11 @@ class VisionScannerEngine(
     ): Detection? {
         val value = stringValue ?: return null
 
+        // `type` es `AVMetadataObjectType?` en el binding. Un metadato sin tipo no se puede atribuir
+        // a ningún formato, y devolverlo como `Unknown("")` sería peor que no devolverlo: se
+        // descarta igual que uno sin valor.
+        val symbology = type ?: return null
+
         val corners = bounds.useContents {
             listOf(
                 Point(origin.x.toFloat(), origin.y.toFloat()),
@@ -179,7 +186,7 @@ class VisionScannerEngine(
         return Detection.of(
             barcode = Barcode(
                 rawValue = value,
-                format = VisionFormatMapper.fromVision(type),
+                format = VisionFormatMapper.fromVision(symbology),
                 cornerPoints = corners,
             ),
             engineId = id,

@@ -4,9 +4,9 @@
 |---|---|
 | Proyecto | TestScanner |
 | Documento | Software Design Document (SDD) |
-| Versión | 1.4 |
-| Estado | Vigente — **el proyecto compila y pasa CI** en Android (con R8), Escritorio y Web. Fases 1, 2, 4 y 5 cerradas salvo lo listado como pendiente; la 3 (iOS) escrita, con la compilación pendiente del primer `main` |
-| Fecha | 2026-07-31 |
+| Versión | 1.5 |
+| Estado | Vigente — **el proyecto compila y pasa CI** en Android (con R8), Escritorio y Web. Fases 1, 2, 4 y 5 cerradas salvo lo listado como pendiente; la 3 (iOS) escrita y **compilando por primera vez en el runner macOS**, con las tandas de errores que eso destapa en curso |
+| Fecha | 2026-08-01 |
 | Autor | Equipo TestScanner |
 | Alcance de esta versión | Migración de app Android monolítica a Compose Multiplatform + arquitectura de motores de escaneo intercambiables |
 
@@ -624,12 +624,28 @@ de componentes de Android), por lo que no es una opción aquí. Ver `docs/adr/AD
 appModule              (composeApp)   → wiring raíz, arranca Koin
 ├── platformModule     (expect/actual) → motores de la plataforma, permisos, dispatchers
 ├── dataModule         (core:data)    → Registry, repositorios
-├── domainModule       (core:domain)  → UseCases
+├── domainModule       (core:domain)  → UseCases y sus agrupadores (ScanSettings, ScanSessions)
 └── scannerModule      (feature:scanner) → ViewModels
 ```
 
 Convenciones: constructor injection siempre; ningún `Context` en ViewModels; los dispatchers se
 inyectan (`DispatcherProvider`) para que los tests puedan sustituirlos por `UnconfinedTestDispatcher`.
+
+**Un caso de uso por operación no es una regla.** `ScannerViewModel` llegó a tener doce
+colaboradores por seguirla al pie de la letra, y cuatro de ellos eran la misma idea: tres casos de
+uso de una línea sobre `ScanPreferencesRepository` más el propio repositorio, inyectado aparte
+porque dos operaciones no tenían caso de uso. La corrección (deuda D16) fue en dos direcciones:
+
+- **Borrar** los que solo delegaban —los tres de preferencias y `ObserveEngineCatalogUseCase`—.
+  Un caso de uso que no añade una regla añade un nombre, y el nombre ya lo daba el repositorio. La
+  única regla que había, que un conjunto de formatos vacío significa *todos*, se conservó en
+  `ScanSettings`.
+- **Agrupar** los que sí tienen lógica y se usan siempre juntos: `ScanSessions` reúne arrancar,
+  decodificar y guardar, y se lleva consigo la traducción de preferencias a `ScanRequest`.
+
+El criterio que queda para el futuro: un caso de uso existe si guarda una regla, no si existe una
+operación. Y agrupar colaboradores es un cambio de dominio, no de UI — por eso ambos viven en
+`:core:domain` y no en la feature.
 
 ---
 
@@ -877,6 +893,23 @@ por defecto es `src/main/kotlin` y aquí el código vive en `src/commonMain/kotl
 salieron 105 hallazgos. Es la misma lección que los tests instrumentados que se decidió no tener:
 una comprobación que no se ejecuta es peor que ninguna, porque ocupa el sitio de la que sí haría
 falta.
+
+**Y del primer CI de iOS.** El job `ios` solo corre en `main`, así que su veredicto llegó una
+tanda más tarde y confirmó la misma forma: el stack compartido —modelo, dominio, `scanner-api`,
+`designsystem`, `platform`, `permissions` y el motor manual— compiló a la primera, porque es
+justo lo que el arnés local ya ejercitaba. Los diez errores estaban todos en los dos motores que
+hablan con AVFoundation, que es código que nadie había compilado nunca. Ocho eran **el mismo
+malentendido repetido**, y vale la pena escribirlo porque se repetirá:
+
+> En cinterop, un método declarado en la interfaz principal de una clase Objective-C se traduce a
+> **miembro** y no se importa; solo lo que viene de una **categoría** se traduce a extensión con un
+> nombre importable. `lockForConfiguration`, `unlockForConfiguration` y el método de clase
+> `defaultDeviceWithMediaType:` son lo primero; `hasTorch`, `torchMode` y `videoZoomFactor`, lo
+> segundo. Tener los tres segundos importados y funcionando fue justo lo que hizo que los tres
+> primeros parecieran correctos.
+
+Los otros dos eran nulabilidad: las constantes `AVMetadataObjectType*` y la propiedad `type` de un
+metadato llegan como `String?` porque el binding no puede saber que Apple no las declara nulas.
 
 ---
 

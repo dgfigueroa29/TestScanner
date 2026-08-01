@@ -2,26 +2,17 @@ package com.testscanner.feature.scanner
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.testscanner.core.domain.repository.ScanPreferencesRepository
 import com.testscanner.core.domain.repository.ScannerEngineRepository
 import com.testscanner.core.domain.scan.ResultAction
-import com.testscanner.core.domain.usecase.DecodeImageUseCase
-import com.testscanner.core.domain.usecase.ObserveEngineCatalogUseCase
-import com.testscanner.core.domain.usecase.ObserveScanPreferencesUseCase
-import com.testscanner.core.domain.usecase.SaveDetectionUseCase
-import com.testscanner.core.domain.usecase.SetPreferredEngineUseCase
-import com.testscanner.core.domain.usecase.SetScanFormatsUseCase
-import com.testscanner.core.domain.usecase.StartScanSessionUseCase
+import com.testscanner.core.domain.usecase.ScanSessions
+import com.testscanner.core.domain.usecase.ScanSettings
 import com.testscanner.core.model.BarcodeFormat
 import com.testscanner.core.model.Permission
 import com.testscanner.core.model.ScanImage
-import com.testscanner.core.model.ScanRequest
-import com.testscanner.core.model.ScanSource
 import com.testscanner.core.model.ScannerEngineId
 import com.testscanner.core.permissions.PermissionController
 import com.testscanner.core.platform.ImagePicker
 import com.testscanner.core.platform.PickImageResult
-import com.testscanner.core.platform.PlatformActions
 import com.testscanner.core.scanner.CameraControlEngine
 import com.testscanner.core.scanner.ScanEvent
 import com.testscanner.core.scanner.TextInputEngine
@@ -39,34 +30,31 @@ import kotlinx.coroutines.launch
 /**
  * MVI de la pantalla de escaneo.
  *
- * El ViewModel **no conoce ningún motor concreto**: pide una sesión al caso de uso y reacciona a
+ * El ViewModel **no conoce ningún motor concreto**: pide una sesión a [ScanSessions] y reacciona a
  * los [ScanEvent] que llegan. Toda la lógica de selección y degradación vive en el dominio, así
  * que añadir un motor nuevo no toca este archivo (RNF-07).
  *
- * ### Por qué lleva supresiones
- * Doce colaboradores y veinte funciones son mucho, y detekt tiene razón en señalarlo. No se
- * silencia subiendo el umbral global —eso dejaría la regla midiendo siempre lo que hubiera— sino
- * aquí, donde se ve. Está registrado como deuda **D16**: la salida natural es agrupar los casos de
- * uso de sesión en un colaborador y los de preferencias en otro, pero es un cambio que toca el
- * grafo de DI de las cuatro plataformas y no entra en el mismo PR que arregla la build.
+ * ### Por qué sigue teniendo supresiones
+ * La deuda D16 se saldó agrupando: los ajustes en [ScanSettings], la sesión y el guardado en
+ * [ScanSessions], y las acciones sobre el resultado en [ResultActionRunner]. De **doce
+ * dependencias quedan seis**, y `LongParameterList` ya no hace falta silenciarla.
+ *
+ * `TooManyFunctions` sobrevive, y es un dato honesto: esta pantalla tiene catorce acciones de
+ * usuario y cada una necesita su función. Partirla por partir movería el recuento a otro archivo
+ * sin que nadie entienda mejor la pantalla. La supresión se pone aquí, a la vista, y no subiendo el
+ * umbral global —que dejaría la regla midiendo siempre lo que hubiera.
  */
-@Suppress("LongParameterList", "TooManyFunctions", "CyclomaticComplexMethod")
+@Suppress("TooManyFunctions")
 class ScannerViewModel(
-    private val observeCatalog: ObserveEngineCatalogUseCase,
-    private val observePreferences: ObserveScanPreferencesUseCase,
-    private val setPreferredEngine: SetPreferredEngineUseCase,
-    private val setScanFormats: SetScanFormatsUseCase,
-    private val startScanSession: StartScanSessionUseCase,
-    private val saveDetection: SaveDetectionUseCase,
-    private val decodeImage: DecodeImageUseCase,
-    private val preferencesRepository: ScanPreferencesRepository,
+    private val settings: ScanSettings,
+    private val sessions: ScanSessions,
     private val engineRepository: ScannerEngineRepository,
     private val permissionController: PermissionController,
-    private val platformActions: PlatformActions,
     private val imagePicker: ImagePicker,
+    private val resultActions: ResultActionRunner,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(ScannerState(canShare = platformActions.canShare))
+    private val _state = MutableStateFlow(ScannerState(canShare = resultActions.canShare))
     val state: StateFlow<ScannerState> = _state.asStateFlow()
 
     private val _effects = MutableSharedFlow<ScannerEffect>()
@@ -79,6 +67,16 @@ class ScannerViewModel(
         observePreferenceChanges()
     }
 
+    /**
+     * `CyclomaticComplexMethod` cuenta catorce ramas y tiene razón en el número, no en lo que
+     * significa: es una tabla de despacho sobre un `sealed interface`, donde cada rama es una línea
+     * y el compilador exige que estén todas. Partirla en dos `when` la haría peor de leer y bajaría
+     * la métrica, que es justo la clase de arreglo que no sirve para nada.
+     *
+     * Se suprime aquí y no con `ignoreSimpleWhenEntries` en la configuración: esa opción dejaría de
+     * contar los `when` de una línea en todo el proyecto, incluidos los que sí esconden complejidad.
+     */
+    @Suppress("CyclomaticComplexMethod")
     fun onAction(action: ScannerAction) {
         when (action) {
             ScannerAction.Refresh -> refresh()
@@ -100,7 +98,7 @@ class ScannerViewModel(
 
     private fun observeCatalogChanges() {
         viewModelScope.launch {
-            observeCatalog().collect { catalog ->
+            engineRepository.observeCatalog().collect { catalog ->
                 _state.update { it.copy(catalog = catalog, isLoading = false) }
             }
         }
@@ -108,7 +106,7 @@ class ScannerViewModel(
 
     private fun observePreferenceChanges() {
         viewModelScope.launch {
-            observePreferences().collect { preferences ->
+            settings.observe().collect { preferences ->
                 _state.update {
                     it.copy(
                         selectedEngineId = preferences.preferredEngineId,
@@ -126,7 +124,7 @@ class ScannerViewModel(
 
     private fun selectEngine(id: ScannerEngineId?) {
         viewModelScope.launch {
-            setPreferredEngine(id)
+            settings.preferEngine(id)
             if (_state.value.sessionStatus == SessionStatus.Scanning) {
                 stopSession()
                 startSession()
@@ -137,12 +135,12 @@ class ScannerViewModel(
     private fun toggleFormat(format: BarcodeFormat) {
         viewModelScope.launch {
             val current = _state.value.formats
-            setScanFormats(if (format in current) current - format else current + format)
+            settings.setFormats(if (format in current) current - format else current + format)
         }
     }
 
     private fun setContinuous(enabled: Boolean) {
-        viewModelScope.launch { preferencesRepository.setContinuous(enabled) }
+        viewModelScope.launch { settings.setContinuous(enabled) }
     }
 
     private fun startSession() {
@@ -157,24 +155,9 @@ class ScannerViewModel(
         }
 
         sessionJob = viewModelScope.launch {
-            val preferences = preferencesRepository.current()
-            val request = ScanRequest(
-                formats = preferences.formats,
-                source = sourceFor(preferences.preferredEngineId),
-                continuous = preferences.continuous,
-                allowMultiple = preferences.allowMultiple,
-            )
-
-            startScanSession(request, preferences.preferredEngineId).collect(::reduce)
+            sessions.start(settings.current()).collect(::reduce)
         }
     }
-
-    /**
-     * La entrada manual no consume frames de cámara. Sin esto, el selector descartaría el motor
-     * manual por no soportar la fuente pedida justo cuando es el único disponible.
-     */
-    private fun sourceFor(engineId: ScannerEngineId?): ScanSource =
-        if (engineId == ScannerEngineId.ManualInput) ScanSource.ManualInput else ScanSource.LiveCamera
 
     private fun stopSession() {
         sessionJob?.cancel()
@@ -196,7 +179,7 @@ class ScannerViewModel(
             }
 
             is ScanEvent.Detected -> {
-                event.detections.forEach { saveDetection(it) }
+                sessions.save(event.detections)
                 _state.update { it.copy(detections = event.detections + it.detections) }
             }
 
@@ -271,14 +254,7 @@ class ScannerViewModel(
     }
 
     private suspend fun decodePickedImage(image: ScanImage) {
-        val preferences = preferencesRepository.current()
-        val request = ScanRequest(
-            formats = preferences.formats,
-            source = ScanSource.StaticImage,
-            allowMultiple = true,
-        )
-
-        decodeImage(image, request, preferences.preferredEngineId)
+        sessions.decode(image, settings.current())
             .onSuccess { detections ->
                 if (detections.isEmpty()) {
                     _effects.emit(ScannerEffect.ShowMessage(ScannerMessage.NoCodeInImage))
@@ -293,7 +269,7 @@ class ScannerViewModel(
                         sessionStatus = SessionStatus.Finished,
                     )
                 }
-                detections.forEach { saveDetection(it) }
+                sessions.save(detections)
             }
             .onFailure { failure ->
                 val reason = failure.message?.let(ScannerMessage::Raw) ?: ScannerMessage.NoCodeInImage
@@ -301,35 +277,10 @@ class ScannerViewModel(
             }
     }
 
-    /**
-     * Ejecuta una acción sobre un resultado (RF-13).
-     *
-     * El dominio decide **qué** se puede hacer con el código, la pantalla lo **redacta** y la
-     * plataforma lo **ejecuta**; el ViewModel une las tres partes y avisa si la acción no prosperó
-     * — el portapapeles puede estar bloqueado y no abrirse ninguna app para un esquema.
-     */
     private fun runResultAction(action: ResultAction, text: String) {
         viewModelScope.launch {
-            val (succeeded, failure) = when (action) {
-                ResultAction.Copy ->
-                    platformActions.copyToClipboard(text) to ScannerMessage.CopyFailed
-
-                ResultAction.Share ->
-                    platformActions.share(text) to ScannerMessage.ShareFailed
-
-                is ResultAction.Open ->
-                    platformActions.openUrl(action.uri) to ScannerMessage.OpenFailed
-            }
-
-            // Compartir y abrir son visibles por sí mismos: aparece una hoja o cambia de app.
-            // Copiar no muestra nada, así que es la única que necesita confirmación.
-            val message: ScannerMessage? = when {
-                !succeeded -> failure
-                action == ResultAction.Copy -> ScannerMessage.Copied
-                else -> null
-            }
-
-            message?.let { _effects.emit(ScannerEffect.ShowMessage(it)) }
+            resultActions.run(action, text)
+                ?.let { _effects.emit(ScannerEffect.ShowMessage(it)) }
         }
     }
 

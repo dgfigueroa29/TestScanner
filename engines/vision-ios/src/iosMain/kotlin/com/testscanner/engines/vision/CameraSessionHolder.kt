@@ -7,8 +7,7 @@ import platform.AVFoundation.AVCaptureTorchModeOff
 import platform.AVFoundation.AVCaptureTorchModeOn
 import platform.AVFoundation.hasTorch
 import platform.AVFoundation.isTorchModeSupported
-import platform.AVFoundation.lockForConfiguration
-import platform.AVFoundation.unlockForConfiguration
+import platform.AVFoundation.torchMode
 import platform.AVFoundation.videoZoomFactor
 
 /**
@@ -75,6 +74,13 @@ internal class CameraSessionHolder {
         }
     }
 
+    /**
+     * `lockForConfiguration` y `unlockForConfiguration` **no se importan**: cinterop las genera como
+     * miembros de `AVCaptureDevice`, porque Apple las declara en la interfaz principal de la clase.
+     * Lo que sí lleva import es todo lo que viene de una categoría —`hasTorch`, `torchMode`,
+     * `videoZoomFactor`—, que se traduce a extensiones. Importarlas fue el primer error que dio el
+     * runner macOS.
+     */
     private inline fun withLockedDevice(camera: AVCaptureDevice, block: (AVCaptureDevice) -> Unit) {
         if (!camera.lockForConfiguration(null)) return
         try {

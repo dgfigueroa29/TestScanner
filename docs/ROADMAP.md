@@ -74,8 +74,12 @@ verificable desactivando Play Services.
 - [x] `IosPermissionController` sobre `AVCaptureDevice`
 - [x] `iosApp/` — fuentes Swift e `Info.plist` con `NSCameraUsageDescription`
 - [ ] `iosApp.xcodeproj` — se crea en Xcode siguiendo `iosApp/README.md` (requiere macOS)
-- [ ] Primera compilación de todo el código iOS. Ya no hace falta una Mac propia: el job `ios`
-      corre en un runner macOS al llegar a `main`, así que dará el veredicto al mergear
+- [ ] Primera compilación de todo el código iOS — **en curso, y ya dio su primera tanda**. El stack
+      compartido (modelo, dominio, `scanner-api`, `designsystem`, `platform`, `permissions` y el
+      motor manual) compiló a la primera; los diez errores estaban todos en los dos motores de
+      AVFoundation, y ocho eran la misma confusión repetida: importar como extensión lo que cinterop
+      genera como miembro. Arreglados. Los módulos que dependen de esos dos no llegaron a
+      compilarse, así que faltan tandas
 - [x] **Motor baseline decidido** (cerraba R9): se consumen los artefactos publicados de zxing-cpp,
       sin cinterop propio — ver [ADR-0008](adr/ADR-0008-baseline-zxing-cpp.md)
 - [x] **Kotlin 2.3.20** (cerraba R10): los klibs de zxing-cpp están compilados con 2.2.0 y el
@@ -95,8 +99,8 @@ verificable desactivando Play Services.
       el sistema mate el proceso, o a un cambio de tamaño de letra o de idioma. Ahora se guarda por
       ids estables, escritos a mano porque R8 ofusca los nombres de clase
 
-- [x] CI: `linkDebugFrameworkIosSimulatorArm64` en runner macOS — configurado y a la espera del
-      primer `main` con la build arreglada
+- [x] CI: `linkDebugFrameworkIosSimulatorArm64` en runner macOS — **corriendo**. Ya no está a la
+      espera de nada: cada `main` da su veredicto sobre el código Kotlin/Native
 
 **Criterio de salida:** escaneo real en iOS; ZXing-cpp produce resultados comparables entre
 Android e iOS sobre el mismo set de imágenes de referencia.
@@ -217,4 +221,4 @@ Registrada de forma explícita para que no se olvide:
 | ~~D14~~ | ~~El motor de Web escanea pero no muestra visor~~ | **Saldada**: el `<video>` se coloca sobre el canvas desde `onGloballyPositioned`. A cambio tapa el overlay, declarado con `occludesOverlay` |
 | ~~D15~~ | ~~El texto que se copia de un WiFi lo compone el dominio~~ | **Saldada**: `shareableContent()` devuelve la estructura y la pantalla la redacta con sus recursos. La acción del ViewModel lleva el texto ya hecho |
 | ~~D13~~ | ~~Desktop y Web se quedan sin decodificador: zxing-cpp no publica artefacto JVM ni wasmJs~~ | **Saldada en Desktop**: `:engines:zxing-java` sobre `com.google.zxing:core`, en el catálogo **como motor propio** y no con el nombre de zxing-cpp — son proyectos distintos y confundirlos falsearía la comparación. Solo imagen estática: el decodificador está, la captura de webcam no. **Web se queda como está**: no hay artefacto wasmJs y su respaldo sigue siendo la entrada manual |
-| D16 | `ScannerViewModel` tiene doce colaboradores y veinte funciones. detekt lo señala y tiene razón; se silencia **en el propio archivo y con el motivo escrito**, no subiendo el umbral global. La salida natural es agrupar los casos de uso de sesión en un colaborador y los de preferencias en otro, pero toca el grafo de DI de las cuatro plataformas | Cuando la build esté estable |
+| ~~D16~~ | ~~`ScannerViewModel` tiene doce colaboradores y veinte funciones~~ | **Saldada**: seis dependencias. Los ajustes en `ScanSettings`, la sesión y el guardado en `ScanSessions`, las acciones sobre el resultado en `ResultActionRunner`. Los tres casos de uso de preferencias y el del catálogo se **borraron** en vez de envolverse —delegaban al repositorio sin añadir nada—, y la única regla que había se conservó donde se puede probar. Quince tests nuevos que antes exigían levantar el ViewModel entero. Quedan dos supresiones, ninguna global: `TooManyFunctions` en la clase (catorce acciones de usuario, catorce funciones) y `CyclomaticComplexMethod` en `onAction`, que es una tabla de despacho sobre un `sealed interface` |

@@ -4,12 +4,10 @@ import app.cash.turbine.test
 import com.testscanner.core.domain.scan.OpenKind
 import com.testscanner.core.domain.scan.ResultAction
 import com.testscanner.core.domain.usecase.DecodeImageUseCase
-import com.testscanner.core.domain.usecase.ObserveEngineCatalogUseCase
-import com.testscanner.core.domain.usecase.ObserveScanPreferencesUseCase
 import com.testscanner.core.domain.usecase.SaveDetectionUseCase
+import com.testscanner.core.domain.usecase.ScanSessions
+import com.testscanner.core.domain.usecase.ScanSettings
 import com.testscanner.core.domain.usecase.SelectScannerEngineUseCase
-import com.testscanner.core.domain.usecase.SetPreferredEngineUseCase
-import com.testscanner.core.domain.usecase.SetScanFormatsUseCase
 import com.testscanner.core.domain.usecase.StartScanSessionUseCase
 import com.testscanner.core.model.Barcode
 import com.testscanner.core.model.BarcodeFormat
@@ -49,19 +47,18 @@ class ResultActionsIntegrationTest {
         val preferences = FakePreferencesRepository()
         platform = FakePlatformActions(canShare = canShare, succeeds = succeeds)
 
+        val select = SelectScannerEngineUseCase(engines)
         return ScannerViewModel(
-            observeCatalog = ObserveEngineCatalogUseCase(engines),
-            observePreferences = ObserveScanPreferencesUseCase(preferences),
-            setPreferredEngine = SetPreferredEngineUseCase(preferences),
-            setScanFormats = SetScanFormatsUseCase(preferences),
-            startScanSession = StartScanSessionUseCase(engines, SelectScannerEngineUseCase(engines)),
-            saveDetection = SaveDetectionUseCase(FakeHistoryRepository()),
-            decodeImage = DecodeImageUseCase(engines, SelectScannerEngineUseCase(engines)),
-            preferencesRepository = preferences,
+            settings = ScanSettings(preferences),
+            sessions = ScanSessions(
+                startSession = StartScanSessionUseCase(engines, select),
+                decodeImage = DecodeImageUseCase(engines, select),
+                saveDetection = SaveDetectionUseCase(FakeHistoryRepository()),
+            ),
             engineRepository = engines,
             permissionController = FakePermissionController(),
-            platformActions = platform,
             imagePicker = FakeImagePicker(),
+            resultActions = ResultActionRunner(platform),
         )
     }
 
