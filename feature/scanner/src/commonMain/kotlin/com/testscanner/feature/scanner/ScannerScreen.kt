@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -114,6 +115,7 @@ import com.testscanner.feature.scanner.resources.torch_off
 import com.testscanner.feature.scanner.resources.torch_on
 import com.testscanner.feature.scanner.resources.zoom_ratio
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -618,21 +620,23 @@ private fun ResultAction.labelResource(): StringResource = when (this) {
  *
  * Es la única pieza que conoce las dos mitades: el ViewModel dice qué pasó y aquí se le pone
  * nombre. [ScannerMessage.Raw] pasa tal cual porque su texto lo produjo la plataforma.
+ *
+ * Es `suspend` y usa `getString` en lugar de ser `@Composable` con `stringResource`: se la llama
+ * desde dentro de un `LaunchedEffect`, que es una corrutina y **no** un contexto composable.
  */
-@Composable
-private fun resolve(message: ScannerMessage): String = when (message) {
-    ScannerMessage.EngineSwitched -> stringResource(Res.string.message_engine_switched)
+private suspend fun resolve(message: ScannerMessage): String = when (message) {
+    ScannerMessage.EngineSwitched -> getString(Res.string.message_engine_switched)
     ScannerMessage.CameraPermissionDenied ->
-        stringResource(Res.string.message_camera_permission_denied)
+        getString(Res.string.message_camera_permission_denied)
 
     ScannerMessage.ManualInputUnavailable ->
-        stringResource(Res.string.message_manual_input_unavailable)
+        getString(Res.string.message_manual_input_unavailable)
 
-    ScannerMessage.Copied -> stringResource(Res.string.message_copied)
-    ScannerMessage.CopyFailed -> stringResource(Res.string.message_copy_failed)
-    ScannerMessage.ShareFailed -> stringResource(Res.string.message_share_failed)
-    ScannerMessage.OpenFailed -> stringResource(Res.string.message_open_failed)
-    ScannerMessage.NoCodeInImage -> stringResource(Res.string.message_no_code_in_image)
+    ScannerMessage.Copied -> getString(Res.string.message_copied)
+    ScannerMessage.CopyFailed -> getString(Res.string.message_copy_failed)
+    ScannerMessage.ShareFailed -> getString(Res.string.message_share_failed)
+    ScannerMessage.OpenFailed -> getString(Res.string.message_open_failed)
+    ScannerMessage.NoCodeInImage -> getString(Res.string.message_no_code_in_image)
     is ScannerMessage.Raw -> message.text
 }
 
@@ -653,9 +657,10 @@ private const val MAX_ZOOM = 5f
 private fun ShareableContent.asText(): String = when (this) {
     is ShareableContent.Raw -> value
 
-    is ShareableContent.Wifi -> password
-        ?.let { stringResource(Res.string.share_wifi_with_password, ssid, it) }
-        ?: stringResource(Res.string.share_wifi, ssid)
+    is ShareableContent.Wifi ->
+        password
+            ?.let { stringResource(Res.string.share_wifi_with_password, ssid, it) }
+            ?: stringResource(Res.string.share_wifi, ssid)
 
     is ShareableContent.Contact -> parts.joinToString(stringResource(Res.string.share_separator))
 }

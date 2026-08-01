@@ -26,8 +26,10 @@ data class HistoryState(
 
 sealed interface HistoryAction {
     data class FilterByEngine(val id: ScannerEngineId?) : HistoryAction
+
     /** Lleva el texto ya redactado: ver la nota gemela en `ScannerAction.RunResultAction`. */
     data class RunResultAction(val action: ResultAction, val text: String) : HistoryAction
+
     /** Sacar el historial a un archivo (RF-11). */
     data class Export(val format: ExportFormat) : HistoryAction
     data object Clear : HistoryAction

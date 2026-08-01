@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.testscanner.core.model.Barcode
 import com.testscanner.core.model.Detection
+import com.testscanner.core.model.Permission
 import com.testscanner.core.model.Point
 import com.testscanner.core.model.ScanError
 import com.testscanner.core.model.ScanImage
@@ -76,8 +77,12 @@ class BrowserDetectorEngine(
             startCameraSession(BrowserFormatMapper.toBrowserFilter(request.formats).orEmpty()).await<JsAny>()
         } catch (cancellation: CancellationException) {
             throw cancellation
-        } catch (failure: Throwable) {
-            send(ScanEvent.Failed(ScanError.PermissionDenied, engineId = id))
+            // Se captura `Throwable` a conciencia: al otro lado hay JavaScript, que puede lanzar
+            // cualquier cosa —un `DOMException`, un string suelto— y no hay tipo concreto al que
+            // agarrarse. Y se descarta porque en la práctica solo hay un motivo por el que
+            // `getUserMedia` falla aquí: el usuario no dio permiso, que es lo que se reporta.
+        } catch (@Suppress("TooGenericExceptionCaught", "SwallowedException") failure: Throwable) {
+            send(ScanEvent.Failed(ScanError.PermissionDenied(Permission.Camera), engineId = id))
             send(ScanEvent.SessionEnded(id))
             return@channelFlow
         }

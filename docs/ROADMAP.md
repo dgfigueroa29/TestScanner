@@ -11,7 +11,8 @@ Convertir el repositorio en un proyecto Compose Multiplatform con la arquitectur
 completa, aunque todavía sin motores de cámara reales.
 
 - [x] Build KMP/CMP: Kotlin DSL, version catalog, Gradle, Kotlin, AGP (versiones al día en `libs.versions.toml`)
-- [x] Targets `android`, `iosX64/iosArm64/iosSimulatorArm64`, `jvm`, `wasmJs`
+- [x] Targets `android`, `iosArm64/iosSimulatorArm64`, `jvm`, `wasmJs` — sin `iosX64`, el
+      simulador de los Mac con Intel: Compose Multiplatform 1.11.1 ya no lo publica
 - [x] Estructura de módulos `core/`, `engines/`, `feature/`, `composeApp/`, `androidApp/`
 - [x] Modelo de dominio: `Barcode`, `BarcodeFormat` (17 simbologías), `BarcodeValueType`, `Detection`
 - [x] Scanner Engine SPI completo: contrato, capacidades, disponibilidad, eventos
@@ -54,31 +55,34 @@ con su estado real; los tests de `:core:domain` y `:core:data` pasan en CI.
 **Criterio de salida:** escaneo real en Android alternando dos motores en caliente, con fallback
 verificable desactivando Play Services.
 
-> Pendiente de la primera compilación con Gradle: el entorno donde se escribió esta fase no tenía
-> acceso a `dl.google.com`, así que las APIs de ML Kit y CameraX están sin compilar. El núcleo puro
-> sí está verificado (358 tests en verde con kotlinc).
+> **Compila y pasa CI.** Las APIs de ML Kit y CameraX estuvieron sin compilar hasta que se activó
+> Actions, porque el entorno de desarrollo no alcanza `dl.google.com`. Ya no: el job de Android
+> ensambla debug, pasa lint y ensambla release con R8.
 
 ---
 
 ## Fase 3 — iOS ⏸️ despriorizada
 
-> **Sin dispositivos Apple no se puede verificar nada de esto.** El código está escrito y sigue en
-> el repositorio, pero deja de marcar el ritmo: compilar Kotlin/Native exige macOS y probarlo exige
-> un iPhone o un simulador, así que cualquier fallo aquí solo aparecería al llegar a esa máquina.
-> Lo que se hace mientras tanto es lo que Android, Escritorio y Web sí pueden confirmar.
+> **Sin dispositivos Apple no se puede *probar* nada de esto**, y por eso deja de marcar el ritmo.
+> Lo que sí cambió al activar Actions es que **compilarlo ya no exige una Mac propia**: el job `ios`
+> corre en un runner macOS y enlaza el framework al llegar a `main`. Eso cubre los errores de
+> compilación de Kotlin/Native —que es donde estaba el riesgo grueso, porque ese código no se había
+> compilado jamás— pero no que la cámara funcione, que sigue necesitando un iPhone.
 
 - [x] `:engines:vision-ios` — `AVCaptureSession` + `AVCaptureMetadataOutput`, con linterna y zoom
 - [x] Preview de iOS (`UIKitView` con `AVCaptureVideoPreviewLayer`) vía `CameraPreviewEngine`
 - [x] `IosPermissionController` sobre `AVCaptureDevice`
 - [x] `iosApp/` — fuentes Swift e `Info.plist` con `NSCameraUsageDescription`
 - [ ] `iosApp.xcodeproj` — se crea en Xcode siguiendo `iosApp/README.md` (requiere macOS)
-- [ ] Primera compilación de todo el código iOS: nada de esto se ha compilado aún
+- [ ] Primera compilación de todo el código iOS. Ya no hace falta una Mac propia: el job `ios`
+      corre en un runner macOS al llegar a `main`, así que dará el veredicto al mergear
 - [x] **Motor baseline decidido** (cerraba R9): se consumen los artefactos publicados de zxing-cpp,
       sin cinterop propio — ver [ADR-0008](adr/ADR-0008-baseline-zxing-cpp.md)
 - [x] **Kotlin 2.3.20** (cerraba R10): los klibs de zxing-cpp están compilados con 2.2.0 y el
       proyecto estaba en 2.1.21. Se subió a 2.3.20 exacto porque es con la que están compilados CMP
       1.11.1, Koin 4.2.2 y KSP 2.3.10 — emparejar exacto reduce la superficie de fallo. Gradle a
-      8.14.5. Room y AGP se quedan: viven en el maven de Google, inalcanzable desde aquí
+      8.14.5. Room y AGP se quedaron donde estaban por no poder contrastarlos desde aquí; el primer
+      CI zanjó la duda y AGP subió a 8.10.0, que es el mínimo que exige KSP 2.3.10 (riesgo R11)
 - [x] `:engines:zxing-cpp` — `io.github.zxing-cpp:android` en Android y `:kotlin-native` en iOS.
       Dos adaptadores y ningún `commonMain`: las dos publicaciones no comparten API, solo el núcleo
       C++ — que es lo que hace justa la comparación. En iOS usa `AVCaptureVideoDataOutput` y no la
@@ -91,7 +95,8 @@ verificable desactivando Play Services.
       el sistema mate el proceso, o a un cambio de tamaño de letra o de idioma. Ahora se guarda por
       ids estables, escritos a mano porque R8 ofusca los nombres de clase
 
-- [ ] CI: `linkDebugFrameworkIosSimulatorArm64` en runner macOS
+- [x] CI: `linkDebugFrameworkIosSimulatorArm64` en runner macOS — configurado y a la espera del
+      primer `main` con la build arreglada
 
 **Criterio de salida:** escaneo real en iOS; ZXing-cpp produce resultados comparables entre
 Android e iOS sobre el mismo set de imágenes de referencia.
@@ -212,3 +217,4 @@ Registrada de forma explícita para que no se olvide:
 | ~~D14~~ | ~~El motor de Web escanea pero no muestra visor~~ | **Saldada**: el `<video>` se coloca sobre el canvas desde `onGloballyPositioned`. A cambio tapa el overlay, declarado con `occludesOverlay` |
 | ~~D15~~ | ~~El texto que se copia de un WiFi lo compone el dominio~~ | **Saldada**: `shareableContent()` devuelve la estructura y la pantalla la redacta con sus recursos. La acción del ViewModel lleva el texto ya hecho |
 | ~~D13~~ | ~~Desktop y Web se quedan sin decodificador: zxing-cpp no publica artefacto JVM ni wasmJs~~ | **Saldada en Desktop**: `:engines:zxing-java` sobre `com.google.zxing:core`, en el catálogo **como motor propio** y no con el nombre de zxing-cpp — son proyectos distintos y confundirlos falsearía la comparación. Solo imagen estática: el decodificador está, la captura de webcam no. **Web se queda como está**: no hay artefacto wasmJs y su respaldo sigue siendo la entrada manual |
+| D16 | `ScannerViewModel` tiene doce colaboradores y veinte funciones. detekt lo señala y tiene razón; se silencia **en el propio archivo y con el motivo escrito**, no subiendo el umbral global. La salida natural es agrupar los casos de uso de sesión en un colaborador y los de preferencias en otro, pero toca el grafo de DI de las cuatro plataformas | Cuando la build esté estable |

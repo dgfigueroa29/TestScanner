@@ -153,6 +153,5 @@ class SettingsScanHistoryRepositoryTest {
 
 /** Almacén que rechaza toda escritura, como `localStorage` al superar su cuota. */
 private class FullSettings : Settings by MapSettings() {
-    override fun putString(key: String, value: String): Unit =
-        throw IllegalStateException("cuota superada")
+    override fun putString(key: String, value: String): Unit = error("cuota superada")
 }

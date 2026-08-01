@@ -1,3 +1,7 @@
+// El `*` sobre un array es obligado: la API del SDK recibe `vararg` y no hay sobrecarga
+// que acepte una colección. La copia que señala detekt la impone la firma ajena.
+@file:Suppress("SpreadOperator")
+
 package com.testscanner.engines.gms
 
 import android.content.Context

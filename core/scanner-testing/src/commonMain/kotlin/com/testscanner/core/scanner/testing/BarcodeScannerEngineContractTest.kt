@@ -31,7 +31,12 @@ import kotlin.test.assertTrue
  * Los motores de cámara no la heredan, y es una decisión y no un olvido: exigirían un emulador en
  * CI, y un test que nunca se ejecuta da una red de seguridad falsa. Lo que los cubre sin dispositivo
  * está en `docs/ROADMAP.md`.
+ *
+ * Lleva `@Suppress("TooManyFunctions")` porque una batería de contrato **es** una lista de
+ * comprobaciones pequeñas e independientes: partirla en varias clases para bajar la cuenta haría
+ * que un motor tuviera que heredar de tres sitios para quedar cubierto.
  */
+@Suppress("TooManyFunctions")
 abstract class BarcodeScannerEngineContractTest {
 
     /** Instancia nueva del motor bajo prueba. Se llama una vez por test. */

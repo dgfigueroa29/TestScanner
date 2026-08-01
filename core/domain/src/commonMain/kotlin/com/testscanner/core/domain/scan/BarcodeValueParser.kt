@@ -12,6 +12,10 @@ import com.testscanner.core.model.GtinChecksum
  * el mismo código leído con ZXing devolvería menos información, y la comparación entre motores
  * — que es el objetivo del producto — dejaría de ser justa.
  */
+// Una función por tipo de valor: quince funciones pequeñas y sin ramificar, no una clase que
+// hace quince cosas. Añadir una simbología con semántica propia añade una función y no toca las
+// demás, que es justo lo que se busca.
+@Suppress("TooManyFunctions")
 object BarcodeValueParser {
 
     fun parse(rawValue: String, format: BarcodeFormat): BarcodeValueType {

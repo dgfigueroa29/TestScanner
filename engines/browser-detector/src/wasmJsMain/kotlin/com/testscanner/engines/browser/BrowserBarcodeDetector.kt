@@ -1,3 +1,8 @@
+// Puente a JavaScript: el cuerpo de cada función es un `js("...")`, y los parámetros se consumen
+// dentro de ese string. detekt no puede leer el JS, así que los ve sin usar. Es un falso positivo
+// por construcción, no una excepción de conveniencia.
+@file:Suppress("UnusedParameter")
+
 package com.testscanner.engines.browser
 
 import kotlin.js.Promise

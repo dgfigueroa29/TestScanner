@@ -1,3 +1,6 @@
+// Los parámetros se usan dentro del `js("...")`, que detekt no analiza.
+@file:Suppress("UnusedParameter")
+
 package com.testscanner.platform
 
 import com.testscanner.core.platform.PlatformActions

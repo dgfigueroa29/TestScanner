@@ -10,9 +10,20 @@ complexity:
     constructorThreshold: 10
   TooManyFunctions:
     # Los contratos MVI y los descriptores de motores concentran muchas funciones pequeñas.
+    #
+    # Los umbrales se dejan donde estaban a propósito. Subirlos hasta que quepa lo que ya hay
+    # convierte la regla en decoración: mide siempre lo que sea que haya. Las dos excepciones
+    # reales llevan `@Suppress` en su sitio, con el motivo escrito al lado del código.
     thresholdInClasses: 15
     thresholdInFiles: 20
     ignoreAnnotatedFunctions: [ 'Composable' ]
+  LongMethod:
+    # Un @Composable es un árbol declarativo: su longitud no mide complejidad como en una función
+    # imperativa. Lo que sí conviene vigilar ahí es la lógica, y de eso se ocupa
+    # CyclomaticComplexMethod sobre el código que no es UI.
+    ignoreAnnotated: [ 'Composable' ]
+  CyclomaticComplexMethod:
+    ignoreAnnotated: [ 'Composable' ]
 
 style:
   MagicNumber:
@@ -23,6 +34,9 @@ style:
     maxLineLength: 120
   ReturnCount:
     max: 4
+    # Un `return` temprano de validación no es una salida más del algoritmo: es lo que evita anidar.
+    # Contarlas premia el `if` gigante, que es justo lo contrario de lo que se quiere.
+    excludeGuardClauses: true
   UnusedPrivateMember:
     active: true
   ForbiddenComment:
@@ -31,8 +45,10 @@ style:
 
 naming:
   FunctionNaming:
-    # Los @Composable usan PascalCase por convención de Compose.
-    ignoreAnnotated: [ 'Composable' ]
+    # Los @Composable usan PascalCase por convención de Compose, y los @Test llevan nombre en
+    # castellano entre backticks: describir qué se comprueba vale más que respetar camelCase en una
+    # función que nadie invoca a mano.
+    ignoreAnnotated: [ 'Composable', 'Test' ]
   TopLevelPropertyNaming:
     constantPattern: '[A-Z][_A-Za-z0-9]*'
 

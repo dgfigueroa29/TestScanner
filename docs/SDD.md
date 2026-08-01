@@ -4,8 +4,8 @@
 |---|---|
 | Proyecto | TestScanner |
 | Documento | Software Design Document (SDD) |
-| Versión | 1.3 |
-| Estado | Vigente — Fases 1, 2, 4 y 5 cerradas en código salvo lo listado como pendiente; la 3 (iOS) escrita pero despriorizada por falta de dispositivos. Todo pendiente de la primera compilación con Gradle |
+| Versión | 1.4 |
+| Estado | Vigente — **el proyecto compila y pasa CI** en Android (con R8), Escritorio y Web. Fases 1, 2, 4 y 5 cerradas salvo lo listado como pendiente; la 3 (iOS) escrita, con la compilación pendiente del primer `main` |
 | Fecha | 2026-07-31 |
 | Autor | Equipo TestScanner |
 | Alcance de esta versión | Migración de app Android monolítica a Compose Multiplatform + arquitectura de motores de escaneo intercambiables |
@@ -241,7 +241,7 @@ TestScanner/
 │   └── history/                       # historial, filtrable por motor
 │
 ├── composeApp/                        # raíz CMP: App(), navegación, wiring de DI
-│                                      # targets: android, iosX64/Arm64/SimulatorArm64, jvm, wasmJs
+│                                      # targets: android, iosArm64/SimulatorArm64, jvm, wasmJs
 ├── androidApp/                        # shell Android: Application + MainActivity
 ├── iosApp/                            # shell iOS: proyecto Xcode + SwiftUI host
 └── docs/
@@ -828,12 +828,59 @@ quien la implementa es el motor de dentro. De ahí salió `DecoratingScannerEngi
 
 - **Detekt** con `detekt-formatting` (ktlint embebido), configuración compartida en
   `config/detekt/detekt.yml`, ejecutado sobre todos los módulos. Build falla ante nuevos issues.
+
+  Hasta el primer CI real **no analizaba ni un archivo**: la fuente por defecto de la tarea es
+  `src/main/kotlin`, que es el layout de un proyecto JVM, y aquí el código vive en
+  `src/commonMain/kotlin` y sus hermanos. Pasaba en verde porque no miraba nada, que es peor que no
+  tenerlo. Ahora la tarea apunta a `src` entero. Al encenderlo aparecieron 105 hallazgos, todos
+  resueltos: los umbrales **no** se subieron hasta que cupiera lo que había —eso deja la regla
+  midiendo siempre lo que sea que haya—, sino que las cuatro excepciones legítimas llevan
+  `@Suppress` en su sitio con el motivo al lado del código.
 - **Reglas de arquitectura** verificadas en CI: `:core:domain` no puede depender de Compose ni de
   Android; `:engines:*` no puede depender de `:feature:*`.
 - **SonarCloud** para deuda técnica y duplicación; sin regresión permitida en PR.
 - Compilación con `allWarningsAsErrors` en módulos `:core:*`.
 
-### 13.4 CI
+### 13.4 Qué encontró el primer CI
+
+Merece su propia sección porque es el dato más útil que ha producido el proyecto sobre sí mismo.
+
+Hasta que se habilitó Actions, nada se había compilado con Gradle: el entorno de desarrollo no
+alcanza el maven de Google. Lo que sí había era un arnés sobre kotlinc que compilaba y ejecutaba el
+núcleo puro —358 tests— y que atrapó bugs reales durante meses. Cuando por fin corrió Gradle
+aparecieron **doce fallos encadenados**, cada uno tapado por el anterior:
+
+| # | Dónde | Qué era |
+|---|---|---|
+| 1 | `build-logic` | Los convention plugins declarados `compileOnly`. Válido para clases `Plugin<Project>`, no para scripts precompilados |
+| 2 | Raíz | Kotlin/Wasm aplica `LifecycleBasePlugin` **al proyecto raíz** y chocaba con un `clean` escrito a mano |
+| 3 | `:core:database` | KSP 2.3.10 exige AGP ≥ 8.10 (era el riesgo R11, anotado de antemano) |
+| 4 | Todos los módulos con Compose | CMP 1.11.1 no publica `iosX64`, y declarar ese target rompía la resolución de `commonMain` |
+| 5 | `:core:scanner-testing` | `kotlin.test.Test` no resuelve en la JVM sin la variante de framework |
+| 6 | `:core:designsystem` | `staticCompositionLocalOf { error(...) }` se infiere como `Nothing`, así que `showSnackbar` no existía en **ninguna** pantalla |
+| 7 | Tres pantallas | Faltaba `import androidx.compose.runtime.getValue` para el delegado `by` |
+| 8 | `:core:domain` | La dependencia con `:core:scanner-testing` estaba en el SDD y no en el build |
+| 9 | Dos pantallas | `resolve()` era `@Composable` y se llamaba dentro de un `LaunchedEffect` |
+| 10 | `:core:database` | Room como `implementation` cuando los tipos públicos del módulo heredan de él |
+| 11 | Web | Tres repositorios de herramientas (Node, Yarn, Binaryen) que el plugin declara a nivel de proyecto |
+| 12 | `:engines:browser-detector` y `:androidApp` | `ScanError.PermissionDenied` construido sin argumentos, y otro `implementation` que debía ser visible |
+
+**Lo que esto dice del arnés local.** No fue inútil: los 358 tests que ejecutaba siguen pasando sin
+un solo cambio, y los defectos que encontró eran de lógica de verdad. Pero su cobertura tenía una
+forma muy concreta —`commonMain` compilable como JVM plano— y todo lo que quedaba fuera acumuló
+errores en silencio: el código Compose, las fuentes de plataforma y, sobre todo, **el build**. Ocho
+de los doce fallos son de configuración de Gradle o de visibilidad entre módulos, cosas que ningún
+test unitario puede ver.
+
+**Y del análisis estático.** Detekt pasaba en verde sin analizar un solo archivo, porque su fuente
+por defecto es `src/main/kotlin` y aquí el código vive en `src/commonMain/kotlin`. Al apuntarlo bien
+salieron 105 hallazgos. Es la misma lección que los tests instrumentados que se decidió no tener:
+una comprobación que no se ejecuta es peor que ninguna, porque ocupa el sitio de la que sí haría
+falta.
+
+---
+
+### 13.5 CI
 
 Implementado en `.github/workflows/verify.yml`:
 
@@ -891,7 +938,7 @@ que preservar (§2.1). El historial de git conserva el estado previo.
 | R5 | ML Kit *unbundled* requiere descarga en primer uso | Bajo | Estado `RequiresDownload` modelado en el SPI y comunicado en la UI |
 | R6 | Web target sin acceso a cámara en contexto no-HTTPS | Bajo | Documentado; el motor reporta `Unsupported` con la razón |
 | R7 | Sobre-modularización ralentiza el build | Medio | Convention plugins en `build-logic` (Fase 2) y medición con `--scan` |
-| R11 | Room 2.7.2 y AGP 8.9.2 no se pudieron contrastar con Kotlin 2.3.20 y KSP 2.3.10: ambos se publican solo en el maven de Google, inalcanzable desde el entorno donde se hizo el bump | Medio | Es lo primero que dirá el CI. Si Room no compila con KSP 2.3.10, subirlo es un cambio de una línea en el catálogo |
+| ~~R11~~ | ~~Room 2.7.2 y AGP 8.9.2 no se pudieron contrastar con Kotlin 2.3.20 y KSP 2.3.10~~ | — | **Se materializó y está cerrado.** El primer CI falló exactamente ahí: KSP 2.3.10 exige AGP ≥ 8.10.0 y el proyecto estaba en 8.9.2. Se subió a **8.10.0**, el mínimo que el propio mensaje de KSP nombra. Room 2.7.2 pasó sin tocar nada. Salió tal como estaba previsto —"es lo primero que dirá el CI"— y costó una línea del catálogo |
 | R8 | Deriva entre el catálogo documentado y el código | Bajo | `docs/ENGINES.md` es la fuente; un test verifica que el registro y la tabla coinciden en IDs |
 | ~~R9~~ | ~~No existe un binding KMP publicado de zxing-cpp~~ | — | **Cerrado por ADR-0008.** El inventario era incompleto: `io.github.zxing-cpp:kotlin-native:3.1.1` publica los tres targets de iOS con el cinterop hecho, y `:android:3.1.1` cubre Android. Se consumen los artefactos, sin cinterop propio. Deriva en R10 y en la deuda D13 |
 | ~~R10~~ | ~~Los klibs de `kotlin-native` están compilados con Kotlin 2.2.0 y el proyecto está en 2.1.21~~ | — | **Cerrado**: toolchain en Kotlin 2.3.20, CMP 1.11.1, KSP 2.3.10, Gradle 8.14.5 |

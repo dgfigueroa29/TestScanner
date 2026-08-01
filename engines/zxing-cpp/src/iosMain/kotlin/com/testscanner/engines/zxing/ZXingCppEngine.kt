@@ -88,6 +88,11 @@ class ZXingCppEngine(
             else -> EngineAvailability.Unsupported("Estado de autorización desconocido")
         }
 
+    // Montar una AVCaptureSession es una secuencia lineal —dispositivo, entrada, salida, cola,
+    // arranque— y partirla en trozos que solo se llaman una vez, en orden, dispersa el orden de
+    // liberación sin ganar nada. No se puede compilar desde aquí, así que tampoco es momento de
+    // reordenarla a ciegas.
+    @Suppress("LongMethod")
     override fun scan(request: ScanRequest): Flow<ScanEvent> = callbackFlow {
         val startedAtMillis = time.nowMillis()
 

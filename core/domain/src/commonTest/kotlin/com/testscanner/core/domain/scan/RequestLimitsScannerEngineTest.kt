@@ -98,8 +98,8 @@ class RequestLimitsScannerEngineTest {
             .scan(ScanRequest(continuous = false))
             .toList()
 
-        assertEquals("real", events.filterIsInstance<ScanEvent.Detected>()
-            .last().detections.single().barcode.rawValue)
+        val ultima = events.filterIsInstance<ScanEvent.Detected>().last()
+        assertEquals("real", ultima.detections.single().barcode.rawValue)
     }
 
     @Test

@@ -24,7 +24,10 @@ kotlin {
 
     androidTarget()
     jvm()
-    iosX64()
+    // Sin `iosX64()`: es el simulador de los Mac con Intel, y Compose Multiplatform 1.11.1 ya no
+    // publica artefactos para ese target. Declararlo hacía fallar la resolución de dependencias de
+    // `commonMain` en **todos** los módulos con Compose. Los Mac con Apple Silicon usan
+    // `iosSimulatorArm64`, que sí está.
     iosArm64()
     iosSimulatorArm64()
 

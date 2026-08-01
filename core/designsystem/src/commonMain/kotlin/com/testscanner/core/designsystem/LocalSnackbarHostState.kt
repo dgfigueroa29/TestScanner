@@ -12,7 +12,11 @@ import androidx.compose.runtime.staticCompositionLocalOf
  *
  * Es `staticCompositionLocalOf` y no `compositionLocalOf`: el valor no cambia nunca durante la vida
  * de la app, así que no hace falta que Compose siga sus lecturas para recomponer.
+ *
+ * El tipo va **explícito**. Sin él, Kotlin lo infiere del lambda por defecto, que solo llama a
+ * `error(...)` y por tanto devuelve `Nothing`: el local quedaba tipado como `CompositionLocal<Nothing>`
+ * y `.current` no tenía ningún miembro, así que `showSnackbar` no resolvía en ninguna pantalla.
  */
-val LocalSnackbarHostState = staticCompositionLocalOf {
+val LocalSnackbarHostState = staticCompositionLocalOf<SnackbarHostState> {
     error("No hay SnackbarHostState en el árbol: falta envolver la UI en el Scaffold de App()")
 }

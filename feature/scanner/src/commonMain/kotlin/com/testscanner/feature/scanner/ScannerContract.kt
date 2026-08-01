@@ -76,8 +76,10 @@ sealed interface ScannerAction {
     data class SetContinuous(val enabled: Boolean) : ScannerAction
     data class ManualInputChanged(val value: String) : ScannerAction
     data object SubmitManualInput : ScannerAction
+
     /** Elegir una imagen del dispositivo y decodificarla (RF-07). */
     data object ScanFromImage : ScannerAction
+
     /**
      * Ejecutar una acción sobre un resultado (RF-13).
      *

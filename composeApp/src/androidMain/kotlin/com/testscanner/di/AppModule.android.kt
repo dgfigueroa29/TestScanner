@@ -70,9 +70,11 @@ actual fun platformModule(): Module = module {
 
     // Preferencias persistentes: multiplatform-settings cubre las cuatro plataformas, así que
     // aquí no hay excepciones como sí las hay con el historial.
-    single<Settings> { SharedPreferencesSettings(
+    single<Settings> {
+        SharedPreferencesSettings(
             androidContext().getSharedPreferences("testscanner", Context.MODE_PRIVATE),
-        ) }
+        )
+    }
     single<ScanPreferencesRepository> { SettingsScanPreferencesRepository(get()) }
 
     // Acciones sobre el resultado (RF-13): copiar, compartir y abrir.

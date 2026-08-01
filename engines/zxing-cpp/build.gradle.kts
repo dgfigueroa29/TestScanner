@@ -16,7 +16,6 @@ kotlin {
     jvmToolchain(libs.versions.jvmTarget.get().toInt())
 
     androidTarget()
-    iosX64()
     iosArm64()
     iosSimulatorArm64()
 
