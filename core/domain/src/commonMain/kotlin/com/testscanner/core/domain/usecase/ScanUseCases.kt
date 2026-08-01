@@ -1,10 +1,7 @@
 package com.testscanner.core.domain.usecase
 
 import com.testscanner.core.domain.model.EngineSelection
-import com.testscanner.core.domain.model.EngineStatus
 import com.testscanner.core.domain.repository.ScanHistoryRepository
-import com.testscanner.core.domain.repository.ScanPreferences
-import com.testscanner.core.domain.repository.ScanPreferencesRepository
 import com.testscanner.core.domain.repository.ScannerEngineRepository
 import com.testscanner.core.domain.scan.BarcodeValueParser
 import com.testscanner.core.domain.scan.FallbackScannerEngine
@@ -13,7 +10,6 @@ import com.testscanner.core.domain.scan.filteringFormats
 import com.testscanner.core.domain.scan.interpretingValues
 import com.testscanner.core.domain.scan.withDeadline
 import com.testscanner.core.model.Barcode
-import com.testscanner.core.model.BarcodeFormat
 import com.testscanner.core.model.BarcodeValueType
 import com.testscanner.core.model.Detection
 import com.testscanner.core.model.ScanError
@@ -30,35 +26,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 
-/** Catálogo completo de motores con su disponibilidad actual (RF-03). */
-class ObserveEngineCatalogUseCase(
-    private val repository: ScannerEngineRepository,
-) {
-    operator fun invoke(): Flow<List<EngineStatus>> = repository.observeCatalog()
-}
-
-/** Ajustes de escaneo del usuario. */
-class ObserveScanPreferencesUseCase(
-    private val repository: ScanPreferencesRepository,
-) {
-    operator fun invoke(): Flow<ScanPreferences> = repository.observePreferences()
-}
-
-/** Fija el motor preferido, o `null` para volver a selección automática (RF-02). */
-class SetPreferredEngineUseCase(
-    private val repository: ScanPreferencesRepository,
-) {
-    suspend operator fun invoke(id: ScannerEngineId?) = repository.setPreferredEngine(id)
-}
-
-/** Cambia el conjunto de formatos a detectar (RF-06). */
-class SetScanFormatsUseCase(
-    private val repository: ScanPreferencesRepository,
-) {
-    suspend operator fun invoke(formats: Set<BarcodeFormat>) {
-        repository.setFormats(formats.ifEmpty { BarcodeFormat.all })
-    }
-}
+// Los ajustes de escaneo no tienen casos de uso propios: los tenían, uno por operación, y cada uno
+// delegaba al repositorio sin añadir nada. Están agrupados en `ScanSettings`, que sí guarda la única
+// regla que había (ver deuda D16 en docs/ROADMAP.md). El catálogo de motores tampoco lo tiene, por
+// el mismo motivo: quien lo observa usa `ScannerEngineRepository.observeCatalog()` directamente.
 
 /**
  * Arranca una sesión de escaneo sobre la cadena de motores que decida la política de selección.

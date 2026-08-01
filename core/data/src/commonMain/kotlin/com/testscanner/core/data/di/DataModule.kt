@@ -4,13 +4,11 @@ import com.testscanner.core.data.repository.ScannerEngineRepositoryImpl
 import com.testscanner.core.domain.repository.ScannerEngineRepository
 import com.testscanner.core.domain.usecase.ClearScanHistoryUseCase
 import com.testscanner.core.domain.usecase.DecodeImageUseCase
-import com.testscanner.core.domain.usecase.ObserveEngineCatalogUseCase
 import com.testscanner.core.domain.usecase.ObserveScanHistoryUseCase
-import com.testscanner.core.domain.usecase.ObserveScanPreferencesUseCase
 import com.testscanner.core.domain.usecase.SaveDetectionUseCase
+import com.testscanner.core.domain.usecase.ScanSessions
+import com.testscanner.core.domain.usecase.ScanSettings
 import com.testscanner.core.domain.usecase.SelectScannerEngineUseCase
-import com.testscanner.core.domain.usecase.SetPreferredEngineUseCase
-import com.testscanner.core.domain.usecase.SetScanFormatsUseCase
 import com.testscanner.core.domain.usecase.StartComparisonUseCase
 import com.testscanner.core.domain.usecase.StartScanSessionUseCase
 import com.testscanner.core.model.ScannerPlatform
@@ -49,14 +47,14 @@ val dataModule: Module = module {
 /** Casos de uso. Separado de [dataModule] para poder sustituir repositorios en tests sin tocarlos. */
 val domainModule: Module = module {
     factory { SelectScannerEngineUseCase(get()) }
-    factory { ObserveEngineCatalogUseCase(get()) }
-    factory { ObserveScanPreferencesUseCase(get()) }
-    factory { SetPreferredEngineUseCase(get()) }
-    factory { SetScanFormatsUseCase(get()) }
     factory { StartScanSessionUseCase(get(), get()) }
     factory { StartComparisonUseCase(get(), get()) }
     factory { DecodeImageUseCase(get(), get()) }
     factory { SaveDetectionUseCase(get()) }
     factory { ObserveScanHistoryUseCase(get()) }
     factory { ClearScanHistoryUseCase(get()) }
+
+    // Agrupadores: una sola dependencia para quien usa varios de los de arriba a la vez (D16).
+    factory { ScanSettings(get()) }
+    factory { ScanSessions(get(), get(), get()) }
 }

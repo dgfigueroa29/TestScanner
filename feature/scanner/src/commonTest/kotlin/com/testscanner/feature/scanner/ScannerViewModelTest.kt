@@ -1,12 +1,10 @@
 package com.testscanner.feature.scanner
 
 import com.testscanner.core.domain.usecase.DecodeImageUseCase
-import com.testscanner.core.domain.usecase.ObserveEngineCatalogUseCase
-import com.testscanner.core.domain.usecase.ObserveScanPreferencesUseCase
 import com.testscanner.core.domain.usecase.SaveDetectionUseCase
+import com.testscanner.core.domain.usecase.ScanSessions
+import com.testscanner.core.domain.usecase.ScanSettings
 import com.testscanner.core.domain.usecase.SelectScannerEngineUseCase
-import com.testscanner.core.domain.usecase.SetPreferredEngineUseCase
-import com.testscanner.core.domain.usecase.SetScanFormatsUseCase
 import com.testscanner.core.domain.usecase.StartScanSessionUseCase
 import com.testscanner.core.model.BarcodeFormat
 import com.testscanner.core.model.ScanError
@@ -53,18 +51,16 @@ class ScannerViewModelTest {
 
         val select = SelectScannerEngineUseCase(engines)
         return ScannerViewModel(
-            observeCatalog = ObserveEngineCatalogUseCase(engines),
-            observePreferences = ObserveScanPreferencesUseCase(preferences),
-            setPreferredEngine = SetPreferredEngineUseCase(preferences),
-            setScanFormats = SetScanFormatsUseCase(preferences),
-            startScanSession = StartScanSessionUseCase(engines, select),
-            saveDetection = SaveDetectionUseCase(history),
-            decodeImage = DecodeImageUseCase(engines, select),
-            preferencesRepository = preferences,
+            settings = ScanSettings(preferences),
+            sessions = ScanSessions(
+                startSession = StartScanSessionUseCase(engines, select),
+                decodeImage = DecodeImageUseCase(engines, select),
+                saveDetection = SaveDetectionUseCase(history),
+            ),
             engineRepository = engines,
             permissionController = permissions,
-            platformActions = NoOpPlatformActions(),
             imagePicker = FakeImagePicker(),
+            resultActions = ResultActionRunner(NoOpPlatformActions()),
         )
     }
 
