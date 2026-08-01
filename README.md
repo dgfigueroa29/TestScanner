@@ -22,7 +22,7 @@ y Web con un único código base.
 | Historial persistente | ✅ Room en Android, iOS y Desktop; en Web, JSON en el almacén del navegador |
 | Preferencias persistentes | ✅ las cuatro plataformas |
 | CI en GitHub Actions | ✅ **en verde**: detekt, tests, Android (con R8), Desktop y Web |
-| Vision / AVFoundation (iOS) | ✅ implementado; se enlaza en el runner macOS al llegar a `main` |
+| Vision / AVFoundation (iOS) | ✅ implementado; **compilando ya** en el runner macOS, con las tandas de errores que eso destapa en curso |
 | BarcodeDetector del navegador (Web) | ✅ implementado, con visor sobre el canvas |
 | OCR con ML Kit Text Recognition (Android) | ✅ implementado; en iOS irá con Vision, no con ML Kit |
 | Escaneo desde imagen (RF-07) | ✅ selector en las cuatro plataformas, sin pedir permisos |
@@ -41,7 +41,9 @@ declaran como tales, con la fase en la que llegan. Ver `docs/ROADMAP.md`.
 Lo que queda fuera por ahora, y por qué:
 
 - **iOS está despriorizado**, no abandonado. Probarlo exige un dispositivo, que no lo hay; lo que sí
-  se puede es **compilarlo**, y el runner macOS del CI lo hará al llegar a `main`. Falta además el
+  se puede es **compilarlo**, y el runner macOS del CI ya lo hace en cada `main`. Su primera pasada
+  dejó el stack compartido en verde y diez errores en los dos motores de AVFoundation — ocho de
+  ellos, la misma confusión repetida entre miembro y extensión de cinterop. Falta además el
   `iosApp.xcodeproj`, que solo se crea desde Xcode.
 - **No hay tests instrumentados y no los va a haber.** Sin emulador en CI, un test que exija
   dispositivo nunca se ejecuta y da una falsa sensación de red. El ROADMAP dice exactamente qué queda
