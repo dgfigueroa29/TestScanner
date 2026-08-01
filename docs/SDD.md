@@ -911,6 +911,29 @@ malentendido repetido**, y vale la pena escribirlo porque se repetirá:
 Los otros dos eran nulabilidad: las constantes `AVMetadataObjectType*` y la propiedad `type` de un
 metadato llegan como `String?` porque el binding no puede saber que Apple no las declara nulas.
 
+**La segunda tanda: `Dispatchers.IO` no es la misma API en JVM que en native.** Arreglados los dos
+motores, compilaron `core:domain`, `core:data`, `feature:history` y `feature:scanner`, y quedó un
+único error, en una línea de `commonMain` que llevaba meses compilando en Android y Escritorio:
+
+```
+DatabaseBuilderFactory.kt:22 Cannot access 'val IO': it is internal in 'kotlinx.coroutines.Dispatchers'
+```
+
+El motivo está en cómo kotlinx-coroutines publica ese dispatcher, y es distinto en cada artefacto:
+
+| Artefacto | Cómo se declara `IO` |
+|---|---|
+| `-jvm` | **miembro público** del objeto `Dispatchers` |
+| nativo | **miembro `internal`**, más una extensión pública en `concurrentMain` |
+
+En Kotlin un miembro le gana a una extensión. Desde el `commonMain` de un consumidor esa extensión
+ni siquiera está en el ámbito —el `commonMain` de coroutines no declara `IO`—, así que en native la
+única candidata es el miembro interno. En JVM la misma línea resuelve al miembro público y compila.
+La salida es pedir el dispatcher desde cada plataforma, donde la extensión sí se ve.
+
+Es el mismo patrón que los diez errores anteriores, un nivel más arriba: **una API que parece común
+y no lo es**, y que por eso no falla hasta que compila el primer target que se comporta distinto.
+
 ---
 
 ### 13.5 CI
