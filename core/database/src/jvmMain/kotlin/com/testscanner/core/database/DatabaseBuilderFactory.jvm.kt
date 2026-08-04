@@ -2,6 +2,8 @@ package com.testscanner.core.database
 
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import java.io.File
 
 actual class DatabaseBuilderFactory {
@@ -16,3 +18,6 @@ actual class DatabaseBuilderFactory {
         const val APP_DIRECTORY = ".testscanner"
     }
 }
+
+/** Ver la nota en `commonMain`: aquí `Dispatchers.IO` sí resuelve. */
+internal actual val queryDispatcher: CoroutineDispatcher = Dispatchers.IO

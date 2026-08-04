@@ -3,6 +3,8 @@ package com.testscanner.core.database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSURL
@@ -29,3 +31,6 @@ actual class DatabaseBuilderFactory {
         )
     }
 }
+
+/** Ver la nota en `commonMain`: aquí `Dispatchers.IO` sí resuelve. */
+internal actual val queryDispatcher: CoroutineDispatcher = Dispatchers.IO
