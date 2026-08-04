@@ -47,19 +47,26 @@ class ScannerEngineRepositoryImpl(
     override suspend fun status(id: ScannerEngineId): EngineStatus? =
         observeCatalog().first().firstOrNull { it.id == id }
 
-    private suspend fun computeStatuses(): List<EngineStatus> = catalog.map { descriptor ->
-        val engine = engines[descriptor.id]
-        EngineStatus(
-            descriptor = descriptor,
-            installed = engine != null,
-            availability = when {
+    private suspend fun computeStatuses(): List<EngineStatus> {
+        val statuses = mutableListOf<EngineStatus>()
+        for (descriptor in catalog) {
+            val engine = engines[descriptor.id]
+            val availability = when {
                 engine != null -> engine.availability()
                 !descriptor.runsOn(platform) -> EngineAvailability.Unsupported(
                     "No disponible en ${platform.displayName}",
                 )
 
                 else -> EngineAvailability.NotImplemented(descriptor.plannedPhase)
-            },
-        )
+            }
+            statuses.add(
+                EngineStatus(
+                    descriptor = descriptor,
+                    installed = engine != null,
+                    availability = availability,
+                ),
+            )
+        }
+        return statuses
     }
 }

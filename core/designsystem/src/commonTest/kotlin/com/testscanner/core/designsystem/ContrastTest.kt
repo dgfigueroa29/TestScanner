@@ -7,7 +7,7 @@ import kotlin.test.assertTrue
 class ContrastTest {
 
     @Test
-    fun `negro sobre blanco da el maximo de la escala`() {
+    fun `negro_sobre_blanco_da_el_maximo_de_la_escala`() {
         // Ancla la fórmula contra un valor conocido: si la linealización de canal se rompe, esto
         // deja de dar 21 y el resto de asertos dejarían de significar nada.
         val ratio = Contrast.ratio(0xFF000000.toInt(), 0xFFFFFFFF.toInt())
@@ -16,12 +16,12 @@ class ContrastTest {
     }
 
     @Test
-    fun `un color contra si mismo no tiene contraste`() {
+    fun `un_color_contra_si_mismo_no_tiene_contraste`() {
         assertTrue(abs(Contrast.ratio(0xFF2563EB.toInt(), 0xFF2563EB.toInt()) - 1.0) < 0.001)
     }
 
     @Test
-    fun `el orden de los colores no cambia el resultado`() {
+    fun `el_orden_de_los_colores_no_cambia_el_resultado`() {
         // La razón se define entre el más claro y el más oscuro, no entre texto y fondo: si
         // dependiera del orden, medir un texto claro sobre fondo oscuro daría otro número.
         val directo = Contrast.ratio(0xFF2563EB.toInt(), 0xFFFFFFFF.toInt())
@@ -31,7 +31,7 @@ class ContrastTest {
     }
 
     @Test
-    fun `toda la paleta cumple el contraste AA para texto normal`() {
+    fun `toda_la_paleta_cumple_el_contraste_AA_para_texto_normal`() {
         // RNF-05. Incluye los pares que la UI usa de hecho —primary, tertiary y error como color
         // de texto sobre la tarjeta— y no solo los que Material garantiza por convención.
         val incumplen = ScannerPalette.measuredPairs()
@@ -43,7 +43,7 @@ class ContrastTest {
     }
 
     @Test
-    fun `los dos temas miden los mismos pares`() {
+    fun `los_dos_temas_miden_los_mismos_pares`() {
         // Un par que solo existe en claro es un par que nadie comprueba en oscuro. Es la forma
         // habitual de que el modo oscuro se degrade sin que nadie se entere.
         val (claros, oscuros) = ScannerPalette.measuredPairs().partition { it.name.startsWith("claro") }

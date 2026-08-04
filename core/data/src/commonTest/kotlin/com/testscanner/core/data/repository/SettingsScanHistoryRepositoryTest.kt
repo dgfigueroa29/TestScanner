@@ -29,7 +29,7 @@ class SettingsScanHistoryRepositoryTest {
     )
 
     @Test
-    fun `lo guardado sobrevive a reconstruir el repositorio`() = runTest {
+    fun `lo_guardado_sobrevive_a_reconstruir_el_repositorio`() = runTest {
         // Es toda la razón de ser de esta clase: en Web el historial se perdía al recargar.
         val settings = MapSettings()
         SettingsScanHistoryRepository(settings).save(detection("hola"))
@@ -40,7 +40,7 @@ class SettingsScanHistoryRepositoryTest {
     }
 
     @Test
-    fun `conserva el motor, el formato y la latencia`() = runTest {
+    fun `conserva_el_motor_el_formato_y_la_latencia`() = runTest {
         // Sin esto el historial persistido no serviría para comparar motores, que es el objetivo.
         val settings = MapSettings()
         SettingsScanHistoryRepository(settings).save(
@@ -56,7 +56,7 @@ class SettingsScanHistoryRepositoryTest {
     }
 
     @Test
-    fun `lo mas reciente queda primero`() = runTest {
+    fun `lo_mas_reciente_queda_primero`() = runTest {
         val repository = SettingsScanHistoryRepository(MapSettings())
 
         repository.save(detection("primero"))
@@ -69,7 +69,7 @@ class SettingsScanHistoryRepositoryTest {
     }
 
     @Test
-    fun `borrar vacia tambien lo persistido`() = runTest {
+    fun `borrar_vacia_tambien_lo_persistido`() = runTest {
         val settings = MapSettings()
         val repository = SettingsScanHistoryRepository(settings)
         repository.save(detection("hola"))
@@ -80,7 +80,7 @@ class SettingsScanHistoryRepositoryTest {
     }
 
     @Test
-    fun `no crece sin limite`() = runTest {
+    fun `no_crece_sin_limite`() = runTest {
         // localStorage tiene cuota; sin techo, el historial acabaría no cabiendo.
         val repository = SettingsScanHistoryRepository(MapSettings(), maxEntries = 3)
 
@@ -92,7 +92,7 @@ class SettingsScanHistoryRepositoryTest {
     }
 
     @Test
-    fun `un historial ilegible se descarta en vez de reventar`() = runTest {
+    fun `un_historial_ilegible_se_descarta_en_vez_de_reventar`() = runTest {
         // Basta con que una versión anterior guardara otro formato. Perder el historial es malo;
         // no poder abrir la app es peor.
         val settings = MapSettings().apply { putString("scan_history", "{esto no es json}") }
@@ -103,7 +103,7 @@ class SettingsScanHistoryRepositoryTest {
     }
 
     @Test
-    fun `una entrada de un motor que ya no existe se ignora al leer`() = runTest {
+    fun `una_entrada_de_un_motor_que_ya_no_existe_se_ignora_al_leer`() = runTest {
         val settings = MapSettings().apply {
             putString(
                 "scan_history",
@@ -118,7 +118,7 @@ class SettingsScanHistoryRepositoryTest {
     }
 
     @Test
-    fun `un formato desconocido se conserva en vez de perderse`() = runTest {
+    fun `un_formato_desconocido_se_conserva_en_vez_de_perderse`() = runTest {
         val settings = MapSettings()
         SettingsScanHistoryRepository(settings).save(
             detection("x", format = BarcodeFormat.Unknown("SIMBOLOGIA_FUTURA")),
@@ -130,7 +130,7 @@ class SettingsScanHistoryRepositoryTest {
     }
 
     @Test
-    fun `si el almacen esta lleno la deteccion sigue en pantalla`() = runTest {
+    fun `si_el_almacen_esta_lleno_la_deteccion_sigue_en_pantalla`() = runTest {
         // El usuario acaba de escanear algo: convertir "no cabe" en un escaneo fallido sería peor
         // que quedarse sin persistirlo.
         val repository = SettingsScanHistoryRepository(FullSettings())
@@ -141,7 +141,7 @@ class SettingsScanHistoryRepositoryTest {
     }
 
     @Test
-    fun `buscar por id encuentra lo guardado`() = runTest {
+    fun `buscar_por_id_encuentra_lo_guardado`() = runTest {
         val repository = SettingsScanHistoryRepository(MapSettings())
         val detection = detection("hola")
         repository.save(detection)

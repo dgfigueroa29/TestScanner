@@ -19,7 +19,7 @@
 # introduciría cambios de comportamiento que nadie ha pedido en una build que apenas empieza a
 # compilar. Gradle 8.14.5 cumple de sobra el mínimo que AGP 8.10 pide.
 kotlin = "2.3.20"
-agp = "8.10.0"
+agp = "8.13.2"
 composeMultiplatform = "1.11.1"
 jvmTarget = "17"
 
@@ -34,16 +34,17 @@ jvmTarget = "17"
 # cambios de comportamiento del sistema que nadie ha pedido ni puede probar aquí.
 compileSdk = "36"
 minSdk = "24"
-targetSdk = "35"
+targetSdk = "36"
 
 # Kotlin ecosystem
 coroutines = "1.11.0"
 serialization = "1.11.0"
 
 # AndroidX / Jetbrains multiplatform
-androidxActivityCompose = "1.10.1"
+androidxActivityCompose = "1.13.0"
 androidxCoreKtx = "1.15.0"
 # La que pide Koin 4.2.2; subirla más alto haría que Gradle resolviera por encima de lo que espera.
+#noinspection NewerVersionAvailable
 lifecycle = "2.9.6"
 
 # DI
@@ -52,8 +53,8 @@ koin = "4.2.2"
 # Persistencia
 multiplatformSettings = "1.3.0"
 # Sin verificar contra KSP 2.3.10: androidx.room solo se publica en el maven de Google.
-room = "2.7.2"
-sqlite = "2.5.2"
+room = "2.8.4"
+sqlite = "2.7.0"
 # KSP cambió de esquema de versiones: 2.3.10 es la compilada contra Kotlin 2.3.20.
 ksp = "2.3.10"
 
@@ -67,7 +68,7 @@ detekt = "1.23.8"
 playServicesCodeScanner = "16.1.0"
 mlkitBarcode = "17.3.0"
 mlkitTextRecognition = "16.0.1"
-camerax = "1.4.2"
+camerax = "1.6.1"
 # Baseline de comparación: dos artefactos distintos del mismo proyecto (ADR-0008).
 zxingcpp = "3.1.1"
 # ZXing en Java puro, para escritorio. Otro proyecto que el anterior pese al nombre: este es el

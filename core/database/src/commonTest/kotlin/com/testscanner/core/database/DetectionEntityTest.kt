@@ -21,7 +21,7 @@ class DetectionEntityTest {
     )
 
     @Test
-    fun `ida y vuelta conserva lo que el historial necesita`() {
+    fun `ida_y_vuelta_conserva_lo_que_el_historial_necesita`() {
         val restored = detection.toEntity().toDomain()
 
         assertEquals(detection.id, restored?.id)
@@ -34,7 +34,7 @@ class DetectionEntityTest {
     }
 
     @Test
-    fun `los enums se persisten por su id estable, no por su nombre de Kotlin`() {
+    fun `los_enums_se_persisten_por_su_id_estable_no_por_su_nombre_de_Kotlin`() {
         // Renombrar una constante de Kotlin no debe invalidar el historial del usuario.
         val entity = detection.toEntity()
         assertEquals("mlkit_camerax", entity.engineId)
@@ -42,13 +42,13 @@ class DetectionEntityTest {
     }
 
     @Test
-    fun `una fila de un motor que ya no existe se ignora en lugar de romper el historial`() {
+    fun `una_fila_de_un_motor_que_ya_no_existe_se_ignora_en_lugar_de_romper_el_historial`() {
         val orphan = detection.toEntity().copy(engineId = "motor_eliminado")
         assertNull(orphan.toDomain())
     }
 
     @Test
-    fun `un formato desconocido se conserva por nombre en lugar de perderse`() {
+    fun `un_formato_desconocido_se_conserva_por_nombre_en_lugar_de_perderse`() {
         val row = detection.toEntity().copy(formatId = "SIMBOLOGIA_FUTURA")
         val restored = row.toDomain()
 

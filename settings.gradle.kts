@@ -14,6 +14,9 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "0.10.0"
+}
 
 dependencyResolutionManagement {
     // `PREFER_SETTINGS` y no `FAIL_ON_PROJECT_REPOS`, que es lo que había.

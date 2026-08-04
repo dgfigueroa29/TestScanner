@@ -64,7 +64,7 @@ abstract class BarcodeScannerEngineContractTest {
     open suspend fun triggerDetection(engine: BarcodeScannerEngine) = Unit
 
     @Test
-    fun `el id del motor coincide con el de su descriptor`() {
+    fun `el_id_del_motor_coincide_con_el_de_su_descriptor`() {
         val engine = createEngine()
         assertEquals(
             engine.id,
@@ -74,7 +74,7 @@ abstract class BarcodeScannerEngineContractTest {
     }
 
     @Test
-    fun `el descriptor declara al menos un formato, una fuente y una plataforma`() {
+    fun `el_descriptor_declara_al_menos_un_formato_una_fuente_y_una_plataforma`() {
         val engine = createEngine()
         val capabilities = engine.descriptor.capabilities
         assertTrue(capabilities.supportedFormats.isNotEmpty(), "sin formatos declarados")
@@ -83,7 +83,7 @@ abstract class BarcodeScannerEngineContractTest {
     }
 
     @Test
-    fun `un motor con UI propia no promete control de camara`() {
+    fun `un_motor_con_UI_propia_no_promete_control_de_camara`() {
         // Si prometiera linterna, el selector lo elegiría ante peticiones que la exigen y fallaría
         // en tiempo de ejecución, justo lo que las capacidades declarativas deben evitar.
         val capabilities = createEngine().descriptor.capabilities
@@ -94,7 +94,7 @@ abstract class BarcodeScannerEngineContractTest {
     }
 
     @Test
-    fun `si declara linterna o zoom, alguien en la cadena los implementa`() {
+    fun `si_declara_linterna_o_zoom_alguien_en_la_cadena_los_implementa`() {
         // Es la clase de fallo que más veces ha aparecido en este proyecto: algo declarado que
         // ningún código cumple. La UI muestra el control leyendo el descriptor, así que un motor
         // que promete linterna sin implementarla pinta un botón que no hace nada.
@@ -110,7 +110,7 @@ abstract class BarcodeScannerEngineContractTest {
     }
 
     @Test
-    fun `si declara imagen estatica, alguien en la cadena sabe decodificarla`() {
+    fun `si_declara_imagen_estatica_alguien_en_la_cadena_sabe_decodificarla`() {
         // Sin esto, el selector elegiría el motor para una petición de imagen y el caso de uso lo
         // descartaría después por no ser `ImageDecodingEngine`: una elección que no lleva a nada.
         val engine = createEngine()
@@ -124,7 +124,7 @@ abstract class BarcodeScannerEngineContractTest {
     }
 
     @Test
-    fun `si declara entrada manual, alguien en la cadena la acepta`() {
+    fun `si_declara_entrada_manual_alguien_en_la_cadena_la_acepta`() {
         val engine = createEngine()
 
         if (ScanSource.ManualInput in engine.descriptor.capabilities.sources) {
@@ -136,7 +136,7 @@ abstract class BarcodeScannerEngineContractTest {
     }
 
     @Test
-    fun `availability es idempotente y sin efectos secundarios`() = runTest {
+    fun `availability_es_idempotente_y_sin_efectos_secundarios`() = runTest {
         val engine = createEngine()
         val first = engine.availability()
         val second = engine.availability()
@@ -144,7 +144,7 @@ abstract class BarcodeScannerEngineContractTest {
     }
 
     @Test
-    fun `el primer evento de la sesion es SessionStarted con su propio id`() = runTest {
+    fun `el_primer_evento_de_la_sesion_es_SessionStarted_con_su_propio_id`() = runTest {
         val engine = createEngine()
         if (engine.availability() !is EngineAvailability.Available) return@runTest
 
@@ -156,7 +156,7 @@ abstract class BarcodeScannerEngineContractTest {
     }
 
     @Test
-    fun `cancelar la sesion no propaga excepciones`() = runTest {
+    fun `cancelar_la_sesion_no_propaga_excepciones`() = runTest {
         val engine = createEngine()
         if (engine.availability() !is EngineAvailability.Available) return@runTest
 
@@ -166,7 +166,7 @@ abstract class BarcodeScannerEngineContractTest {
     }
 
     @Test
-    fun `toda deteccion reporta un formato declarado en capabilities`() = runTest {
+    fun `toda_deteccion_reporta_un_formato_declarado_en_capabilities`() = runTest {
         val engine = createEngine()
         if (engine.availability() !is EngineAvailability.Available) return@runTest
 
@@ -189,7 +189,7 @@ abstract class BarcodeScannerEngineContractTest {
     }
 
     @Test
-    fun `la sesion termina con SessionEnded cuando acaba por si misma`() = runTest {
+    fun `la_sesion_termina_with_SessionEnded_cuando_acaba_por_si_misma`() = runTest {
         val engine = createEngine()
         if (engine.availability() !is EngineAvailability.Available) return@runTest
 

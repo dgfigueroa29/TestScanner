@@ -47,7 +47,7 @@ class ScannerEngineRepositoryImplTest {
     ) = ScannerEngineRepositoryImpl(platform = platform, installedEngines = engines)
 
     @Test
-    fun `el catalogo siempre lista todos los motores, esten instalados o no`() = runTest {
+    fun `el_catalogo_siempre_lista_todos_los_motores_esten_instalados_o_no`() = runTest {
         val catalog = repository(engines = listOf(StubEngine(ScannerEngineId.ManualInput)))
             .observeCatalog().first()
 
@@ -56,7 +56,7 @@ class ScannerEngineRepositoryImplTest {
     }
 
     @Test
-    fun `un motor instalado reporta su propia disponibilidad`() = runTest {
+    fun `un_motor_instalado_reporta_su_propia_disponibilidad`() = runTest {
         val engine = StubEngine(ScannerEngineId.ManualInput)
         val status = repository(engines = listOf(engine)).status(ScannerEngineId.ManualInput)
 
@@ -65,7 +65,7 @@ class ScannerEngineRepositoryImplTest {
     }
 
     @Test
-    fun `un motor de otra plataforma se reporta como no soportado`() = runTest {
+    fun `un_motor_de_otra_plataforma_se_reporta_como_no_soportado`() = runTest {
         // Vision existe en el catálogo pero no en un binario de Android: la UI debe poder decir
         // por qué, no simplemente ocultarlo.
         val status = repository(platform = ScannerPlatform.Android)
@@ -78,7 +78,7 @@ class ScannerEngineRepositoryImplTest {
     }
 
     @Test
-    fun `un motor de esta plataforma aun sin implementar reporta su fase`() = runTest {
+    fun `un_motor_de_esta_plataforma_aun_sin_implementar_reporta_su_fase`() = runTest {
         val status = repository(platform = ScannerPlatform.Android)
             .status(ScannerEngineId.MlKitCameraX)
 
@@ -88,7 +88,7 @@ class ScannerEngineRepositoryImplTest {
     }
 
     @Test
-    fun `cada colecta recalcula la disponibilidad en lugar de servir un valor cacheado`() = runTest {
+    fun `cada_colecta_recalcula_la_disponibilidad_en_lugar_de_servir_un_valor_cacheado`() = runTest {
         // La disponibilidad cambia bajo los pies: el usuario concede el permiso, ML Kit termina de
         // descargar, otra app toma la cámara. Un estado inicial cacheado dejaría la UI mintiendo.
         val engine = StubEngine(ScannerEngineId.ManualInput)
@@ -106,12 +106,12 @@ class ScannerEngineRepositoryImplTest {
     }
 
     @Test
-    fun `engine devuelve null para un motor no enlazado en este binario`() {
+    fun `engine_devuelve_null_for_un_motor_no_enlazado_en_este_binario`() {
         assertNull(repository().engine(ScannerEngineId.VisionIos))
     }
 
     @Test
-    fun `refresh vuelve a emitir el catalogo`() = runTest {
+    fun `refresh_vuelve_a_emitir_el_catalogo`() = runTest {
         val engine = StubEngine(ScannerEngineId.ManualInput)
         val repository = repository(engines = listOf(engine))
 
@@ -123,7 +123,7 @@ class ScannerEngineRepositoryImplTest {
     }
 
     @Test
-    fun `solo los motores instalados y disponibles son usables`() = runTest {
+    fun `solo_los_motores_instalados_y_disponibles_son_usables`() = runTest {
         val catalog = repository(engines = listOf(StubEngine(ScannerEngineId.ManualInput)))
             .observeCatalog().first()
 
@@ -134,7 +134,7 @@ class ScannerEngineRepositoryImplTest {
     }
 
     @Test
-    fun `el descriptor conserva las capacidades declaradas en el catalogo`() = runTest {
+    fun `el_descriptor_conserva_las_capacidades_declaradas_en_el_catalogo`() = runTest {
         val status = repository(engines = listOf(StubEngine(ScannerEngineId.ManualInput)))
             .status(ScannerEngineId.ManualInput)
 

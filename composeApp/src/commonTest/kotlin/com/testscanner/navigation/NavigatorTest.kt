@@ -8,14 +8,14 @@ import kotlin.test.assertTrue
 class NavigatorTest {
 
     @Test
-    fun `arranca en el escaner`() {
+    fun `arranca_en_el_escaner`() {
         val navigator = Navigator()
         assertEquals(Destination.Scanner, navigator.current)
         assertFalse(navigator.canGoBack)
     }
 
     @Test
-    fun `navegar apila el destino`() {
+    fun `navegar_apila_el_destino`() {
         val navigator = Navigator()
         navigator.navigateTo(Destination.History)
 
@@ -25,7 +25,7 @@ class NavigatorTest {
     }
 
     @Test
-    fun `navegar al destino actual no apila una copia`() {
+    fun `navegar_al_destino_actual_no_apila_una_copia`() {
         // Si apilara, el botón atrás dejaría de hacer lo que el usuario espera.
         val navigator = Navigator()
         navigator.navigateTo(Destination.History)
@@ -35,7 +35,7 @@ class NavigatorTest {
     }
 
     @Test
-    fun `volver atras desapila`() {
+    fun `volver_atras_desapila`() {
         val navigator = Navigator()
         navigator.navigateTo(Destination.History)
 
@@ -44,14 +44,14 @@ class NavigatorTest {
     }
 
     @Test
-    fun `volver atras en la raiz devuelve false para que la plataforma cierre`() {
+    fun `volver_atras_en_la_raiz_devuelve_false_para_que_la_plataforma_cierre`() {
         val navigator = Navigator()
         assertFalse(navigator.goBack())
         assertEquals(Destination.Scanner, navigator.current)
     }
 
     @Test
-    fun `guardar y restaurar deja el backstack igual`() {
+    fun `guardar_y_restaurar_deja_el_backstack_igual`() {
         // Es el caso de que el sistema recree la Activity: el Navigator es otro objeto.
         val navigator = Navigator()
         navigator.navigateTo(Destination.History)
@@ -65,7 +65,7 @@ class NavigatorTest {
     }
 
     @Test
-    fun `todo destino se puede guardar y volver a encontrar`() {
+    fun `todo_destino_se_puede_guardar_y_volver_a_encontrar`() {
         // Si alguien agrega un destino y olvida el id, esto lo caza antes que una release ofuscada.
         val destinos = listOf(Destination.Scanner, Destination.Comparison, Destination.History)
 
@@ -73,7 +73,7 @@ class NavigatorTest {
     }
 
     @Test
-    fun `un id desconocido se ignora y el resto se restaura`() {
+    fun `un_id_desconocido_se_ignora_y_el_resto_se_restaura`() {
         // Pasa al actualizar la app con estado ya guardado de una versión anterior.
         val navigator = Navigator()
 
@@ -83,7 +83,7 @@ class NavigatorTest {
     }
 
     @Test
-    fun `restaurar algo ilegible deja el backstack como estaba`() {
+    fun `restaurar_algo_ilegible_deja_el_backstack_como_estaba`() {
         // Mejor quedarse en la pantalla inicial que arrancar con un backstack vacío y reventar.
         val navigator = Navigator()
         navigator.navigateTo(Destination.History)
@@ -94,7 +94,7 @@ class NavigatorTest {
     }
 
     @Test
-    fun `restaurar una lista vacia deja el backstack como estaba`() {
+    fun `restaurar_una_lista_vacia_deja_el_backstack_como_estaba`() {
         val navigator = Navigator()
 
         navigator.restoreState(emptyList())
