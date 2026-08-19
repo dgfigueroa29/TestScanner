@@ -3,11 +3,13 @@ package com.testscanner.android
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.activity.addCallback
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import com.testscanner.App
 import com.testscanner.core.permissions.AndroidPermissionController
 import com.testscanner.core.permissions.PermissionRequester
@@ -118,16 +120,27 @@ class MainActivity : ComponentActivity() {
         // hay razón para que lo sea (ADR-0005).
         savedInstanceState?.getStringArrayList(KEY_BACKSTACK)?.let(navigator::restoreState)
 
-        // El botón atrás del sistema desapila en el Navigator; cuando ya no hay nada que desapilar
-        // se devuelve el control a la plataforma para que cierre la Activity (ADR-0005).
-        onBackPressedDispatcher.addCallback(this) {
-            if (!navigator.goBack()) {
-                isEnabled = false
-                onBackPressedDispatcher.onBackPressed()
-            }
-        }
+        setContent {
+            // El botón atrás del sistema desapila en el Navigator; cuando ya no hay nada que
+            // desapilar **no se intercepta**, y así la plataforma cierra la Activity ella misma
+            // (ADR-0005).
+            //
+            // `BackHandler` y no `onBackPressedDispatcher.addCallback` con el truco de
+            // `isEnabled = false` + `onBackPressed()`: ese patrón deja de funcionar bien con el
+            // *predictive back*, que a partir de `targetSdk` 36 viene activado por defecto. El
+            // sistema decide qué animación pintar **cuando empieza el gesto**, preguntando si hay
+            // algún callback habilitado. Con un callback siempre habilitado, siempre creía que la
+            // vuelta era dentro de la app, y al soltar el dedo se encontraba con que la Activity se
+            // cerraba — animación equivocada garantizada. Además `isEnabled = false` no se volvía a
+            // poner en `true` nunca, así que el callback quedaba muerto si la Activity sobrevivía.
+            //
+            // Atando `enabled` al tamaño del backstack, el sistema sabe de antemano cuál de las dos
+            // vueltas toca y anima la correcta.
+            val backstack by navigator.backstack.collectAsState()
+            BackHandler(enabled = backstack.size > 1) { navigator.goBack() }
 
-        setContent { App(navigator) }
+            App(navigator)
+        }
     }
 
     private fun launchCreateDocument(mimeType: String, suggestedName: String) {

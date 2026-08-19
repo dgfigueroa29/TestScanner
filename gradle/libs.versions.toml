@@ -29,22 +29,33 @@ jvmTarget = "17"
 # —`androidx.lifecycle` y `androidx.navigationevent`, entre otras—: el lint de release fallaba con
 # "requires libraries and applications that depend on it to compile against version 36 or later".
 #
-# `targetSdk` se queda en 35 a propósito. Son cosas distintas: `compileSdk` dice contra qué APIs se
-# compila y `targetSdk` a qué comportamientos de runtime se acoge la app. Subir el segundo activa
-# cambios de comportamiento del sistema que nadie ha pedido ni puede probar aquí.
+# `targetSdk` en 36 porque **Play lo exige para publicar**, no porque se haya podido probar. Son
+# cosas distintas de `compileSdk`: este dice contra qué APIs se compila, `targetSdk` a qué
+# comportamientos de runtime se acoge la app.
 #
-# Estuvo en 36 entre el primer `fix: first open in android studio` y esta revisión, y es un cambio
-# que **el CI no puede detectar**: `targetSdk` no afecta a la compilación, solo a cómo se comporta
-# el sistema en el dispositivo. Con 36 se activan los cambios de Android 16 —edge-to-edge forzado,
-# `setStatusBarColor` y `setNavigationBarColor` convertidos en no-op, predictive back por defecto—
-# sobre una `MainActivity` que llama a `enableEdgeToEdge()` antes de `super.onCreate()` y un tema
-# `android:Theme.Material.Light.NoActionBar`. Nadie ha ejecutado esa combinación en un dispositivo.
-# Volver a 35 no está confirmado que arregle nada —la app tampoco se ha probado nunca con 35— pero
-# quita una variable no verificada de en medio. Subirlo es una tarea con su propia comprobación en
-# dispositivo, no un efecto colateral de abrir el proyecto en el IDE.
+# Estuvo en 36 sin querer —lo subió `fix: first open in android studio`, contradiciendo al
+# comentario que había aquí—, se bajó a 35 mientras se buscaba un fallo de arranque, y vuelve a 36
+# ya con el trabajo hecho en vez de como efecto colateral. Lo que 36 activa, y qué se hizo con cada
+# cosa:
+#
+#   - **Predictive back por defecto.** Era el único de los tres que podía romper algo de verdad, y
+#     rompía: `MainActivity` interceptaba el atrás con un callback siempre habilitado que se
+#     autodesactivaba para volver a lanzar `onBackPressed()`. Con predictive back el sistema elige
+#     la animación al **empezar** el gesto, así que siempre pintaba la de "vuelvo dentro de la app"
+#     aunque tocara cerrar. Sustituido por `BackHandler(enabled = backstack.size > 1)`.
+#   - **Edge-to-edge obligatorio.** `enableEdgeToEdge()` ya estaba, y los insets los aplica el
+#     `Scaffold` de Material 3 con sus valores por defecto. No hay ni un `WindowInsets` a mano en
+#     todo el proyecto, así que no hay nada que se contradiga con lo que hace el sistema. **Queda
+#     por mirar con los ojos** en un dispositivo: es la clase de cosa que no rompe, se ve mal.
+#   - **`setStatusBarColor` / `setNavigationBarColor` convertidos en no-op.** No se llaman en
+#     ninguna parte, ni desde el tema. Sin efecto aquí.
+#
+# Lo que sigue sin estar comprobado es que la app **arranque**, con 36 o con 35: no hay tests
+# instrumentados (D6) y el CI solo compila. Eso se cierra con un logcat de un dispositivo real, no
+# con un número en este archivo.
 compileSdk = "36"
 minSdk = "24"
-targetSdk = "35"
+targetSdk = "36"
 
 # Kotlin ecosystem
 coroutines = "1.11.0"
