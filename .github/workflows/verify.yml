@@ -123,21 +123,6 @@ jobs:
 
       - run: ./gradlew :composeApp:wasmJsBrowserDistribution
 
-  ios:
-    name: iOS
-    # Solo en `main`: un runner de macOS cuesta diez veces más que uno de Linux y el enlazado de
-    # Kotlin/Native es lento (riesgo R4 del SDD). En los PR se cubre con el resto de targets.
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
-    runs-on: macos-latest
-    needs: checks
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - uses: gradle/actions/setup-gradle@v4
-
-      - run: ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
+# iOS no está aquí a propósito: vive en `ios.yml` y solo se lanza a mano. Ver la cabecera de ese
+# archivo para el motivo. `Verify` cubre las tres plataformas que este proyecto puede *probar*, y
+# por eso es el workflow que decide si un cambio entra o no.

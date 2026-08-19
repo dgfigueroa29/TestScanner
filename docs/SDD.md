@@ -5,7 +5,7 @@
 | Proyecto | TestScanner |
 | Documento | Software Design Document (SDD) |
 | Versión | 1.5 |
-| Estado | Vigente — **el proyecto compila y pasa CI** en Android (con R8), Escritorio y Web. Fases 1, 2, 4 y 5 cerradas salvo lo listado como pendiente; la 3 (iOS) escrita y **compilando por primera vez en el runner macOS**, con las tandas de errores que eso destapa en curso |
+| Estado | Vigente — **el proyecto compila y pasa CI** en Android (con R8), Escritorio y Web. Fases 1, 2, 4 y 5 cerradas salvo lo listado como pendiente; la 3 (iOS) escrita y despriorizada, con su compilación fuera de la verificación obligatoria y disponible a demanda en el workflow `ios.yml` |
 | Fecha | 2026-08-01 |
 | Autor | Equipo TestScanner |
 | Alcance de esta versión | Migración de app Android monolítica a Compose Multiplatform + arquitectura de motores de escaneo intercambiables |
@@ -894,7 +894,7 @@ salieron 105 hallazgos. Es la misma lección que los tests instrumentados que se
 una comprobación que no se ejecuta es peor que ninguna, porque ocupa el sitio de la que sí haría
 falta.
 
-**Y del primer CI de iOS.** El job `ios` solo corre en `main`, así que su veredicto llegó una
+**Y del primer CI de iOS.** Cuando el job de iOS todavía corría en `main`, su veredicto llegó una
 tanda más tarde y confirmó la misma forma: el stack compartido —modelo, dominio, `scanner-api`,
 `designsystem`, `platform`, `permissions` y el motor manual— compiló a la primera, porque es
 justo lo que el arnés local ya ejercitaba. Los diez errores estaban todos en los dos motores que
@@ -946,11 +946,21 @@ Implementado en `.github/workflows/verify.yml`:
 | `android` | cada PR | `assembleDebug` + `lintDebug` + `assembleRelease`, publica el APK y el `mapping.txt` |
 | `desktop` | cada PR | `desktopJar` |
 | `web` | cada PR | `wasmJsBrowserDistribution` |
-| `ios` | solo `main` | `linkDebugFrameworkIosSimulatorArm64` en runner macOS |
 
-`ios` no corre en los PR a propósito: un runner de macOS cuesta unas diez veces más que uno de Linux
-y el enlazado de Kotlin/Native es lento (riesgo R4). Los PR ya cubren los otros tres targets, y el
-código de iOS es mayoritariamente `commonMain` compilado en ellos.
+El job de iOS **no está en esta tabla**: vive en un workflow aparte, `ios.yml`, y solo se dispara a
+mano (`workflow_dispatch`).
+
+La razón no es el coste del runner macOS —que también, riesgo R4— sino qué significa un check.
+Enlazar el framework comprueba que el Kotlin/Native **compila**; no comprueba que la app de iOS
+haga nada, y no puede hacerlo mientras no haya un dispositivo Apple con el que probarla (Fase 3
+despriorizada). Como criterio de aceptación para un cambio de Android, Desktop o Web, eso no aporta
+señal: lo único que producía era un `main` en rojo permanente, y un rojo que siempre está encendido
+deja de leerse. `Verify` cubre ahora exactamente las tres plataformas que este proyecto puede
+ejecutar, y su verde vuelve a querer decir algo.
+
+La contrapartida está aceptada a conciencia: el código de iOS queda sin verificación automática, que
+es la situación en la que se coló el `Cannot access 'val IO': it is internal`. Se compensa lanzando
+`ios.yml` a mano al tocar código de iOS, y obligatoriamente antes de retomar la Fase 3.
 
 `assembleRelease` está en cada PR y no solo al publicar por una razón concreta: R8 solo rompe cosas
 cuando se ejecuta, y los fallos que produce —una clase eliminada, un nombre ofuscado que alguien

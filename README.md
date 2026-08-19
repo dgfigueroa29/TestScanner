@@ -22,7 +22,7 @@ y Web con un único código base.
 | Historial persistente | ✅ Room en Android, iOS y Desktop; en Web, JSON en el almacén del navegador |
 | Preferencias persistentes | ✅ las cuatro plataformas |
 | CI en GitHub Actions | ✅ **en verde**: detekt, tests, Android (con R8), Desktop y Web |
-| Vision / AVFoundation (iOS) | ✅ implementado; **compilando ya** en el runner macOS, con las tandas de errores que eso destapa en curso |
+| Vision / AVFoundation (iOS) | ✅ implementado; se compila **a demanda** en el workflow `iOS (manual)`, fuera de la verificación obligatoria |
 | BarcodeDetector del navegador (Web) | ✅ implementado, con visor sobre el canvas |
 | OCR con ML Kit Text Recognition (Android) | ✅ implementado; en iOS irá con Vision, no con ML Kit |
 | Escaneo desde imagen (RF-07) | ✅ selector en las cuatro plataformas, sin pedir permisos |
@@ -41,9 +41,11 @@ declaran como tales, con la fase en la que llegan. Ver `docs/ROADMAP.md`.
 Lo que queda fuera por ahora, y por qué:
 
 - **iOS está despriorizado**, no abandonado. Probarlo exige un dispositivo, que no lo hay; lo que sí
-  se puede es **compilarlo**, y el runner macOS del CI ya lo hace en cada `main`. Su primera pasada
-  dejó el stack compartido en verde y diez errores en los dos motores de AVFoundation — ocho de
-  ellos, la misma confusión repetida entre miembro y extensión de cinterop. Falta además el
+  se puede es **compilarlo**, y para eso está el workflow `iOS (manual)` — Actions → Run workflow.
+  Está fuera de `Verify` a propósito: compilar no es probar, y un check que nadie puede satisfacer
+  con una prueba real solo servía para dejar `main` en rojo de forma permanente. Sus pasadas dejaron
+  el stack compartido en verde y los errores concentrados en los dos motores de AVFoundation, más el
+  `import kotlinx.coroutines.IO` que en Kotlin/Native no viaja con el receptor. Falta además el
   `iosApp.xcodeproj`, que solo se crea desde Xcode.
 - **No hay tests instrumentados y no los va a haber.** Sin emulador en CI, un test que exija
   dispositivo nunca se ejecuta y da una falsa sensación de red. El ROADMAP dice exactamente qué queda
@@ -57,8 +59,11 @@ Lo que queda fuera por ahora, y por qué:
   cierra esa cadena es la entrada manual.
 
 > **Verificado en CI.** El proyecto compila entero: Android (debug, lint y release con R8),
-> Escritorio y Web, más detekt y los tests en cada PR. iOS se enlaza en un runner macOS al llegar a
-> `main`.
+> Escritorio y Web, más detekt y los tests en cada PR. iOS se enlaza a demanda, en el workflow
+> `iOS (manual)`.
+>
+> Lo que el CI **no** comprueba es que la app arranque: sin tests instrumentados nadie ejecuta la
+> `MainActivity`, así que un fallo de arranque no lo detecta ningún check.
 >
 > Hasta que se activó Actions nada de esto se había compilado nunca —el entorno de desarrollo no
 > alcanza el maven de Google—, y el primer CI encontró **doce fallos encadenados**, desde el

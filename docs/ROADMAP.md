@@ -71,10 +71,22 @@ verificable desactivando Play Services.
 ## Fase 3 — iOS ⏸️ despriorizada
 
 > **Sin dispositivos Apple no se puede *probar* nada de esto**, y por eso deja de marcar el ritmo.
-> Lo que sí cambió al activar Actions es que **compilarlo ya no exige una Mac propia**: el job `ios`
-> corre en un runner macOS y enlaza el framework al llegar a `main`. Eso cubre los errores de
-> compilación de Kotlin/Native —que es donde estaba el riesgo grueso, porque ese código no se había
-> compilado jamás— pero no que la cámara funcione, que sigue necesitando un iPhone.
+> Lo que sí cambió al activar Actions es que **compilarlo ya no exige una Mac propia**: un runner
+> macOS enlaza el framework. Eso cubre los errores de compilación de Kotlin/Native —que es donde
+> estaba el riesgo grueso, porque ese código no se había compilado jamás— pero no que la cámara
+> funcione, que sigue necesitando un iPhone.
+>
+> **Desde esta revisión, iOS está fuera de la verificación obligatoria.** Vive en su propio
+> workflow, `ios.yml`, y **solo se lanza a mano** (Actions → "iOS (manual)" → Run workflow). El
+> motivo es que compilar no es probar: mientras el job vivía dentro de `Verify`, una plataforma que
+> nadie puede ejecutar dejaba `main` en rojo de forma permanente, y un rojo permanente le quita el
+> significado a los checks que sí hablan de algo verificable. `Verify` cubre ahora las tres
+> plataformas que este proyecto puede ejecutar; iOS se lanza cuando se vaya a tocar, y de forma
+> obligada antes de retomar esta fase.
+>
+> El coste es real y queda dicho: el Kotlin/Native vuelve a no tener red automática, que es
+> exactamente lo que dejó pasar el `Cannot access 'val IO': it is internal` durante una tanda
+> entera. Se acepta a cambio de que el verde de `Verify` signifique algo.
 
 - [x] `:engines:vision-ios` — `AVCaptureSession` + `AVCaptureMetadataOutput`, con linterna y zoom
 - [x] Preview de iOS (`UIKitView` con `AVCaptureVideoPreviewLayer`) vía `CameraPreviewEngine`
@@ -111,8 +123,9 @@ verificable desactivando Play Services.
       el sistema mate el proceso, o a un cambio de tamaño de letra o de idioma. Ahora se guarda por
       ids estables, escritos a mano porque R8 ofusca los nombres de clase
 
-- [x] CI: `linkDebugFrameworkIosSimulatorArm64` en runner macOS — **corriendo**. Ya no está a la
-      espera de nada: cada `main` da su veredicto sobre el código Kotlin/Native
+- [x] CI: `linkDebugFrameworkIosSimulatorArm64` en runner macOS — **disponible a demanda**, en el
+      workflow `ios.yml`. Dejó de correr en cada `main`: da su veredicto cuando se le pide, no como
+      condición para integrar cambios de las otras tres plataformas
 
 **Criterio de salida:** escaneo real en iOS; ZXing-cpp produce resultados comparables entre
 Android e iOS sobre el mismo set de imágenes de referencia.
