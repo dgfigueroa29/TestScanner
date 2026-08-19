@@ -32,6 +32,13 @@ completa, aunque todavía sin motores de cámara reales.
 **Criterio de salida:** la app arranca en Android, Desktop y Web; el catálogo lista los 8 motores
 con su estado real; los tests de `:core:domain` y `:core:data` pasan en CI.
 
+> **Este criterio nunca se comprobó, y conviene decirlo.** Lo que hay en verde es *compilación*
+> —`assembleDebug`, `lintDebug`, `assembleRelease` con R8, `desktopJar`, `wasmJsBrowserDistribution`—
+> más los tests de dominio. Que la app **arranque** no lo verifica nada: no hay tests instrumentados
+> por decisión explícita (D6, sin emulador en CI) y por tanto nadie ejecuta la `MainActivity`. Un
+> fallo de arranque es justo la clase de defecto que este proyecto no puede detectar, así que el
+> criterio se da por cumplido *en su parte compilable* y queda pendiente en su parte ejecutable.
+
 ---
 
 ## Fase 2 — Android real ✅
@@ -79,7 +86,12 @@ verificable desactivando Play Services.
       motor manual) compiló a la primera; los diez errores estaban todos en los dos motores de
       AVFoundation, y ocho eran la misma confusión repetida: importar como extensión lo que cinterop
       genera como miembro. Arreglados. Los módulos que dependen de esos dos no llegaron a
-      compilarse, así que faltan tandas
+      compilarse, así que faltan tandas. La tanda siguiente dio **la confusión simétrica**, y por eso
+      merece quedar escrita: `Dispatchers.IO` en `:core:database`. Sacarlo de `commonMain` y
+      declararlo por plataforma era necesario pero no suficiente — en Kotlin/Native `IO` es una
+      *extensión* de `concurrentMain` y el miembro homónimo es `internal`, así que hace falta además
+      `import kotlinx.coroutines.IO`. Sin ese import el job de iOS seguía cayendo con
+      `Cannot access 'val IO': it is internal`, que es donde estaba `main` hasta esta revisión
 - [x] **Motor baseline decidido** (cerraba R9): se consumen los artefactos publicados de zxing-cpp,
       sin cinterop propio — ver [ADR-0008](adr/ADR-0008-baseline-zxing-cpp.md)
 - [x] **Kotlin 2.3.20** (cerraba R10): los klibs de zxing-cpp están compilados con 2.2.0 y el

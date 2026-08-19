@@ -5,6 +5,7 @@ import androidx.room.RoomDatabase
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSURL
@@ -32,5 +33,13 @@ actual class DatabaseBuilderFactory {
     }
 }
 
-/** Ver la nota en `commonMain`: aquí `Dispatchers.IO` sí resuelve. */
+/**
+ * Ver la nota en `commonMain`. Aquí `Dispatchers.IO` sí resuelve, pero **solo con el import de
+ * arriba**: en Kotlin/Native `IO` no es miembro de `Dispatchers` —ese es `internal`— sino una
+ * extensión declarada en `concurrentMain`, y una extensión no viaja con el import del receptor.
+ *
+ * `import kotlinx.coroutines.IO` parece un import sin usar y no lo es: quitarlo devuelve el
+ * `Cannot access 'val IO': it is internal` que tumbó el job de iOS. Mover la declaración de
+ * `commonMain` a cada plataforma era necesario pero no suficiente.
+ */
 internal actual val queryDispatcher: CoroutineDispatcher = Dispatchers.IO

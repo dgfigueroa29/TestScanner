@@ -14,10 +14,10 @@
 #     Failed to apply plugin 'com.google.devtools.ksp'.
 #     > The minimum supported AGP version is 8.10.0.
 #
-# Se sube a 8.10.0 y no más: es el mínimo que KSP 2.3.10 exige —lo dice su propio mensaje, así que
-# no hay que suponer que la versión exista— y el salto más corto desde 8.9.2. Subir de más
-# introduciría cambios de comportamiento que nadie ha pedido en una build que apenas empieza a
-# compilar. Gradle 8.14.5 cumple de sobra el mínimo que AGP 8.10 pide.
+# El salto fue a 8.10.0 —el mínimo que KSP 2.3.10 exige, lo dice su propio mensaje— y de ahí a
+# 8.13.2 al abrir el proyecto en Android Studio por primera vez. Gradle 8.14.5 cumple de sobra el
+# mínimo que AGP 8.13 pide, y el CI ensambla debug, pasa lint y ensambla release con R8 sobre esta
+# versión, así que se queda.
 kotlin = "2.3.20"
 agp = "8.13.2"
 composeMultiplatform = "1.11.1"
@@ -32,9 +32,19 @@ jvmTarget = "17"
 # `targetSdk` se queda en 35 a propósito. Son cosas distintas: `compileSdk` dice contra qué APIs se
 # compila y `targetSdk` a qué comportamientos de runtime se acoge la app. Subir el segundo activa
 # cambios de comportamiento del sistema que nadie ha pedido ni puede probar aquí.
+#
+# Estuvo en 36 entre el primer `fix: first open in android studio` y esta revisión, y es un cambio
+# que **el CI no puede detectar**: `targetSdk` no afecta a la compilación, solo a cómo se comporta
+# el sistema en el dispositivo. Con 36 se activan los cambios de Android 16 —edge-to-edge forzado,
+# `setStatusBarColor` y `setNavigationBarColor` convertidos en no-op, predictive back por defecto—
+# sobre una `MainActivity` que llama a `enableEdgeToEdge()` antes de `super.onCreate()` y un tema
+# `android:Theme.Material.Light.NoActionBar`. Nadie ha ejecutado esa combinación en un dispositivo.
+# Volver a 35 no está confirmado que arregle nada —la app tampoco se ha probado nunca con 35— pero
+# quita una variable no verificada de en medio. Subirlo es una tarea con su propia comprobación en
+# dispositivo, no un efecto colateral de abrir el proyecto en el IDE.
 compileSdk = "36"
 minSdk = "24"
-targetSdk = "36"
+targetSdk = "35"
 
 # Kotlin ecosystem
 coroutines = "1.11.0"
