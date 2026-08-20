@@ -4,9 +4,9 @@
 |---|---|
 | Proyecto | TestScanner |
 | Documento | Software Design Document (SDD) |
-| Versión | 1.5 |
-| Estado | Vigente — **el proyecto compila y pasa CI** en Android (con R8), Escritorio y Web. Fases 1, 2, 4 y 5 cerradas salvo lo listado como pendiente; la 3 (iOS) escrita y despriorizada, con su compilación fuera de la verificación obligatoria y disponible a demanda en el workflow `ios.yml` |
-| Fecha | 2026-08-01 |
+| Versión | 1.6 |
+| Estado | Vigente — **el proyecto compila y pasa CI** en Android (con R8), Escritorio y Web, y el framework de iOS **enlaza entero** desde el workflow manual `ios.yml`. Fases 1, 2, 4 y 5 cerradas salvo lo listado como pendiente; la 3 (iOS) escrita y despriorizada por falta de dispositivo, no de compilación. **La app arrancó por primera vez en un dispositivo real** en esta versión, y el primer arranque encontró un defecto que ninguna comprobación automática podía ver (§10) |
+| Fecha | 2026-08-20 |
 | Autor | Equipo TestScanner |
 | Alcance de esta versión | Migración de app Android monolítica a Compose Multiplatform + arquitectura de motores de escaneo intercambiables |
 
@@ -613,6 +613,25 @@ El caso que cubre no es la rotación: la Activity declara `configChanges` para o
 del proceso en segundo plano y los cambios de configuración que la Activity no declara, como el
 tamaño de letra o el idioma del sistema.
 
+**El botón atrás se conecta con `BackHandler`, y el `enabled` es la pieza que importa:**
+
+```kotlin
+val backstack by navigator.backstack.collectAsState()
+BackHandler(enabled = backstack.size > 1) { navigator.goBack() }
+```
+
+Antes era un `onBackPressedDispatcher.addCallback` siempre habilitado que, cuando no había nada que
+desapilar, se autodesactivaba y volvía a lanzar `onBackPressed()`. Ese patrón deja de funcionar con
+el *predictive back*, que viene activado por defecto desde `targetSdk` 36: el sistema decide qué
+animación pintar **al empezar el gesto**, preguntando si hay algún callback habilitado. Con uno
+siempre habilitado la respuesta era siempre "la vuelta es dentro de la app", y al soltar el dedo se
+encontraba con que la Activity se cerraba. Además `isEnabled` no se restauraba nunca, así que el
+callback quedaba muerto si la Activity sobrevivía.
+
+Atar `enabled` al tamaño del backstack le dice al sistema de antemano cuál de las dos vueltas toca.
+`Navigator` no se enteró del cambio: sigue siendo Kotlin puro y testeable sin Compose (ADR-0005), y
+lo que se movió es solo el punto de conexión, que ahora vive junto a la UI en lugar de en `onCreate`.
+
 ---
 
 ## 10. Inyección de dependencias
@@ -628,8 +647,45 @@ appModule              (composeApp)   → wiring raíz, arranca Koin
 └── scannerModule      (feature:scanner) → ViewModels
 ```
 
-Convenciones: constructor injection siempre; ningún `Context` en ViewModels; los dispatchers se
-inyectan (`DispatcherProvider`) para que los tests puedan sustituirlos por `UnconfinedTestDispatcher`.
+Convenciones: constructor injection siempre; ningún `Context` en ViewModels. Los tests de ViewModel
+sustituyen el dispatcher principal con `Dispatchers.setMain` de `kotlinx-coroutines-test`, no con un
+`DispatcherProvider` inyectado: no hay ninguno en el proyecto y no ha hecho falta, porque los
+ViewModels usan `viewModelScope` y el resto del dominio es `suspend` sin dispatcher propio.
+
+### Koin resuelve por **igualdad exacta de tipo**, y eso muerde
+
+Es la lección más cara de esta versión y merece estar aquí y no solo en el registro de deudas.
+`platformModule` de Android declaraba el executor de análisis de frames así:
+
+```kotlin
+single<ExecutorService> { Executors.newSingleThreadExecutor() }   // ← declarado
+```
+
+mientras los tres motores de cámara lo piden así:
+
+```kotlin
+class MlKitCameraXEngine(context: Context, analysisExecutor: Executor, ...)   // ← consumido
+```
+
+`ExecutorService` **es** un `Executor`, pero Koin indexa cada definición por el tipo con el que se
+declara y no recorre supertipos al resolver. El `get()` no encontraba nada, el primer motor de la
+lista no se podía construir, y la cascada se llevó por delante la `List<BarcodeScannerEngine>`, el
+`ScannerEngineRepository`, los casos de uso y el `ScannerViewModel`: la app moría al componer la
+primera pantalla con `NoDefinitionFoundException`.
+
+Lo que hace este fallo digno de documentar no es el error en sí, que es de una línea, sino **quién
+podía haberlo detectado y no pudo**:
+
+- El **compilador** no: los `get()` son genéricos resueltos en ejecución, así que declarar de más o
+  de menos es indistinguible en tiempo de compilación.
+- El **CI** tampoco: compiló, pasó lint, pasó R8 y publicó un APK que reventaba al abrirse.
+- Los **tests** tampoco: los de dominio inyectan sus dobles a mano y nunca tocan el grafo real.
+
+La regla que queda: **declarar el tipo que se consume, no el que devuelve la fábrica.** Y la
+comprobación que falta está registrada como deuda D18 — `verify()` de `koin-test` recorre los
+constructores de cada definición y comprueba que cada parámetro tenga quien lo satisfaga, por
+reflexión y **sin instanciar nada**, así que no necesita emulador y cabe dentro de la decisión de no
+tener tests instrumentados (§13.1).
 
 **Un caso de uso por operación no es una regla.** `ScannerViewModel` llegó a tener doce
 colaboradores por seguirla al pie de la letra, y cuatro de ellos eran la misma idea: tres casos de
@@ -808,6 +864,19 @@ sensación de tenerla. El hueco que esto deja —que ningún test comprueba que 
 código de verdad— está escrito con todas las letras en el ROADMAP, junto a lo que sí queda cubierto
 sin dispositivo.
 
+**Lo que esa decisión no debía dejar fuera, y dejó: que el grafo de dependencias resuelva.** El
+primer arranque en un dispositivo real murió por un `Executor` declarado como `ExecutorService`
+(§10), y ninguna de las cinco filas de arriba lo habría visto: los tests de dominio inyectan sus
+dobles a mano y nunca montan el grafo. Es un caso distinto del de la cámara — ahí hace falta
+hardware, aquí no hace falta nada más que reflexión. `verify()` de `koin-test` recorre los
+constructores de cada definición sin instanciar ninguna, así que corre en un test JVM normal. Está
+registrado como deuda **D18** y es la única de la lista que tapa un fallo que ya llegó a producir un
+crash.
+
+La tabla de arriba deja ver el patrón: **todo lo que se comprueba son piezas, y nada comprueba el
+montaje.** El criterio de salida de la Fase 1 dice "la app arranca en Android, Desktop y Web" y hasta
+esta versión nadie lo había ejecutado nunca.
+
 ### 13.2 Suite de contrato de motores
 
 Pieza clave de la arquitectura, ya implementada en `:core:scanner-testing`: una batería de tests
@@ -933,6 +1002,17 @@ La salida es pedir el dispatcher desde cada plataforma, donde la extensión sí 
 
 Es el mismo patrón que los diez errores anteriores, un nivel más arriba: **una API que parece común
 y no lo es**, y que por eso no falla hasta que compila el primer target que se comporta distinto.
+
+**La tercera tanda, y el desenlace.** Mover `Dispatchers.IO` de `commonMain` a cada plataforma era
+necesario y **no suficiente**: en `iosMain` seguía fallando igual. La extensión de `concurrentMain`
+no viaja con el import del receptor, así que hace falta además `import kotlinx.coroutines.IO`. Es un
+import que parece no usarse —el código dice `Dispatchers.IO`, no `IO`— y por eso queda explicado en
+el KDoc del propio archivo: quitarlo "limpiando imports" devuelve el error.
+
+Con eso, el job de iOS pasó de morir al minuto y medio a **enlazar el framework completo en 12 min
+48 s**. No hubo cuarta tanda: `:composeApp` y todas sus dependencias de iOS —que nunca habían
+llegado a compilarse— compilaron sin un solo error. Todo el código Kotlin de iOS compila hoy. Lo que
+sigue sin poder comprobarse es que la cámara funcione, y para eso hace falta un iPhone, no un runner.
 
 ---
 

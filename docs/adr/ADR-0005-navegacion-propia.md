@@ -87,6 +87,37 @@ la navegación, lo cual es el comportamiento esperado de una recarga y no está 
 
 El umbral de migración sigue igual: **seis destinos o la primera necesidad de deep links**.
 
+## Revisión — el botón atrás y el *predictive back*
+
+Al subir `targetSdk` a 36, que Play exige para publicar, el *predictive back* pasa a estar activado
+por defecto. Eso obligó a cambiar **cómo** se conecta el atrás del sistema al `Navigator`, no la
+decisión de tener navegación propia.
+
+El patrón anterior era un `onBackPressedDispatcher.addCallback` siempre habilitado que, cuando no
+quedaba nada que desapilar, se autodesactivaba y volvía a lanzar `onBackPressed()` para que la
+plataforma cerrase la Activity. Con predictive back eso no funciona: el sistema decide **al empezar
+el gesto** qué animación pintar, preguntando si hay algún callback habilitado. Con uno siempre
+habilitado, la respuesta era siempre "la vuelta es dentro de la app", y al soltar el dedo se
+encontraba con que la Activity se cerraba. De propina, `isEnabled` no volvía a `true` nunca, así que
+el callback quedaba muerto si la Activity sobrevivía al cierre.
+
+Ahora:
+
+```kotlin
+val backstack by navigator.backstack.collectAsState()
+BackHandler(enabled = backstack.size > 1) { navigator.goBack() }
+```
+
+El `enabled` atado al backstack es la pieza: le dice al sistema de antemano cuál de las dos vueltas
+toca, y cuando no hay nada que desapilar **no se intercepta en absoluto**, que es lo que permite al
+sistema animar la salida correctamente.
+
+Lo que esto confirma sobre la decisión de fondo: **el `Navigator` no se enteró**. Sigue siendo la
+misma clase de Kotlin puro, con los mismos tests sin Compose. Lo que cambió es el punto de conexión
+con la plataforma, que ahora vive junto a la UI en lugar de en `onCreate`. Una navegación propia
+cuyo contrato con el sistema cabe en dos líneas es más fácil de adaptar a un cambio de plataforma
+que una que delegue en una librería, y este episodio es el primer dato real a favor.
+
 ## Alternativas descartadas
 
 | Alternativa | Motivo |
