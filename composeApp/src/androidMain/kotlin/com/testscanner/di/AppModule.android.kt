@@ -28,7 +28,7 @@ import com.testscanner.platform.AndroidPlatformActions
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.Module
 import org.koin.dsl.module
-import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
 /**
@@ -42,7 +42,17 @@ actual fun platformModule(): Module = module {
 
     // El análisis de frames no puede correr en el hilo principal: bloquearía la UI justo mientras
     // la cámara produce imágenes.
-    single<ExecutorService> { Executors.newSingleThreadExecutor() }
+    //
+    // El tipo declarado es `Executor` y **no** `ExecutorService`, aunque la fábrica devuelva lo
+    // segundo. Koin indexa cada definición por el tipo con el que se declara y resuelve por
+    // igualdad exacta: no recorre supertipos. Los tres motores de cámara piden un `Executor` en su
+    // constructor, así que registrarlo como `ExecutorService` dejaba ese `get()` sin nada que
+    // encontrar y la app moría al componer la primera pantalla con
+    // `NoDefinitionFoundException: No definition found for type 'java.util.concurrent.Executor'`.
+    //
+    // Nadie necesita la API de `ExecutorService` —no se apaga en ningún sitio, vive lo que vive el
+    // proceso—, así que se declara exactamente lo que se consume en lugar de registrar los dos.
+    single<Executor> { Executors.newSingleThreadExecutor() }
 
     single { GmsCodeScannerEngine(androidContext()) }
     single { MlKitCameraXEngine(context = androidContext(), analysisExecutor = get()) }

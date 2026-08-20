@@ -50,9 +50,12 @@ jvmTarget = "17"
 #   - **`setStatusBarColor` / `setNavigationBarColor` convertidos en no-op.** No se llaman en
 #     ninguna parte, ni desde el tema. Sin efecto aquí.
 #
-# Lo que sigue sin estar comprobado es que la app **arranque**, con 36 o con 35: no hay tests
-# instrumentados (D6) y el CI solo compila. Eso se cierra con un logcat de un dispositivo real, no
-# con un número en este archivo.
+# Conviene dejar dicho, porque costó una vuelta entera: **el fallo de arranque que se estaba
+# buscando cuando esto bajó a 35 no era de `targetSdk`.** Era un `Executor` mal declarado en el
+# grafo de Koin (ver `AppModule.android.kt`). Bajar el número no arreglaba nada y subirlo no rompía
+# nada; lo que sí había era el defecto de predictive back de arriba, real pero de animación. La
+# lección es la de siempre: sin un logcat, un cambio de configuración es un sospechoso cómodo y
+# nada más.
 compileSdk = "36"
 minSdk = "24"
 targetSdk = "36"
