@@ -262,14 +262,43 @@ con sus latencias en la portada, ni una app llamada "TestScanner" sin icono.
       catálogo de motores, el comparador, el filtro de formatos y las latencias vuelven con un
       interruptor. `Navigator.pruneTo` saca del backstack lo que deja de estar disponible
 
-### Ronda 2 — la pantalla de escaneo 🔜
+### Ronda 2 — la pantalla de escaneo, y dos defectos que salieron debajo ✅
 
-- [ ] Visor a pantalla completa con el resultado en una hoja inferior, en vez del `LazyColumn` con
-      el visor como primer elemento de una lista
-- [ ] Estados vacíos y de permiso denegado con ilustración y una acción clara
-- [ ] Animaciones de transición entre destinos y de aparición del resultado
+- [x] **Visor a pantalla completa con el resultado en una hoja inferior.** Antes el visor era el
+      primer elemento de un `LazyColumn` y se iba de la pantalla en cuanto llegaba el segundo
+      resultado, justo cuando el usuario quiere seguir apuntando
+- [x] Estados de permiso y de "aquí no hay cámara" con su motivo y su salida, resueltos con un `when`
+      sobre cuatro casos excluyentes en vez de condiciones sueltas
+- [x] La sesión **arranca sola** al aparecer la pantalla y se apaga al salir. La cámara seguía
+      capturando mientras el usuario miraba el historial: el ViewModel sobrevive a la navegación y
+      nadie paraba la sesión
+- [x] Animación al crecer la hoja, tope de cien resultados vivos, pausa y reanudación sobre el visor
+- [x] **D18 saldada para los módulos comunes y el escritorio** (`KoinGraphTest`). El `platformModule`
+      de Android sigue necesitando `androidUnitTest`
+- [x] **Sin deduplicación de lecturas.** Una cámara a 30 fps emitía el mismo código noventa veces en
+      tres segundos, y cada repetición **se guardaba en el historial persistente**: no era ruido
+      visual, era corrupción de los datos del usuario. Lo arregla `DistinctDetectionsScannerEngine`
+- [x] **La base de datos nunca recibía su driver.** `DatabaseBuilderFactory` declaraba una extensión
+      `build()` sobre `RoomDatabase.Builder`, y en Kotlin **un miembro siempre gana a una
+      extensión**: los tres `platformModule` llamaban al `build()` de Room y la configuración del
+      driver bundled no se ejecutaba nunca. Escritorio e iOS reventaban al abrir la primera pantalla;
+      Android funcionaba cayendo al SQLite del framework, que es justo el driver que ese archivo
+      existe para no usar. **El compilador lo avisaba en cada build** —`This extension is shadowed by
+      a member`— y nadie leía el aviso. Lo encontró `KoinGraphTest` en su primera ejecución
+- [x] **Un test que falla en CI ahora dice por qué.** Con la salida por defecto de Gradle el fallo
+      anterior aparecía como `IllegalArgumentException at KoinGraphTest.kt:189`, sin mensaje ni
+      causa; encontrar el defecto de Room exigió configurar `testLogging` primero
+
+### Ronda 3 — pendiente 🔜
+
+- [ ] `androidUnitTest` en `:composeApp` para que `KoinGraphTest` cubra también el grafo de Android,
+      que es donde estaba el defecto original de D18
+- [ ] Animaciones de transición **entre destinos** (las de dentro de la pantalla ya están)
 - [ ] Objetivos táctiles y `enableEdgeToEdge` **mirados con los ojos** en un dispositivo (queda
       pendiente desde la Fase 5)
+- [ ] El aviso `KoinContext is not needed anymore` de `App.kt`: Koin dice que `startKoin()` ya monta
+      el contexto de Compose, pero quitarlo cambia por dónde resuelven `koinInject` y `koinViewModel`
+      y eso no se puede comprobar sin ejecutar la app
 
 ### Pendiente para publicar
 
