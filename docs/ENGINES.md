@@ -114,6 +114,20 @@ resultante como preferido + fallbacks.
 | Desktop | `ZXING_JAVA` (solo imagen) → `MANUAL_INPUT` |
 | Web | `BROWSER_DETECTOR` → `MANUAL_INPUT` |
 
+La cadena resultante no llega cruda al ViewModel: pasa por los decoradores del dominio. Por motor se
+filtran los formatos, se aplican los límites del `ScanRequest` y se interpretan los valores; sobre la
+cadena entera se aplican el plazo y **la supresión de lecturas repetidas**. Ese último importa para
+entender qué reporta un motor y qué no:
+
+> Ningún motor evita repetir un código, y no es un defecto suyo — para ML Kit o Vision, un código que
+> sigue delante de la lente es un código que sigue ahí. A treinta frames por segundo eso son decenas
+> de lecturas idénticas. `DistinctDetectionsScannerEngine` suprime la repetición del mismo par
+> (formato, valor) dentro de una ventana de dos segundos.
+>
+> **El comparador no lo lleva**, y es esencial que no lo lleve: su razón de ser es que *todos* los
+> motores reporten el mismo código. Tampoco lo lleva la decodificación de imagen, donde los códigos
+> aparecen una sola vez. Ver §7.5 del SDD.
+
 Excepciones de la política:
 
 - Si el `ScanRequest` pide **escaneo continuo** o **múltiples códigos**, `GMS_CODE_SCANNER` queda
@@ -142,6 +156,12 @@ Excepciones de la política:
 6. Registrarlo en el `platformModule()` del target correspondiente en `:composeApp`.
 7. Heredar `BarcodeScannerEngineContractTest` aportando la factory del motor.
 8. Añadir el módulo a `settings.gradle.kts`.
+
+Sobre el paso 6 conviene saber lo que costó una app muerta al arrancar: **Koin resuelve por igualdad
+exacta de tipo y no recorre supertipos**, así que hay que declarar cada dependencia con el tipo que
+el motor *consume* y no con el que devuelve la fábrica. Desde esta versión eso lo comprueba
+`KoinGraphTest` para el grafo de escritorio y los módulos comunes (§10 del SDD); el de Android sigue
+sin cobertura, así que ahí el cuidado es manual.
 
 Ningún paso toca `:feature:scanner` ni `:core:domain`. Si un motor nuevo obliga a modificarlos, es
 señal de que el SPI se quedó corto y hay que extenderlo de forma explícita — no a parchear la UI.

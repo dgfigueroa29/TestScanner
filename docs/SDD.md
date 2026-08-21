@@ -1,14 +1,14 @@
-# Software Design Document — TestScanner Multiplatform
+# Software Design Document — Scanly Multiplatform (repositorio: TestScanner)
 
 | Campo | Valor |
 |---|---|
-| Proyecto | TestScanner |
+| Proyecto | Scanly (repositorio `TestScanner`) |
 | Documento | Software Design Document (SDD) |
-| Versión | 1.6 |
-| Estado | Vigente — **el proyecto compila y pasa CI** en Android (con R8), Escritorio y Web, y el framework de iOS **enlaza entero** desde el workflow manual `ios.yml`. Fases 1, 2, 4 y 5 cerradas salvo lo listado como pendiente; la 3 (iOS) escrita y despriorizada por falta de dispositivo, no de compilación. **La app arrancó por primera vez en un dispositivo real** en esta versión, y el primer arranque encontró un defecto que ninguna comprobación automática podía ver (§10) |
-| Fecha | 2026-08-20 |
-| Autor | Equipo TestScanner |
-| Alcance de esta versión | Migración de app Android monolítica a Compose Multiplatform + arquitectura de motores de escaneo intercambiables |
+| Versión | 1.7 |
+| Estado | Vigente — **el proyecto compila y pasa CI** en Android (con R8), Escritorio y Web, y el framework de iOS **enlaza entero** desde el workflow manual `ios.yml`. Fases 1, 2, 4 y 5 cerradas salvo lo listado como pendiente; la 3 (iOS) escrita y despriorizada por falta de dispositivo, no de compilación. **La app arrancó por primera vez en un dispositivo real** en la versión anterior, y ese arranque encontró un defecto que ninguna comprobación automática podía ver (§10); esta versión convierte esa comprobación en un test y, con él, destapa un segundo defecto de meses en la persistencia (§11) |
+| Fecha | 2026-08-21 |
+| Autor | Equipo Scanly |
+| Alcance de esta versión | Preparación para publicar: marca, tema claro/oscuro, inglés y español, y el rediseño de la pantalla de escaneo en dos disposiciones (§9.9, §9.10, ADR-0010, ADR-0011) |
 
 ---
 
@@ -16,8 +16,15 @@
 
 ### 1.1 Propósito
 
-Este documento define la arquitectura objetivo de **TestScanner** tras su migración desde una
+Este documento define la arquitectura objetivo de **Scanly** tras su migración desde una
 aplicación Android de módulo único hacia una aplicación **Compose Multiplatform (CMP)**.
+
+> **Sobre los nombres.** El producto se llama **Scanly** y su `applicationId` en Play es
+> `com.scanly.app`. El repositorio, los paquetes de Kotlin y los módulos Gradle siguen siendo
+> `com.testscanner.*` **a propósito**: renombrarlos tocaría doscientos archivos para cambiar algo que
+> ningún usuario ve, mientras que el `applicationId` —que sí es la identidad pública y permanente en
+> Play— ya está donde corresponde. Este documento usa "Scanly" para el producto y `TestScanner` para
+> el repositorio.
 
 El objetivo funcional principal del producto es:
 
@@ -25,9 +32,15 @@ El objetivo funcional principal del producto es:
 > barras y QR**, permitiendo comparar motores, degradar con elegancia cuando uno no está
 > disponible, y funcionar sobre Android, iOS, Desktop y Web.
 
-TestScanner no es solo un lector de códigos: es un **banco de pruebas de motores de escaneo**.
-Esa naturaleza es lo que dicta la decisión arquitectónica central del documento — el
-**Scanner Engine SPI** (§7).
+Scanly no es solo un lector de códigos: es un **banco de pruebas de motores de escaneo**. Esa
+naturaleza es lo que dicta la decisión arquitectónica central del documento — el **Scanner Engine
+SPI** (§7).
+
+**Y desde que hay intención de publicar, es las dos cosas a la vez.** El banco de pruebas dejó de ser
+la portada: la app arranca como lector —cámara a pantalla completa, resultado a mano, sin nombrar un
+solo motor— y el catálogo, el comparador y las métricas vuelven con un interruptor en Ajustes. No son
+la misma pantalla con cosas ocultas sino dos disposiciones distintas, por los motivos de
+[ADR-0010](adr/ADR-0010-dos-disposiciones-de-la-pantalla-de-escaneo.md).
 
 ### 1.2 Alcance
 
@@ -37,8 +50,10 @@ Esa naturaleza es lo que dicta la decisión arquitectónica central del document
 | SPI de motores de escaneo, registro, selección y fallback | Generación de códigos (encoding) |
 | Modelo de dominio de códigos y resultados | Cuentas de usuario / autenticación |
 | Capa de presentación MVI en Compose Multiplatform | Analítica de producto y A/B testing |
-| Gestión de permisos de cámara multiplataforma | Publicación en stores |
+| Gestión de permisos de cámara multiplataforma | Backend, sincronización o cualquier uso de red |
 | Estrategia de testing, calidad y CI | Facturación / monetización |
+| Marca, tema claro/oscuro e idiomas inglés y español (§9.9) | Más idiomas que esos dos |
+| Preparación para publicar en Play (icono, `applicationId`, `localeConfig`) | El trámite de publicación en sí: ficha, capturas y firma |
 
 ### 1.3 Glosario
 
@@ -221,7 +236,7 @@ TestScanner/
 │   ├── database/                      # Room KMP: historial persistente (sin target wasmJs)
 │   ├── domain/                        # UseCases, interfaces de Repository y decoradores del SPI
 │   ├── data/                          # Registry, preferencias e historial
-│   ├── designsystem/                  # CMP: tema, tokens, componentes reutilizables
+│   ├── designsystem/                  # CMP: paleta, tipografía, formas, marca y cambio de idioma
 │   ├── permissions/                   # expect/actual: permiso de cámara
 │   └── platform/                      # servicios del sistema: portapapeles, compartir, abrir
 │                                      #   enlace, selector de imágenes y guardado de archivos
@@ -238,12 +253,15 @@ TestScanner/
 │
 ├── feature/
 │   ├── scanner/                       # pantalla de escaneo, selector de motor y comparador
-│   └── history/                       # historial, filtrable por motor
+│   ├── history/                       # historial, filtrable por motor
+│   └── settings/                      # tema, idioma y modo avanzado
 │
 ├── composeApp/                        # raíz CMP: App(), navegación, wiring de DI
 │                                      # targets: android, iosArm64/SimulatorArm64, jvm, wasmJs
 ├── androidApp/                        # shell Android: Application + MainActivity
+│                                      #   + icono adaptativo, temas de arranque y localeConfig
 ├── iosApp/                            # shell iOS: proyecto Xcode + SwiftUI host
+├── playstore/                         # material de la ficha de Play (icono 512×512)
 └── docs/
 ```
 
@@ -280,6 +298,7 @@ TestScanner/
 | `:engines:mlkit-ocr` | ✅ | — | — | — |
 | `:feature:scanner` | ✅ | ✅ | ✅ | ✅ |
 | `:feature:history` | ✅ | ✅ | ✅ | ✅ |
+| `:feature:settings` | ✅ | ✅ | ✅ | ✅ |
 | `:composeApp` | ✅ | ✅ | ✅ | ✅ |
 
 Los módulos de motor específicos de plataforma se agregan a `:composeApp` mediante dependencias
@@ -473,6 +492,44 @@ El fallback es un **decorador** (`BarcodeScannerEngine` que envuelve una lista d
 lógica dentro del ViewModel. Consecuencia práctica: es testeable en `commonTest` con motores
 falsos, sin cámara, sin dispositivo y sin Compose.
 
+#### La cadena completa, y por qué el orden importa
+
+`StartScanSessionUseCase` monta esto, y cada nivel está donde está por un motivo:
+
+```
+FallbackScannerEngine(
+    motores.map { it.filteringFormats().enforcingRequestLimits().interpretingValues() }
+).withDeadline().suppressingRepeats(time)
+```
+
+- **Por motor**: primero se filtra por formato lo que reporta, después se aplican los límites del
+  request —cuántos códigos y si la sesión sigue— y solo lo que sobrevive se interpreta
+  semánticamente. Envolver la cadena entera dejaría el fallback fuera del filtrado.
+- **Sobre la cadena**: el plazo, porque si fuera por motor una cadena de tres tardaría el triple de
+  lo que el usuario pidió; y la supresión de repeticiones, porque un código que un motor lee y otro
+  vuelve a leer tras un fallback es **una** lectura repetida y no dos.
+
+#### `DistinctDetectionsScannerEngine`: un defecto de datos, no de presentación
+
+Ningún motor evita reportar el mismo código dos veces, y no es un descuido suyo: para ML Kit o Vision
+un código que sigue delante de la lente es un código que sigue ahí. Una cámara analiza unos treinta
+frames por segundo, así que con el escaneo continuo encendido **apuntar a un QR durante tres segundos
+emitía ese código noventa veces**. Cada repetición se apilaba en la lista de resultados y —esto es lo
+grave— **se escribía en el historial persistente**: exportar a CSV daba un archivo lleno de filas que
+no correspondían a nada que hubiera ocurrido. No era ruido visual, era corrupción de los datos del
+usuario.
+
+La regla es una **ventana de tiempo** (dos segundos) y no "una sola vez por sesión", porque leer dos
+veces el mismo código **es** un caso de uso —contar unidades iguales en un inventario, comprobar que
+una etiqueta se lee bien—. La ventana distingue las dos situaciones sin preguntar: el código que no
+se ha movido de delante de la cámara se ignora; el que se aparta y se vuelve a presentar se lee de
+nuevo. Solo la lectura que pasa el filtro renueva la marca de tiempo — si la renovaran también las
+suprimidas, un código sostenido ante la lente no volvería a leerse jamás.
+
+Está **solo en la sesión en vivo**: `DecodeImageUseCase` monta su propia cadena sin él, porque en una
+foto los códigos aparecen una vez; y el comparador tampoco lo lleva, donde es esencial, porque su
+razón de ser es que **todos** los motores reporten el mismo código.
+
 ### 7.6 Coste de binario (RNF-06)
 
 Cada motor es un módulo Gradle propio y se agrega desde el *source set* correspondiente de
@@ -586,14 +643,36 @@ tamaño real del frame, y mapea la UI, que es quien sabe cómo se está escaland
 ### 9.3 Navegación
 
 Navegador propio mínimo (`sealed interface Destination` + backstack en un `StateFlow`), sin
-dependencia externa. El grafo tiene tres destinos — escanear, comparar e historial; Android le cede
-el botón atrás del sistema y todas las plataformas usan la barra inferior. Razón: la navegación
-multiplataforma de Jetpack está aún en versiones alpha/beta y no queremos que su ciclo de releases
-bloquee el nuestro en la fase de fundaciones.
+dependencia externa. El grafo tiene **cuatro** destinos — escanear, comparar, historial y ajustes;
+Android le cede el botón atrás del sistema y todas las plataformas usan la barra inferior. Razón: la
+navegación multiplataforma de Jetpack está aún en versiones alpha/beta y no queremos que su ciclo de
+releases bloquee el nuestro en la fase de fundaciones.
 
-La revisión prevista se hizo y **la decisión se mantiene**: tres destinos y ningún deep link no
+La revisión prevista se hizo y **la decisión se mantiene**: cuatro destinos y ningún deep link no
 alcanzan el umbral de migración, que sigue siendo seis destinos o el primer deep link. Ver
 `docs/adr/ADR-0005`.
+
+**La lista de destinos cambia en caliente**, y eso trajo un caso que un navegador estático no tiene:
+apagar el modo avanzado (ADR-0010) retira el comparador. Si el usuario lo tenía en pantalla se
+quedaba en un destino que ya no sale en ninguna barra —sin ítem activo y sin forma de volver salvo el
+botón atrás—, y apilar encima el escáner no servía: el atrás lo devolvía justo a donde no debía
+estar. Lo resuelve `pruneTo`, que **poda el backstack entero** y no solo la cima, porque un destino
+retirado enterrado más abajo tiene el mismo problema aplazado:
+
+```kotlin
+fun pruneTo(available: Collection<Destination>) {
+    _backstack.update { stack -> stack.filter { it in available }.ifEmpty { listOf(initial) } }
+}
+```
+
+El `ifEmpty` no es defensivo por costumbre: un backstack vacío es lo único que este tipo no puede
+representar, porque `current` es `last()`.
+
+La barra superior **no se dibuja en el escáner**. Una barra que dice "Escanear" encima de un visor de
+cámara no añade información que el visor no esté dando ya, y se come la altura de lo único que
+importa en esa pantalla; el ítem activo de la barra inferior dice dónde está el usuario. El
+`Scaffold` sigue aportando los insets de la barra de estado en su `padding`, así que quitarla no mete
+la cámara debajo del reloj.
 
 El backstack sí se guarda y se restaura, que era la mitad de la deuda que sí resultó ser un defecto:
 
@@ -681,11 +760,30 @@ podía haberlo detectado y no pudo**:
 - El **CI** tampoco: compiló, pasó lint, pasó R8 y publicó un APK que reventaba al abrirse.
 - Los **tests** tampoco: los de dominio inyectan sus dobles a mano y nunca tocan el grafo real.
 
-La regla que queda: **declarar el tipo que se consume, no el que devuelve la fábrica.** Y la
-comprobación que falta está registrada como deuda D18 — `verify()` de `koin-test` recorre los
-constructores de cada definición y comprueba que cada parámetro tenga quien lo satisfaga, por
-reflexión y **sin instanciar nada**, así que no necesita emulador y cabe dentro de la decisión de no
-tener tests instrumentados (§13.1).
+La regla que queda: **declarar el tipo que se consume, no el que devuelve la fábrica.**
+
+### La comprobación que faltaba ya existe: `KoinGraphTest`
+
+D18 pasó de deuda a test. `composeApp/src/desktopTest` arranca el grafo real —`platformModule()` de
+escritorio más los cinco módulos comunes— y **resuelve** cada tipo que la raíz de la app pide,
+agrupado por el ViewModel que lo consume. No inspecciona definiciones por reflexión: instancia, que
+es estrictamente más fuerte. Si algo está declarado con el tipo equivocado, `get()` lanza en CI igual
+que lanzaba en el teléfono.
+
+Lo que **no** cubre, dicho para que no se confunda con una red completa:
+
+- Es el `platformModule` de **escritorio**, que es el que un test JVM puede enlazar. El de Android
+  —justo donde estaba el defecto original— necesita un `androidUnitTest` en `:composeApp` y sigue
+  pendiente. Lo que sí queda cubierto para las cuatro plataformas son `dataModule`, `domainModule` y
+  los tres módulos de feature.
+- No construye los ViewModels: instanciarlos arranca corrutinas en `viewModelScope`, que exige un
+  `Dispatchers.Main` real. Comprueba que **todo lo que piden por constructor** resuelva, que es
+  exactamente donde falló D18. Añadir un parámetro a un ViewModel obliga a añadirlo también a la
+  lista del test, y esa fricción es deliberada.
+
+**Encontró un defecto en su primera ejecución**, y no en el cableado de Koin sino en la persistencia
+(§11): la base de datos nunca recibía su driver. Es la mejor defensa posible de por qué este test
+tenía que existir — no comprobaba una hipótesis, destapó algo que llevaba meses ahí.
 
 **Un caso de uso por operación no es una regla.** `ScannerViewModel` llegó a tener doce
 colaboradores por seguirla al pie de la letra, y cuatro de ellos eran la misma idea: tres casos de
@@ -753,6 +851,45 @@ Decisiones del esquema:
   con ellas.
 - No se guarda ningún píxel: la entidad no tiene dónde (RNF-03).
 
+### El driver no se aplicaba: una extensión tapada por un miembro
+
+La garantía del punto anterior **llevaba siendo falsa desde que se escribió**, y lo destapó
+`KoinGraphTest` (§10) en su primera ejecución:
+
+```
+java.lang.IllegalArgumentException: Cannot create a RoomDatabase without
+providing a SQLiteDriver via setDriver().
+```
+
+`DatabaseBuilderFactory` declaraba una **extensión** para configurar el driver bundled, el dispatcher
+de consultas y la migración destructiva:
+
+```kotlin
+fun RoomDatabase.Builder<ScanDatabase>.build(): ScanDatabase = …   // ← nunca se ejecutó
+```
+
+En Kotlin **un miembro siempre gana a una extensión**, y `RoomDatabase.Builder` ya tiene su propio
+`build()`. Los tres `platformModule` escribían `.create().build()` creyendo que pasaban por ahí y
+llamaban al de Room.
+
+Las consecuencias eran **distintas en cada plataforma**, y eso es lo que lo mantuvo escondido:
+
+- **Escritorio e iOS reventaban** al tocar el historial. Y como el escáner necesita
+  `SaveDetectionUseCase`, eso es al abrir la primera pantalla.
+- **Android funcionaba**, cayendo al SQLite del framework cuando Room no recibe driver — es decir,
+  usando justo el driver que ese código existe para evitar. Es el peor caso posible: la plataforma
+  que sí se probaba a mano era la única que ocultaba el fallo.
+
+**El compilador lo avisaba en cada build** desde el principio, y nadie leía el aviso:
+
+```
+w: This extension is shadowed by a member: 'fun build(): T'
+```
+
+La extensión pasa a llamarse `buildBundled()`, que no puede colisionar. La lección general no es
+"cuidado con las extensiones" sino que **un aviso del compilador que nadie lee es un aviso que no
+existe**; el ROADMAP lo registra como deuda para decidir qué hacer con los avisos del build.
+
 ---
 
 ## 12. Permisos y privacidad
@@ -814,14 +951,27 @@ los resultados. Estado de cada una:
 
 **Contraste.** Deja de ser una intención y pasa a ser un test. La paleta vive en `ScannerPalette`,
 que **no depende de Compose**, y `Contrast` implementa la fórmula de WCAG 2.1; `ContrastTest` mide
-todos los pares y falla por debajo de 4.5:1. Corre en `commonTest`, sin renderizar y sin
-dispositivo. Se miden además los pares que **la UI usa de hecho** —`primary`, `tertiary` y `error`
-como color de texto sobre la tarjeta—, que ninguna convención de Material cubre.
+**56 pares** —50 contra el umbral de texto normal (4.5:1) y 6 contra el de componentes no textuales
+(3.0:1)— sobre los dos esquemas. Corre en `commonTest`, sin renderizar y sin dispositivo. Se miden
+además los pares que **la UI usa de hecho** —`primary`, `tertiary` y `error` como color de texto
+sobre la tarjeta—, que ninguna convención de Material cubre.
 
-Al extraer la paleta apareció un defecto que el contraste no habría detectado: solo se declaraban
-`primary`, `secondary` y `tertiary`, así que todos los roles `on*` se quedaban en los valores por
-defecto de Material —de una paleta morada que no es esta—. El texto de un botón primario en modo
-oscuro salía morado. Ahora se declaran los catorce.
+El umbral aparte de 3.0:1 existe para `outline`, que es el borde de un `OutlinedButton` o de un campo
+de texto: transmite información —dónde termina el control— pero no es texto, y exigirle 4.5 obligaría
+a un borde tan oscuro que la UI parecería un formulario de los noventa.
+
+La lista de pares se declara **una sola vez** y se aplica a los dos esquemas. Antes estaba escrita
+dos veces y había un test cuyo único trabajo era cazar el día en que una de las dos copias se quedara
+corta; ahora ese caso no puede ocurrir y el test protege de que alguien vuelva a separarlas.
+
+**El mismo defecto, dos veces.** Al extraer la paleta apareció que solo se declaraban `primary`,
+`secondary` y `tertiary`, así que los catorce roles `on*` se quedaban en los valores de fábrica de
+Material —una paleta morada que no es esta— y el texto de un botón primario en modo oscuro salía
+morado. Se arreglaron los `on*`… y **volvió a pasar con los `*Container`**, que es lo que pinta un
+`FilterChip` seleccionado, la `Card`, el `NavigationBar` y el indicador del ítem activo: todos salían
+morados en una app cuya marca es azul. La conclusión no es "declarar más roles" sino que
+`lightColorScheme()` rellena **todo** lo que no se le pase, así que la única postura estable es
+declarar los ~30 roles y que no quede ninguno al azar.
 
 **Lectores de pantalla.** Cuatro arreglos, todos por el mismo motivo: había información que solo
 existía como posición o como color.
@@ -841,6 +991,20 @@ existía como posición o como color.
 el repositorio, que es donde se rompería. No está medido sobre un dispositivo, y eso no cambia
 mientras no haya emulador.
 
+**Lo que añadió el rediseño de la pantalla de escaneo** (ADR-0010), en la misma línea de "había
+información que solo existía como posición o como color":
+
+- Los tres estados que sustituyen al visor —cargando, permiso, sin cámara— se fusionan en **un solo
+  nodo** (`mergeDescendants`): icono, título y explicación son una sola idea, y por separado obligan
+  a tres gestos para enterarse de una cosa.
+- La lectura destacada es una **región viva**, porque "es la más reciente" se expresaba solo con la
+  posición y el color del contenedor, y quien usa un lector de pantalla no ve ninguna de las dos.
+- La píldora de estado sobre el visor usa `inverseSurface`/`inverseOnSurface` y no un blanco
+  translúcido: sobre vídeo hay que garantizar contraste **sin saber qué está enfocando la cámara**, y
+  ese par sí lo mide `ContrastTest`.
+- El valor leído va en **monoespaciada** (`CodeValueStyle`). No es estética: es un dato que se coteja
+  carácter a carácter contra una etiqueta impresa, y en una proporcional `1`, `l` e `I` se confunden.
+
 ---
 
 ## 13. Estrategia de calidad
@@ -854,6 +1018,8 @@ mientras no haya emulador.
 | Contrato de motor | `commonTest` | **Suite compartida** que todo motor debe pasar (§13.2), aplicada a lo instanciable sin dispositivo: el motor manual, los decoradores y la cadena completa | kotlin-test |
 | Coherencia del catálogo | `commonTest` | Que los ocho descriptores sean válidos y no prometan lo que nadie implementa | kotlin-test |
 | Decodificación real | `jvmTest` | ZXing (Java) decodificando imágenes que el propio ZXing genera en el test | kotlin-test |
+| **Grafo de dependencias** | `desktopTest` | Que el grafo real de Koin **resuelva**: arranca los módulos y pide cada tipo que la raíz de la app consume (`KoinGraphTest`, §10) | kotlin-test, koin-core |
+| Contraste de la paleta | `commonTest` | 56 pares de color contra su umbral WCAG, sobre los dos esquemas (§12.1) | kotlin-test |
 
 Objetivo de cobertura: **≥ 80 % en `:core:domain` y `:core:data`**; la UI no se persigue por
 cobertura sino por casos de estado representativos.
@@ -866,16 +1032,30 @@ sin dispositivo.
 
 **Lo que esa decisión no debía dejar fuera, y dejó: que el grafo de dependencias resuelva.** El
 primer arranque en un dispositivo real murió por un `Executor` declarado como `ExecutorService`
-(§10), y ninguna de las cinco filas de arriba lo habría visto: los tests de dominio inyectan sus
-dobles a mano y nunca montan el grafo. Es un caso distinto del de la cámara — ahí hace falta
-hardware, aquí no hace falta nada más que reflexión. `verify()` de `koin-test` recorre los
-constructores de cada definición sin instanciar ninguna, así que corre en un test JVM normal. Está
-registrado como deuda **D18** y es la única de la lista que tapa un fallo que ya llegó a producir un
-crash.
+(§10), y ninguno de los tests de dominio lo habría visto: inyectan sus dobles a mano y nunca montan
+el grafo. Es un caso distinto del de la cámara — ahí hace falta hardware, aquí no hace falta nada.
 
-La tabla de arriba deja ver el patrón: **todo lo que se comprueba son piezas, y nada comprueba el
-montaje.** El criterio de salida de la Fase 1 dice "la app arranca en Android, Desktop y Web" y hasta
-esta versión nadie lo había ejecutado nunca.
+**Eso ya no está pendiente**: `KoinGraphTest` es la fila nueva de la tabla, y en su primera ejecución
+destapó un segundo defecto que llevaba meses ahí, el driver de la base de datos que nunca se aplicaba
+(§11). Queda abierta la mitad de Android, que necesita `androidUnitTest` en `:composeApp`.
+
+La tabla de arriba dejaba ver un patrón que conviene no perder de vista aunque haya mejorado: **casi
+todo lo que se comprueba son piezas, y muy poco comprueba el montaje.** El criterio de salida de la
+Fase 1 dice "la app arranca en Android, Desktop y Web"; hoy hay un test que comprueba que el grafo se
+monta, pero **sigue sin haber nada que ejecute la app**. Lo que cambió es dónde está exactamente la
+frontera, no que haya desaparecido.
+
+#### Un test que falla tiene que decir por qué
+
+Encontrar el defecto del driver fue imposible hasta arreglar algo previo: con la salida por defecto
+de Gradle, un fallo en CI aparecía como `java.lang.IllegalArgumentException at KoinGraphTest.kt:189`
+— tipo de excepción y línea, **sin mensaje y sin causa**. Sobre un fallo de cableado, donde el
+mensaje *es* toda la información, eso obliga a descargar el informe HTML del artefacto o a adivinar y
+relanzar el build.
+
+El `build.gradle.kts` raíz configura ahora `testLogging` con `exceptionFormat = FULL` y las causas,
+para todos los proyectos y solo en el evento `failed`. Vale para todo el repositorio y no solo para
+aquel fallo: hasta esta versión, **ningún test roto había dicho nunca por qué se rompía**.
 
 ### 13.2 Suite de contrato de motores
 
@@ -1145,7 +1325,17 @@ arranca, sin esperar la promesa. Esperarla exigiría puentear promesas de JS a c
 ### 9.6 Textos de la interfaz
 
 Los textos viven en `composeResources` **por módulo**: cada feature tiene su `strings.xml` y no hay
-un fichero global que crezca sin dueño.
+un fichero global que crezca sin dueño. Son cuatro catálogos —`composeApp`, `scanner`, `history` y
+`settings`— y cada uno existe **dos veces**: `values/` en inglés y `values-es/` en español.
+
+Cuál va sin calificador no es indiferente. `values/` es el respaldo de **todo** idioma que no tenga
+catálogo propio, así que con los textos originales en castellano un teléfono en alemán veía español.
+El motivo completo, y el mecanismo del selector de idioma, están en
+[ADR-0011](adr/ADR-0011-idioma-de-la-app-por-encima-del-sistema.md) y en §9.9.
+
+Hay además un catálogo que **no** es de Compose: `androidApp/src/main/res/values*/strings.xml`. No es
+duplicación — lo lee el **sistema** para la etiqueta del lanzador y la pantalla de información de la
+app, antes de que exista un solo composable, y las otras tres plataformas no tienen `res/`.
 
 Lo que no es evidente es qué pasa con los textos que no nace en un `@Composable`. Un ViewModel que
 emite `"Copiado"` ata la lógica al idioma y, peor, obliga a los tests a afirmar sobre una frase: una
@@ -1231,6 +1421,131 @@ exactamente la misma: si divergieran, el botón aparecería y no encontraría de
 
 ---
 
+### 9.9 Marca, tema e idiomas
+
+Todo lo de esta sección vive en `:core:designsystem` y no en una feature, por el mismo criterio de
+siempre: son decisiones del producto entero y no de una pantalla.
+
+#### La paleta se declara entera
+
+`ScanlyTheme` fija los **~30 roles** de Material 3 y no los seis habituales. El motivo está contado
+en §12.1: `lightColorScheme()` rellena con su paleta de fábrica todo lo que no se le pase, y el mismo
+defecto apareció dos veces —primero en los `on*`, después en los `*Container`— antes de que quedara
+claro que la única postura estable es no dejar ninguno al azar. `surfaceTint` incluido: es el color
+con el que Material tiñe una superficie elevada, y dejarlo de fábrica teñía de morado cualquier
+superficie con elevación.
+
+Se mantiene la decisión de **no usar `dynamicColorScheme`** (Material You). Un tema que cambia con el
+fondo de pantalla del usuario es incompatible con una UI que se superpone a un preview de cámara,
+donde el contraste tiene que estar garantizado (RNF-05) — y ahora, además, el azul de Scanly es parte
+del producto.
+
+#### Tipografía y formas
+
+No había ninguna de las dos: `MaterialTheme` usaba las de fábrica. Dos consecuencias concretas que se
+veían en pantalla: los títulos venían en `Normal` donde esta app quiere `SemiBold`, y el `bodyMedium`
+con el que se pintaba el valor de un código leído traía `letterSpacing` positivo — lo peor posible
+para una tirada de dígitos que alguien va a cotejar a ojo con una etiqueta.
+
+La familia es la del sistema, a conciencia: Roboto en Android, San Francisco en iOS y la del
+navegador en Web ya están optimizadas para cada plataforma, pesan cero en el binario y respetan los
+ajustes de accesibilidad. Empaquetar una fuente de marca cuesta unos 300 KB por peso y es una
+decisión que conviene tomar con la ficha de Play delante.
+
+Los radios (`Radius`) están algo más redondeados que los de fábrica y se exponen **también sueltos**,
+porque el visor y el overlay no son componentes de Material y aun así tienen que usar los mismos
+valores. Antes el visor usaba `Spacing.md` como radio: un `dp` suelto con disfraz, que daba el número
+correcto por casualidad y se habría redondeado de rebote al cambiar el margen de la app.
+
+#### Tema claro/oscuro elegido por el usuario
+
+`ThemeMode` (Sistema / Claro / Oscuro) se persiste con las demás preferencias de app.
+`ScanlyTheme` recibe un **booleano ya resuelto** y no el modo: resolver "sistema" contra lo que el
+sistema dice *ahora* es cosa de quien tiene el estado delante, y así `:core:designsystem` no depende
+del dominio.
+
+En Android hay una segunda mitad que **no pinta Compose**: los iconos de las barras del sistema. Con
+`enableEdgeToEdge()` a secas siguen al modo oscuro *del sistema*, y eso solo funciona mientras los
+dos coinciden. En cuanto el usuario elige un tema distinto dejan de hacerlo: con el teléfono en claro
+y la app forzada a oscuro, los iconos de la barra de estado salían oscuros sobre fondo oscuro. `App`
+avisa del valor resuelto por un callback y `MainActivity` reajusta el estilo — la lógica de
+plataforma se queda en el shell de plataforma.
+
+Queda un caso que esto no puede cubrir: el **fondo de arranque**, que el sistema elige por su propia
+configuración antes de que nadie pueda leer las preferencias. `values-night/` cubre el caso normal
+(sistema y app coinciden); resolverlo del todo exige `androidx.core:core-splashscreen`, que es una
+dependencia nueva y una decisión aparte.
+
+#### Idiomas
+
+Inglés y español, con inglés como catálogo sin calificador y por tanto respaldo universal. El
+selector propio se aplica cambiando el locale de la plataforma y descartando los `remember` del
+subárbol con `key(tag)`; en Web no se ofrece porque `navigator.language` no se puede escribir desde
+la página. El razonamiento completo, el callejón sin salida de `LocalComposeEnvironment` y la
+incógnita pendiente en iOS están en
+[ADR-0011](adr/ADR-0011-idioma-de-la-app-por-encima-del-sistema.md).
+
+#### La marca
+
+`ScanlyMark` es un `ImageVector` dibujado en código —cuatro esquinas de encuadre y la línea de
+lectura— y no una imagen empaquetada, por dos motivos: se tiñe con el color del tema, así que
+funciona en claro y en oscuro sin dos archivos; y es **la misma forma** que el icono de lanzador de
+Android, con lo que la app y su icono no se pueden separar por descuido.
+
+El icono adaptativo lleva capa `monochrome`, que es lo que da soporte a los iconos temáticos de
+Android 13+, y hay PNG de respaldo para API 24 y 25, que no entienden iconos adaptativos. El
+contenido ocupa 48 dp centrados en el lienzo de 108: sus esquinas quedan a 33,9 dp del centro, por
+debajo de los 36 del radio seguro, así que no se recorta ni con máscara redonda.
+
+**Antes de esto no había icono en absoluto** — el manifiesto no declaraba `android:icon` y Android
+ponía su robot por defecto. Es un bloqueo duro de Play, y de los que ningún CI detecta.
+
+### 9.10 Ciclo de vida de la sesión de escaneo
+
+La disposición de la pantalla está en
+[ADR-0010](adr/ADR-0010-dos-disposiciones-de-la-pantalla-de-escaneo.md). Lo que sí es de este
+documento es **cuándo se enciende y se apaga la cámara**, porque toca al ViewModel y no a la
+presentación.
+
+La pantalla emite dos acciones que antes no existían:
+
+```kotlin
+DisposableEffect(viewModel) {
+    viewModel.onAction(ScannerAction.ScreenShown)
+    onDispose { viewModel.onAction(ScannerAction.ScreenHidden) }
+}
+```
+
+**Al aparecer, la sesión arranca sola.** Que un escáner exija pulsar "Escanear" para escanear es
+fricción que no gana nada: quien abre la app ya dijo lo que quiere abriéndola. Con dos condiciones,
+las dos con motivo:
+
+- **Si falta el permiso de cámara, no arranca.** La pantalla enseña la explicación y el botón.
+  Pedir el permiso sin que el usuario haya tocado nada es la forma más rápida de que lo deniegue para
+  siempre, y en Android una denegación permanente no se puede volver a pedir desde la app.
+- **Si no hay ningún motor de cámara en vivo, tampoco.** Es el estado permanente del escritorio: hay
+  decodificador de archivos y entrada manual, pero ninguna captura de webcam. Antes eso era un visor
+  negro esperando algo que no podía pasar; ahora se dice y se ofrece la salida que sí existe.
+
+**El arranque automático se resuelve en el observador del catálogo, no en la acción.** No es un
+detalle de implementación: `refresh()` publica en un `Flow` que se colecta en otra corrutina, así que
+cuando `refresh()` devuelve, el estado todavía puede tener la disponibilidad vieja. Decidir ahí era
+una carrera — en un arranque en frío el catálogo aún está vacío, `hasLiveCameraEngine` da `false` y
+la cámara no se abre nunca. Se intenta en los dos sitios: al recibir la acción, por si el catálogo ya
+estaba cargado —volver a la pantalla no produce ninguna emisión nueva, porque el `StateFlow` no
+reemite un valor igual—, y en cada emisión posterior, por si llega después.
+
+**Al desaparecer, se apaga.** El ViewModel sobrevive a la navegación, así que sin esto la cámara
+seguía capturando mientras el usuario miraba el historial o los ajustes. En una app de escaneo eso no
+es solo batería. Parar es además renunciar a un arranque pendiente: si no, volver de los ajustes
+reabriría la cámara que el usuario acaba de cerrar a mano con el botón de pausa.
+
+**Los resultados en pantalla tienen tope** (cien). Una sesión continua larga los acumulaba sin
+límite. Lo que se recorta no se pierde —el historial guarda todo, y ese es su trabajo— y deja de
+ocupar memoria en una pantalla donde nadie se desplaza cien lecturas hacia abajo.
+
+---
+
 ## 16. Anexo — Decisiones registradas
 
 | ADR | Decisión |
@@ -1244,3 +1559,5 @@ exactamente la misma: si divergieran, el botón aparecería y no encontraría de
 | [ADR-0007](adr/ADR-0007-preview-como-capacidad-del-motor.md) | El preview de cámara es una capacidad del motor, no de la feature |
 | [ADR-0008](adr/ADR-0008-baseline-zxing-cpp.md) | El baseline de comparación es zxing-cpp desde artefactos publicados, en Android e iOS |
 | [ADR-0009](adr/ADR-0009-play-feature-delivery-aplazado.md) | Play Feature Delivery se aplaza: incompatible con KMP, exige Play Store y no hay medición |
+| [ADR-0010](adr/ADR-0010-dos-disposiciones-de-la-pantalla-de-escaneo.md) | La pantalla de escaneo tiene dos disposiciones —producto y banco de pruebas— y no una con condicionales |
+| [ADR-0011](adr/ADR-0011-idioma-de-la-app-por-encima-del-sistema.md) | El idioma de la app se fija cambiando el locale de la plataforma: `LocalComposeEnvironment` es `internal` |
