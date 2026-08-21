@@ -7,9 +7,6 @@
   own. That is why it is English: a phone set to German gets English here, not Spanish.
 -->
 <resources>
-    <!-- The brand name is deliberately not translated: it is the same word in every store listing. -->
-    <string name="app_name">Scanly</string>
-    <string name="app_tagline">Scan anything. Nothing leaves your phone.</string>
 
     <string name="destination_scanner">Scan</string>
     <string name="destination_comparison">Compare</string>

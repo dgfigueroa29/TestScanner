@@ -4,6 +4,7 @@ import com.testscanner.core.domain.FakeScannerEngine
 import com.testscanner.core.model.ScanRequest
 import com.testscanner.core.model.ScannerEngineId
 import com.testscanner.core.scanner.BarcodeScannerEngine
+import com.testscanner.core.scanner.FakeTimeProvider
 import com.testscanner.core.scanner.ScanEvent
 import com.testscanner.core.scanner.testing.BarcodeScannerEngineContractTest
 
@@ -48,6 +49,17 @@ class DeadlineWithTimeoutContractTest : BarcodeScannerEngineContractTest() {
     override val producesDetection: Boolean = true
 }
 
+/**
+ * Cada `scan()` arranca con la memoria de repeticiones vacía, así que la primera lectura siempre
+ * pasa: el reloj puede quedarse parado en cero sin que el contrato deje de cumplirse.
+ */
+class DistinctDetectionsContractTest : BarcodeScannerEngineContractTest() {
+    override fun createEngine(): BarcodeScannerEngine =
+        triggeringEngine().suppressingRepeats(FakeTimeProvider())
+
+    override val producesDetection: Boolean = true
+}
+
 class FallbackContractTest : BarcodeScannerEngineContractTest() {
     override fun createEngine(): BarcodeScannerEngine =
         FallbackScannerEngine(listOf(triggeringEngine()))
@@ -64,7 +76,7 @@ class FallbackContractTest : BarcodeScannerEngineContractTest() {
 class FullChainContractTest : BarcodeScannerEngineContractTest() {
     override fun createEngine(): BarcodeScannerEngine = FallbackScannerEngine(
         listOf(triggeringEngine().filteringFormats().enforcingRequestLimits().interpretingValues()),
-    ).withDeadline()
+    ).withDeadline().suppressingRepeats(FakeTimeProvider())
 
     override val producesDetection: Boolean = true
 }

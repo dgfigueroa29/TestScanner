@@ -62,6 +62,11 @@ class ScannerViewModel(
 
     private var sessionJob: Job? = null
 
+    /**
+     * Hay un arranque automático esperando a que el catálogo diga si se puede. Ver [startIfPending].
+     */
+    private var autoStartPending: Boolean = false
+
     init {
         observeCatalogChanges()
         observePreferenceChanges()
@@ -80,6 +85,9 @@ class ScannerViewModel(
     fun onAction(action: ScannerAction) {
         when (action) {
             ScannerAction.Refresh -> refresh()
+            ScannerAction.ScreenShown -> screenShown()
+            ScannerAction.ScreenHidden -> stopSession()
+            ScannerAction.ClearDetections -> _state.update { it.copy(detections = emptyList()) }
             ScannerAction.StartSession -> startSession()
             ScannerAction.StopSession -> stopSession()
             is ScannerAction.SelectEngine -> selectEngine(action.id)
@@ -100,8 +108,46 @@ class ScannerViewModel(
         viewModelScope.launch {
             engineRepository.observeCatalog().collect { catalog ->
                 _state.update { it.copy(catalog = catalog, isLoading = false) }
+                startIfPending()
             }
         }
+    }
+
+    /**
+     * El arranque automático se resuelve **aquí** y no dentro de [screenShown], y no es un detalle.
+     *
+     * `refresh()` actualiza el catálogo publicando en un `Flow` que se colecta en otra corrutina, así
+     * que cuando `refresh()` devuelve el estado todavía puede tener la disponibilidad vieja. Decidir
+     * ahí si arrancar era una carrera: en un arranque en frío el catálogo aún estaba vacío, el
+     * `hasLiveCameraEngine` daba `false` y la cámara no se abría nunca. Aquí llega ya resuelto.
+     */
+    private fun startIfPending() {
+        if (!autoStartPending) return
+
+        val state = _state.value
+        // Sin permiso no se arranca: la pantalla enseña la explicación y el botón. Pedirlo sin que
+        // el usuario haya tocado nada es la forma más rápida de que lo deniegue para siempre.
+        if (state.needsCameraPermission || !state.hasLiveCameraEngine) return
+        if (state.sessionStatus == SessionStatus.Scanning || state.sessionStatus == SessionStatus.Starting) {
+            return
+        }
+
+        autoStartPending = false
+        startSession()
+    }
+
+    private fun screenShown() {
+        autoStartPending = true
+
+        // Se intenta **ya** y además se refresca, y hacen falta las dos cosas:
+        //
+        //  - Volver a la pantalla con el catálogo ya cargado no produce ninguna emisión nueva —el
+        //    `StateFlow` no reemite un valor igual—, así que esperar a `observeCatalogChanges` para
+        //    arrancar dejaba la cámara apagada para siempre a partir de la segunda visita.
+        //  - En un arranque en frío el catálogo todavía está vacío y aquí no se puede decidir nada;
+        //    lo resuelve la emisión que llega después.
+        startIfPending()
+        refresh()
     }
 
     private fun observePreferenceChanges() {
@@ -160,6 +206,9 @@ class ScannerViewModel(
     }
 
     private fun stopSession() {
+        // Parar es también renunciar a un arranque pendiente: si no, volver de los ajustes
+        // reabriría la cámara que el usuario acaba de cerrar.
+        autoStartPending = false
         sessionJob?.cancel()
         sessionJob = null
         _state.update {
@@ -180,7 +229,13 @@ class ScannerViewModel(
 
             is ScanEvent.Detected -> {
                 sessions.save(event.detections)
-                _state.update { it.copy(detections = event.detections + it.detections) }
+                // Con tope: una sesión continua larga acumulaba resultados sin límite y la lista
+                // crecía hasta donde aguantara la memoria. Lo que se recorta aquí no se pierde —el
+                // historial lo guarda todo—, solo deja de ocupar RAM en una pantalla donde nadie va
+                // a desplazarse cien lecturas hacia abajo.
+                _state.update {
+                    it.copy(detections = (event.detections + it.detections).take(MAX_VISIBLE_DETECTIONS))
+                }
             }
 
             is ScanEvent.EngineSwitched -> {
@@ -330,5 +385,13 @@ class ScannerViewModel(
     override fun onCleared() {
         sessionJob?.cancel()
         super.onCleared()
+    }
+
+    private companion object {
+        /**
+         * Cuántas lecturas se conservan en pantalla. El historial no tiene este tope: ahí sí se
+         * guarda todo, porque su razón de ser es justamente conservarlo.
+         */
+        const val MAX_VISIBLE_DETECTIONS = 100
     }
 }

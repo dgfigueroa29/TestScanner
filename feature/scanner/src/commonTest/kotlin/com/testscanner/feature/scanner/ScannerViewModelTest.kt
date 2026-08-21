@@ -7,6 +7,7 @@ import com.testscanner.core.domain.usecase.ScanSettings
 import com.testscanner.core.domain.usecase.SelectScannerEngineUseCase
 import com.testscanner.core.domain.usecase.StartScanSessionUseCase
 import com.testscanner.core.model.BarcodeFormat
+import com.testscanner.core.model.Permission
 import com.testscanner.core.model.ScanError
 import com.testscanner.core.model.ScannerEngineId
 import com.testscanner.core.platform.NoOpPlatformActions
@@ -62,6 +63,109 @@ class ScannerViewModelTest {
             imagePicker = FakeImagePicker(),
             resultActions = ResultActionRunner(NoOpPlatformActions()),
         )
+    }
+
+    @Test
+    fun `al aparecer la pantalla la sesion arranca sola`() = runTest {
+        // Que un escáner exija pulsar "Escanear" para escanear es fricción que no gana nada: quien
+        // abre la app ya dijo lo que quiere abriéndola. Se afirma sobre el resultado observable
+        // —llegó una lectura— y no sobre el estado interno de la sesión.
+        val detection = detectionOf(ScannerEngineId.MlKitCameraX)
+        val viewModel = viewModel(
+            FakeEngine(
+                id = ScannerEngineId.MlKitCameraX,
+                events = listOf(ScanEvent.Detected(listOf(detection))),
+            ),
+        )
+
+        viewModel.onAction(ScannerAction.ScreenShown)
+
+        assertEquals(listOf(detection), viewModel.state.value.detections)
+    }
+
+    @Test
+    fun `sin permiso de camara la sesion no arranca sola`() = runTest {
+        // Pedir la cámara sin que el usuario haya tocado nada es la forma más rápida de que la
+        // deniegue para siempre. La pantalla enseña la explicación y espera a que él decida.
+        val viewModel = viewModel(
+            FakeEngine(
+                id = ScannerEngineId.MlKitCameraX,
+                availability = EngineAvailability.RequiresPermission(Permission.Camera),
+                events = listOf(ScanEvent.Detected(listOf(detectionOf(ScannerEngineId.MlKitCameraX)))),
+            ),
+        )
+
+        viewModel.onAction(ScannerAction.ScreenShown)
+
+        assertTrue(viewModel.state.value.needsCameraPermission)
+        assertTrue(viewModel.state.value.detections.isEmpty())
+    }
+
+    @Test
+    fun `sin motor de camara no se arranca nada y se sabe por que`() = runTest {
+        // Es el escritorio: hay entrada manual y decodificador de archivos, pero ninguna captura de
+        // webcam. Sin esta distinción la pantalla mostraría un visor negro esperando algo que no
+        // puede pasar; con ella enseña la salida que sí existe.
+        val viewModel = viewModel(FakeEngine(ScannerEngineId.ManualInput))
+
+        viewModel.onAction(ScannerAction.ScreenShown)
+
+        assertTrue(!viewModel.state.value.hasLiveCameraEngine)
+        assertTrue(viewModel.state.value.detections.isEmpty())
+    }
+
+    @Test
+    fun `al dejar de verse la pantalla la sesion queda detenida`() = runTest {
+        // El ViewModel sobrevive a la navegación: sin esto la cámara seguía capturando mientras el
+        // usuario mira el historial o los ajustes.
+        val viewModel = viewModel(FakeEngine(ScannerEngineId.MlKitCameraX))
+        viewModel.onAction(ScannerAction.ScreenShown)
+
+        viewModel.onAction(ScannerAction.ScreenHidden)
+
+        assertEquals(SessionStatus.Idle, viewModel.state.value.sessionStatus)
+        assertNull(viewModel.state.value.activeEngineId)
+    }
+
+    @Test
+    fun `limpiar vacia los resultados en pantalla y no el historial`() = runTest {
+        val detection = detectionOf(ScannerEngineId.ManualInput)
+        val viewModel = viewModel(
+            FakeEngine(
+                id = ScannerEngineId.ManualInput,
+                events = listOf(ScanEvent.Detected(listOf(detection))),
+            ),
+        )
+        viewModel.onAction(ScannerAction.SelectEngine(ScannerEngineId.ManualInput))
+        viewModel.onAction(ScannerAction.StartSession)
+
+        viewModel.onAction(ScannerAction.ClearDetections)
+
+        assertTrue(viewModel.state.value.detections.isEmpty())
+        // Borrar el historial es otra acción, en otra pantalla y con otras consecuencias.
+        assertEquals(listOf(detection), history.saved)
+    }
+
+    @Test
+    fun `la lectura mas reciente encabeza la lista`() = runTest {
+        // La hoja de resultados destaca `latestDetection`. Si el orden se invirtiera, destacaría la
+        // primera lectura de la sesión en lugar de la que el usuario acaba de hacer.
+        val primera = detectionOf(ScannerEngineId.ManualInput, value = "primera")
+        val segunda = detectionOf(ScannerEngineId.ManualInput, value = "segunda")
+        val viewModel = viewModel(
+            FakeEngine(
+                id = ScannerEngineId.ManualInput,
+                events = listOf(
+                    ScanEvent.Detected(listOf(primera)),
+                    ScanEvent.Detected(listOf(segunda)),
+                ),
+            ),
+        )
+
+        viewModel.onAction(ScannerAction.SelectEngine(ScannerEngineId.ManualInput))
+        viewModel.onAction(ScannerAction.StartSession)
+
+        assertEquals(segunda, viewModel.state.value.latestDetection)
     }
 
     @Test

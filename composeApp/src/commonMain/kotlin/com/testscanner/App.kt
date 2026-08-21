@@ -104,15 +104,24 @@ private fun AppScaffold(navigator: Navigator, advancedMode: Boolean) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(current.title()) },
-                // El contenedor de la barra iguala al del `NavigationBar` de abajo: con el color
-                // por defecto, la superior salía del tono de `surface` y la inferior de
-                // `surfaceContainer`, y la pantalla quedaba enmarcada por dos grises distintos.
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                ),
-            )
+            // El escáner no lleva barra de título, y no es por ahorrar píxeles: una barra que dice
+            // "Escanear" encima de un visor de cámara no añade ninguna información que el visor no
+            // esté dando ya, y se come la altura que necesita lo único que importa en esa pantalla.
+            // El ítem activo de la barra inferior dice dónde está el usuario.
+            //
+            // El `Scaffold` sigue aportando los insets de la barra de estado en su `padding`, así
+            // que quitarla no mete la cámara debajo del reloj.
+            if (current != Destination.Scanner) {
+                TopAppBar(
+                    title = { Text(current.title()) },
+                    // El contenedor de la barra iguala al del `NavigationBar` de abajo: con el color
+                    // por defecto, la superior salía del tono de `surface` y la inferior de
+                    // `surfaceContainer`, y la pantalla quedaba enmarcada por dos grises distintos.
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    ),
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {

@@ -7,9 +7,6 @@
   `values/` no lleva ninguno y por eso es el respaldo de todos los demás idiomas: está en inglés.
 -->
 <resources>
-    <!-- El nombre de marca no se traduce a propósito: es la misma palabra en cualquier ficha. -->
-    <string name="app_name">Scanly</string>
-    <string name="app_tagline">Escaneá lo que sea. Nada sale de tu teléfono.</string>
 
     <string name="destination_scanner">Escanear</string>
     <string name="destination_comparison">Comparar</string>

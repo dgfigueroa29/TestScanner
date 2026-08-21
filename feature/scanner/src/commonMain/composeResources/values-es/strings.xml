@@ -8,17 +8,14 @@
 -->
 <resources>
     <!-- Estado de la sesión -->
-    <string name="session_idle">Listo para escanear</string>
     <string name="session_starting">Arrancando…</string>
     <string name="session_scanning">Escaneando con %1$s</string>
     <!-- Modo básico: qué motor lee es dato de banco de pruebas, y el id es interno. -->
     <string name="session_scanning_simple">Escaneando…</string>
-    <string name="session_finished">Sesión terminada</string>
     <string name="session_switched_from">Se degradó desde %1$s: el motor anterior no pudo continuar.</string>
     <string name="session_error">Error: %1$s</string>
 
     <!-- Controles -->
-    <string name="action_scan">Escanear</string>
     <string name="action_stop">Detener</string>
     <string name="action_auto">Auto</string>
     <string name="action_dismiss">Descartar</string>
@@ -103,4 +100,21 @@
     <string name="a11y_share_value">Compartir %1$s</string>
     <string name="a11y_open_value">Abrir %1$s</string>
     <string name="a11y_zoom">Zoom de la cámara</string>
+
+    <!-- Disposición con la cámara primero: los estados que ocupan el visor -->
+    <string name="permission_title">Acceso a la cámara</string>
+    <string name="permission_body">Scanly necesita la cámara para leer códigos. Los frames se procesan en el dispositivo y no salen de él: la app no pide permiso de internet.</string>
+    <string name="no_camera_title">Sin cámara en vivo</string>
+    <string name="no_camera_body">Este dispositivo no tiene captura que Scanly pueda manejar. Igual podés escanear una imagen o escribir un código a mano.</string>
+    <string name="session_paused">En pausa</string>
+    <string name="action_resume">Reanudar</string>
+
+    <!-- Hoja de resultados -->
+    <string name="results_hint_title">Apuntá a un código</string>
+    <string name="results_hint_body">QR, EAN, Code 128 y 14 formatos más. Lee solo: no hay nada que apretar.</string>
+    <string name="results_more">%1$d más</string>
+    <string name="results_show_less">Ver menos</string>
+    <string name="results_clear">Limpiar</string>
+    <string name="a11y_results_expand">Ver todos los resultados</string>
+    <string name="a11y_results_collapse">Ver solo el último resultado</string>
 </resources>

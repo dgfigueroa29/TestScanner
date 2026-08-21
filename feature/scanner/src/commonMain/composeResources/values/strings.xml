@@ -13,17 +13,14 @@
 -->
 <resources>
     <!-- Session state -->
-    <string name="session_idle">Ready to scan</string>
     <string name="session_starting">Starting…</string>
     <string name="session_scanning">Scanning with %1$s</string>
     <!-- Basic mode: which engine is reading is workbench information, and the id is internal. -->
     <string name="session_scanning_simple">Scanning…</string>
-    <string name="session_finished">Session finished</string>
     <string name="session_switched_from">Fell back from %1$s: the previous engine could not continue.</string>
     <string name="session_error">Error: %1$s</string>
 
     <!-- Controls -->
-    <string name="action_scan">Scan</string>
     <string name="action_stop">Stop</string>
     <string name="action_auto">Auto</string>
     <string name="action_dismiss">Dismiss</string>
@@ -109,4 +106,21 @@
     <string name="a11y_share_value">Share %1$s</string>
     <string name="a11y_open_value">Open %1$s</string>
     <string name="a11y_zoom">Camera zoom</string>
+
+    <!-- Camera-first layout: the states that take over the viewfinder -->
+    <string name="permission_title">Camera access</string>
+    <string name="permission_body">Scanly needs the camera to read codes. Frames are processed on the device and never leave it — the app has no internet permission at all.</string>
+    <string name="no_camera_title">No live camera here</string>
+    <string name="no_camera_body">This device has no capture Scanly can drive. You can still scan a picture or type a code by hand.</string>
+    <string name="session_paused">Paused</string>
+    <string name="action_resume">Resume</string>
+
+    <!-- Results sheet -->
+    <string name="results_hint_title">Point at a code</string>
+    <string name="results_hint_body">QR, EAN, Code 128 and 14 more formats. It reads on its own — there is nothing to press.</string>
+    <string name="results_more">%1$d more</string>
+    <string name="results_show_less">Show less</string>
+    <string name="results_clear">Clear</string>
+    <string name="a11y_results_expand">Show every result</string>
+    <string name="a11y_results_collapse">Show only the latest result</string>
 </resources>
