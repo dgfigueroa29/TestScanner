@@ -32,12 +32,20 @@ completa, aunque todavía sin motores de cámara reales.
 **Criterio de salida:** la app arranca en Android, Desktop y Web; el catálogo lista los 8 motores
 con su estado real; los tests de `:core:domain` y `:core:data` pasan en CI.
 
-> **Este criterio nunca se comprobó, y conviene decirlo.** Lo que hay en verde es *compilación*
-> —`assembleDebug`, `lintDebug`, `assembleRelease` con R8, `desktopJar`, `wasmJsBrowserDistribution`—
-> más los tests de dominio. Que la app **arranque** no lo verifica nada: no hay tests instrumentados
-> por decisión explícita (D6, sin emulador en CI) y por tanto nadie ejecuta la `MainActivity`. Un
-> fallo de arranque es justo la clase de defecto que este proyecto no puede detectar, así que el
-> criterio se da por cumplido *en su parte compilable* y queda pendiente en su parte ejecutable.
+> **Este criterio se dio por cumplido sin comprobarlo, y salió caro.** Lo que había en verde era
+> *compilación* —`assembleDebug`, `lintDebug`, `assembleRelease` con R8, `desktopJar`,
+> `wasmJsBrowserDistribution`— más los tests de dominio. Que la app **arrancase** no lo verificaba
+> nada: sin tests instrumentados (D6, sin emulador en CI) nadie ejecuta la `MainActivity`.
+>
+> **El primer arranque real en un dispositivo fue en agosto de 2026, y la app moría.** Un `Executor`
+> registrado en Koin como `ExecutorService` tumbaba el grafo entero al componer la primera pantalla
+> — ver D18. El defecto llevaba ahí desde que existen los motores de cámara, con el CI en verde todo
+> ese tiempo: compilaba, pasaba lint, pasaba R8 y publicaba un APK que reventaba al abrirse.
+>
+> Vale la pena quedarse con la forma del fallo y no solo con el fallo: **todo lo que este proyecto
+> comprueba son piezas, y nada comprueba el montaje.** Arreglado el defecto, el criterio sigue sin
+> tener quien lo verifique de forma automática; lo que cambió es que ahora se sabe, y que D18
+> propone la comprobación que sí cabe sin emulador.
 
 ---
 
@@ -71,17 +79,29 @@ verificable desactivando Play Services.
 ## Fase 3 — iOS ⏸️ despriorizada
 
 > **Sin dispositivos Apple no se puede *probar* nada de esto**, y por eso deja de marcar el ritmo.
-> Lo que sí cambió al activar Actions es que **compilarlo ya no exige una Mac propia**: el job `ios`
-> corre en un runner macOS y enlaza el framework al llegar a `main`. Eso cubre los errores de
-> compilación de Kotlin/Native —que es donde estaba el riesgo grueso, porque ese código no se había
-> compilado jamás— pero no que la cámara funcione, que sigue necesitando un iPhone.
+> Lo que sí cambió al activar Actions es que **compilarlo ya no exige una Mac propia**: un runner
+> macOS enlaza el framework. Eso cubre los errores de compilación de Kotlin/Native —que es donde
+> estaba el riesgo grueso, porque ese código no se había compilado jamás— pero no que la cámara
+> funcione, que sigue necesitando un iPhone.
+>
+> **Desde esta revisión, iOS está fuera de la verificación obligatoria.** Vive en su propio
+> workflow, `ios.yml`, y **solo se lanza a mano** (Actions → "iOS (manual)" → Run workflow). El
+> motivo es que compilar no es probar: mientras el job vivía dentro de `Verify`, una plataforma que
+> nadie puede ejecutar dejaba `main` en rojo de forma permanente, y un rojo permanente le quita el
+> significado a los checks que sí hablan de algo verificable. `Verify` cubre ahora las tres
+> plataformas que este proyecto puede ejecutar; iOS se lanza cuando se vaya a tocar, y de forma
+> obligada antes de retomar esta fase.
+>
+> El coste es real y queda dicho: el Kotlin/Native vuelve a no tener red automática, que es
+> exactamente lo que dejó pasar el `Cannot access 'val IO': it is internal` durante una tanda
+> entera. Se acepta a cambio de que el verde de `Verify` signifique algo.
 
 - [x] `:engines:vision-ios` — `AVCaptureSession` + `AVCaptureMetadataOutput`, con linterna y zoom
 - [x] Preview de iOS (`UIKitView` con `AVCaptureVideoPreviewLayer`) vía `CameraPreviewEngine`
 - [x] `IosPermissionController` sobre `AVCaptureDevice`
 - [x] `iosApp/` — fuentes Swift e `Info.plist` con `NSCameraUsageDescription`
 - [ ] `iosApp.xcodeproj` — se crea en Xcode siguiendo `iosApp/README.md` (requiere macOS)
-- [ ] Primera compilación de todo el código iOS — **en curso, y ya dio su primera tanda**. El stack
+- [x] Primera compilación de todo el código iOS — **cerrada: enlaza entero**. El stack
       compartido (modelo, dominio, `scanner-api`, `designsystem`, `platform`, `permissions` y el
       motor manual) compiló a la primera; los diez errores estaban todos en los dos motores de
       AVFoundation, y ocho eran la misma confusión repetida: importar como extensión lo que cinterop
@@ -91,7 +111,11 @@ verificable desactivando Play Services.
       declararlo por plataforma era necesario pero no suficiente — en Kotlin/Native `IO` es una
       *extensión* de `concurrentMain` y el miembro homónimo es `internal`, así que hace falta además
       `import kotlinx.coroutines.IO`. Sin ese import el job de iOS seguía cayendo con
-      `Cannot access 'val IO': it is internal`, que es donde estaba `main` hasta esta revisión
+      `Cannot access 'val IO': it is internal`, que es donde estaba `main` hasta esta revisión.
+      Con él, el job pasó de morir al minuto y medio a **enlazar el framework completo en 12 min
+      48 s**, y no hubo cuarta tanda: `:composeApp` y todas sus dependencias de iOS —que nunca
+      habían llegado a compilarse— compilaron sin un solo error. **Todo el código Kotlin de iOS
+      compila.** Lo que falta para la fase no es compilar, es un iPhone
 - [x] **Motor baseline decidido** (cerraba R9): se consumen los artefactos publicados de zxing-cpp,
       sin cinterop propio — ver [ADR-0008](adr/ADR-0008-baseline-zxing-cpp.md)
 - [x] **Kotlin 2.3.20** (cerraba R10): los klibs de zxing-cpp están compilados con 2.2.0 y el
@@ -111,8 +135,9 @@ verificable desactivando Play Services.
       el sistema mate el proceso, o a un cambio de tamaño de letra o de idioma. Ahora se guarda por
       ids estables, escritos a mano porque R8 ofusca los nombres de clase
 
-- [x] CI: `linkDebugFrameworkIosSimulatorArm64` en runner macOS — **corriendo**. Ya no está a la
-      espera de nada: cada `main` da su veredicto sobre el código Kotlin/Native
+- [x] CI: `linkDebugFrameworkIosSimulatorArm64` en runner macOS — **disponible a demanda**, en el
+      workflow `ios.yml`. Dejó de correr en cada `main`: da su veredicto cuando se le pide, no como
+      condición para integrar cambios de las otras tres plataformas
 
 **Criterio de salida:** escaneo real en iOS; ZXing-cpp produce resultados comparables entre
 Android e iOS sobre el mismo set de imágenes de referencia.
@@ -235,3 +260,4 @@ Registrada de forma explícita para que no se olvide:
 | ~~D13~~ | ~~Desktop y Web se quedan sin decodificador: zxing-cpp no publica artefacto JVM ni wasmJs~~ | **Saldada en Desktop**: `:engines:zxing-java` sobre `com.google.zxing:core`, en el catálogo **como motor propio** y no con el nombre de zxing-cpp — son proyectos distintos y confundirlos falsearía la comparación. Solo imagen estática: el decodificador está, la captura de webcam no. **Web se queda como está**: no hay artefacto wasmJs y su respaldo sigue siendo la entrada manual |
 | ~~D16~~ | ~~`ScannerViewModel` tiene doce colaboradores y veinte funciones~~ | **Saldada**: seis dependencias. Los ajustes en `ScanSettings`, la sesión y el guardado en `ScanSessions`, las acciones sobre el resultado en `ResultActionRunner`. Los tres casos de uso de preferencias y el del catálogo se **borraron** en vez de envolverse —delegaban al repositorio sin añadir nada—, y la única regla que había se conservó donde se puede probar. Quince tests nuevos que antes exigían levantar el ViewModel entero. Quedan dos supresiones, ninguna global: `TooManyFunctions` en la clase (catorce acciones de usuario, catorce funciones) y `CyclomaticComplexMethod` en `onAction`, que es una tabla de despacho sobre un `sealed interface` |
 | D17 | `IosPlatformActions.openUrl` usa `UIApplication.openURL:`, que Apple depreció en iOS 10 a favor de `openURL:options:completionHandler:`. Compila —solo es un aviso— pero es API vieja en código nuevo. Salió de auditar el header real al preparar la compilación de iOS, no de un fallo | Cuando iOS enlace en verde y se pueda comprobar el cambio en el runner |
+| D18 | **Nada comprueba que el grafo de Koin resuelva.** Lo demostró el primer arranque real en un dispositivo: `platformModule` registraba el executor de análisis como `ExecutorService` mientras los tres motores de cámara lo piden como `Executor`, y Koin resuelve por igualdad exacta de tipo. La app moría al componer la primera pantalla con `NoDefinitionFoundException`. **El compilador no puede verlo** —los `get()` son genéricos que se resuelven en ejecución— y el CI tampoco: compila, pasa lint, pasa R8 y publica un APK que revienta al abrirse. Es el mismo agujero que el criterio de salida de la Fase 1, visto desde el otro lado | Con un test JVM que llame a `verify()` de `koin-test` sobre cada `platformModule` más los módulos comunes. Para Android hay que montar `androidUnitTest` en `:composeApp` y añadir esa tarea al job de CI: `verify()` reflexiona sobre los constructores sin instanciar nada, así que no hace falta emulador — justo la clase de comprobación que sí cabe en la decisión D6 |
