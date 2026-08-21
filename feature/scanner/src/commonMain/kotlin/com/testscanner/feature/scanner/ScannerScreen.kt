@@ -108,6 +108,7 @@ import com.testscanner.feature.scanner.resources.session_error
 import com.testscanner.feature.scanner.resources.session_finished
 import com.testscanner.feature.scanner.resources.session_idle
 import com.testscanner.feature.scanner.resources.session_scanning
+import com.testscanner.feature.scanner.resources.session_scanning_simple
 import com.testscanner.feature.scanner.resources.session_starting
 import com.testscanner.feature.scanner.resources.session_switched_from
 import com.testscanner.feature.scanner.resources.share_separator
