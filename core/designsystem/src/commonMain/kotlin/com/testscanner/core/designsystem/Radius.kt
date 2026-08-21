@@ -36,6 +36,13 @@ object Radius {
     val pill = 999.dp
 }
 
+/**
+ * El fichero se llama `Radius.kt` y no `Shapes.kt` por la regla `MatchingDeclarationName` de detekt:
+ * la única declaración de tipo aquí arriba es [Radius], y el nombre del fichero tiene que ser ese.
+ *
+ * Llamar `Shapes` al objeto para poder llamar `Shapes.kt` al fichero no era opción: chocaría con
+ * `androidx.compose.material3.Shapes`, que se usa tres líneas más abajo.
+ */
 internal val ScanlyShapes = Shapes(
     extraSmall = RoundedCornerShape(Radius.xs),
     small = RoundedCornerShape(Radius.sm),
