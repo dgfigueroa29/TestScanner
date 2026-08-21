@@ -150,6 +150,11 @@ class ScannerViewModelTest {
     fun `la lectura mas reciente encabeza la lista`() = runTest {
         // La hoja de resultados destaca `latestDetection`. Si el orden se invirtiera, destacaría la
         // primera lectura de la sesión en lugar de la que el usuario acaba de hacer.
+        //
+        // Hace falta el escaneo continuo para que lleguen dos: sin él, `RequestLimitsScannerEngine`
+        // cierra la sesión tras la primera lectura, que es exactamente lo que debe hacer. La primera
+        // versión de este test lo ignoraba y esperaba dos lecturas de una sesión puntual — el test
+        // estaba mal, no el producto.
         val primera = detectionOf(ScannerEngineId.ManualInput, value = "primera")
         val segunda = detectionOf(ScannerEngineId.ManualInput, value = "segunda")
         val viewModel = viewModel(
@@ -163,9 +168,11 @@ class ScannerViewModelTest {
         )
 
         viewModel.onAction(ScannerAction.SelectEngine(ScannerEngineId.ManualInput))
+        viewModel.onAction(ScannerAction.SetContinuous(true))
         viewModel.onAction(ScannerAction.StartSession)
 
         assertEquals(segunda, viewModel.state.value.latestDetection)
+        assertEquals(listOf(segunda, primera), viewModel.state.value.detections)
     }
 
     @Test
