@@ -40,7 +40,9 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.testscanner.core.designsystem.CodeValueStyle
 import com.testscanner.core.designsystem.LocalSnackbarHostState
+import com.testscanner.core.designsystem.Radius
 import com.testscanner.core.designsystem.Spacing
 import com.testscanner.core.domain.model.EngineStatus
 import com.testscanner.core.domain.scan.OpenKind
@@ -126,6 +128,7 @@ import org.koin.compose.viewmodel.koinViewModel
  */
 @Composable
 fun ScannerScreen(
+    advancedMode: Boolean = false,
     viewModel: ScannerViewModel = koinViewModel(),
     previewResolver: EnginePreviewResolver = koinInject(),
 ) {
@@ -151,15 +154,23 @@ fun ScannerScreen(
     ScannerContent(
         state = state,
         onAction = viewModel::onAction,
+        advancedMode = advancedMode,
         previewEngine = previewResolver.previewFor(state.activeEngineId),
     )
 }
 
+/**
+ * @param advancedMode muestra el catálogo de motores, el filtro de formatos y los datos por lectura.
+ *   Apagado, la pantalla es un lector de códigos y nada más. La diferencia no es esconder cosas por
+ *   estética: el catálogo obliga a elegir un decodificador para escanear un QR, que es una decisión
+ *   que un usuario no tiene por qué tomar ni saber que existe.
+ */
 @Composable
 fun ScannerContent(
     state: ScannerState,
     onAction: (ScannerAction) -> Unit,
     modifier: Modifier = Modifier,
+    advancedMode: Boolean = false,
     previewEngine: CameraPreviewEngine? = null,
 ) {
     if (state.isLoading) {
@@ -181,25 +192,27 @@ fun ScannerContent(
             item { CameraViewfinder(previewEngine, state) }
         }
 
-        item { SessionControls(state, onAction) }
+        item { SessionControls(state, onAction, advancedMode) }
 
-        item { FormatFilters(state, onAction) }
+        if (advancedMode) {
+            item { FormatFilters(state, onAction) }
 
-        item {
-            Text(
-                text = stringResource(Res.string.engines_title),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(top = Spacing.md),
-            )
-        }
+            item {
+                Text(
+                    text = stringResource(Res.string.engines_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(top = Spacing.md),
+                )
+            }
 
-        items(state.catalog, key = { it.id.id }) { status ->
-            EngineCard(
-                status = status,
-                selected = status.id == state.selectedEngineId,
-                active = status.id == state.activeEngineId,
-                onSelect = { onAction(ScannerAction.SelectEngine(status.id)) },
-            )
+            items(state.catalog, key = { it.id.id }) { status ->
+                EngineCard(
+                    status = status,
+                    selected = status.id == state.selectedEngineId,
+                    active = status.id == state.activeEngineId,
+                    onSelect = { onAction(ScannerAction.SelectEngine(status.id)) },
+                )
+            }
         }
 
         if (state.detections.isNotEmpty()) {
@@ -211,7 +224,12 @@ fun ScannerContent(
                 )
             }
             items(state.detections, key = { it.id }) { detection ->
-                DetectionRow(detection, canShare = state.canShare, onAction = onAction)
+                DetectionRow(
+                    detection = detection,
+                    canShare = state.canShare,
+                    advancedMode = advancedMode,
+                    onAction = onAction,
+                )
             }
         }
     }
@@ -240,7 +258,10 @@ private fun CameraViewfinder(previewEngine: CameraPreviewEngine, state: ScannerS
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(VIEWFINDER_ASPECT_RATIO)
-            .clip(RoundedCornerShape(Spacing.md))
+            // El radio sale de la escala de radios y no de la de espaciados: `Spacing.md` daba el
+            // número correcto por casualidad, y cambiar el margen de la app habría redondeado el
+            // visor de rebote.
+            .clip(RoundedCornerShape(Radius.lg))
             .background(Color.Black)
             .semantics { contentDescription = description },
     ) {
@@ -289,7 +310,11 @@ private fun FormatFilters(state: ScannerState, onAction: (ScannerAction) -> Unit
 }
 
 @Composable
-private fun SessionControls(state: ScannerState, onAction: (ScannerAction) -> Unit) {
+private fun SessionControls(
+    state: ScannerState,
+    onAction: (ScannerAction) -> Unit,
+    advancedMode: Boolean,
+) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(Spacing.md),
@@ -302,8 +327,14 @@ private fun SessionControls(state: ScannerState, onAction: (ScannerAction) -> Un
                 text = when (state.sessionStatus) {
                     SessionStatus.Idle -> stringResource(Res.string.session_idle)
                     SessionStatus.Starting -> stringResource(Res.string.session_starting)
-                    SessionStatus.Scanning ->
+                    // Qué motor está leyendo es información de banco de pruebas: "Escaneando con
+                    // mlkit-camerax" no le dice nada a quien solo quiere leer un QR, y encima expone
+                    // un identificador interno.
+                    SessionStatus.Scanning -> if (advancedMode) {
                         stringResource(Res.string.session_scanning, state.activeEngineId?.id ?: "-")
+                    } else {
+                        stringResource(Res.string.session_scanning_simple)
+                    }
 
                     SessionStatus.Finished -> stringResource(Res.string.session_finished)
                 },
@@ -311,12 +342,16 @@ private fun SessionControls(state: ScannerState, onAction: (ScannerAction) -> Un
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             )
 
-            state.switchedFrom?.let {
-                Text(
-                    text = stringResource(Res.string.session_switched_from, it.id),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.tertiary,
-                )
+            // El aviso de degradación solo tiene sentido si se sabe qué es un motor. En modo básico
+            // la caída a otro decodificador es justo lo que la app promete hacer sin molestar.
+            if (advancedMode) {
+                state.switchedFrom?.let {
+                    Text(
+                        text = stringResource(Res.string.session_switched_from, it.id),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.tertiary,
+                    )
+                }
             }
 
             state.error?.let { error ->
@@ -346,8 +381,13 @@ private fun SessionControls(state: ScannerState, onAction: (ScannerAction) -> Un
                 OutlinedButton(onClick = { onAction(ScannerAction.StopSession) }) {
                     Text(stringResource(Res.string.action_stop))
                 }
-                OutlinedButton(onClick = { onAction(ScannerAction.SelectEngine(null)) }) {
-                    Text(stringResource(Res.string.action_auto))
+                // "Auto" solo significa algo si antes se pudo elegir un motor a mano, y elegirlo a
+                // mano es exactamente lo que el modo básico no ofrece. Fuera de ese modo el botón
+                // era un control que devolvía al estado en el que ya se estaba.
+                if (advancedMode) {
+                    OutlinedButton(onClick = { onAction(ScannerAction.SelectEngine(null)) }) {
+                        Text(stringResource(Res.string.action_auto))
+                    }
                 }
             }
 
@@ -531,6 +571,7 @@ private fun EngineCard(
 private fun DetectionRow(
     detection: Detection,
     canShare: Boolean,
+    advancedMode: Boolean,
     onAction: (ScannerAction) -> Unit,
 ) {
     val actions = ResultActionsFactory.actionsFor(detection.barcode, canShare)
@@ -541,18 +582,26 @@ private fun DetectionRow(
             modifier = Modifier.padding(Spacing.md),
             verticalArrangement = Arrangement.spacedBy(Spacing.xs),
         ) {
-            Text(detection.barcode.rawValue, style = MaterialTheme.typography.bodyMedium)
+            // El valor en monoespaciada: es un dato que alguien va a cotejar carácter a carácter
+            // contra lo que tiene impreso delante, y en una proporcional `1`, `l` e `I` se parecen.
+            Text(detection.barcode.rawValue, style = CodeValueStyle)
             Text(
                 text = buildString {
-                    append(
-                        stringResource(
-                            Res.string.detection_meta,
-                            detection.barcode.format.displayName,
-                            detection.engineId.id,
-                        ),
-                    )
-                    detection.latencyMillis?.let {
-                        append(stringResource(Res.string.detection_latency, it))
+                    // El formato sí es útil siempre —saber que es un QR y no un EAN-13 orienta—;
+                    // el id del motor y la latencia son medidas del banco de pruebas.
+                    if (advancedMode) {
+                        append(
+                            stringResource(
+                                Res.string.detection_meta,
+                                detection.barcode.format.displayName,
+                                detection.engineId.id,
+                            ),
+                        )
+                        detection.latencyMillis?.let {
+                            append(stringResource(Res.string.detection_latency, it))
+                        }
+                    } else {
+                        append(detection.barcode.format.displayName)
                     }
                 },
                 style = MaterialTheme.typography.labelSmall,

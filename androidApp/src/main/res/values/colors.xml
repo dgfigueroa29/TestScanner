@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Fondo de la ventana durante el arranque, antes de que exista un solo composable.
+
+        Tiene que coincidir con `ScannerPalette.Light.BACKGROUND`: si no, entre que el sistema pinta
+        la ventana y Compose pinta la primera pantalla se ve un destello de otro color. Es el defecto
+        que nadie reporta como bug y que todo el mundo percibe como "la app arranca mal".
+    -->
+    <color name="scanly_window_background">#F8FAFC</color>
+</resources>

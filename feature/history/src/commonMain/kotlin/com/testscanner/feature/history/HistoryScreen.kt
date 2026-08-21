@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.testscanner.core.designsystem.CodeValueStyle
 import com.testscanner.core.designsystem.LocalSnackbarHostState
 import com.testscanner.core.designsystem.Spacing
 import com.testscanner.core.domain.export.ExportFormat
@@ -66,7 +67,10 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-fun HistoryScreen(viewModel: HistoryViewModel = koinViewModel()) {
+fun HistoryScreen(
+    advancedMode: Boolean = false,
+    viewModel: HistoryViewModel = koinViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = LocalSnackbarHostState.current
 
@@ -78,14 +82,20 @@ fun HistoryScreen(viewModel: HistoryViewModel = koinViewModel()) {
         }
     }
 
-    HistoryContent(state = state, onAction = viewModel::onAction)
+    HistoryContent(state = state, onAction = viewModel::onAction, advancedMode = advancedMode)
 }
 
+/**
+ * @param advancedMode muestra los filtros por motor y la latencia de cada lectura. Filtrar por motor
+ *   es lo que convierte el historial en una herramienta de comparación (G5) y no tiene sentido para
+ *   quien nunca eligió uno: los chips se llaman `mlkit-camerax` y `zxing-cpp`.
+ */
 @Composable
 fun HistoryContent(
     state: HistoryState,
     onAction: (HistoryAction) -> Unit,
     modifier: Modifier = Modifier,
+    advancedMode: Boolean = false,
 ) {
     when {
         state.isLoading -> Centered(modifier) { CircularProgressIndicator() }
@@ -99,11 +109,16 @@ fun HistoryContent(
         }
 
         else -> Column(modifier = modifier.fillMaxSize().padding(Spacing.md)) {
-            EngineFilters(state, onAction)
+            HistoryToolbar(state, onAction, advancedMode)
 
             LazyColumn(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 items(state.visible, key = { it.id }) { detection ->
-                    HistoryRow(detection, canShare = state.canShare, onAction = onAction)
+                    HistoryRow(
+                        detection = detection,
+                        canShare = state.canShare,
+                        advancedMode = advancedMode,
+                        onAction = onAction,
+                    )
                 }
             }
         }
@@ -111,30 +126,44 @@ fun HistoryContent(
 }
 
 /**
+ * Barra del historial: filtros a la izquierda, exportar y borrar a la derecha.
+ *
  * Filtrar por motor es lo que convierte el historial en una herramienta de comparación: permite ver
- * qué leyó cada alternativa sobre los mismos códigos.
+ * qué leyó cada alternativa sobre los mismos códigos. Por eso los filtros solo salen en modo
+ * avanzado — sus chips se llaman `mlkit-camerax` y `zxing-cpp`, que es un vocabulario que solo tiene
+ * sentido para quien eligió un motor a mano. Exportar y borrar sí están siempre: son operaciones
+ * sobre *los datos del usuario*, no sobre el banco de pruebas.
  */
 @Composable
-private fun EngineFilters(state: HistoryState, onAction: (HistoryAction) -> Unit) {
+private fun HistoryToolbar(
+    state: HistoryState,
+    onAction: (HistoryAction) -> Unit,
+    advancedMode: Boolean,
+) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(bottom = Spacing.sm),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-            item {
-                FilterChip(
-                    selected = state.engineFilter == null,
-                    onClick = { onAction(HistoryAction.FilterByEngine(null)) },
-                    label = { Text(stringResource(Res.string.history_filter_all)) },
-                )
-            }
-            items(state.presentEngines, key = { it.id }) { engineId ->
-                FilterChip(
-                    selected = state.engineFilter == engineId,
-                    onClick = { onAction(HistoryAction.FilterByEngine(engineId)) },
-                    label = { Text(engineId.id) },
-                )
+        if (advancedMode) {
+            LazyRow(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+            ) {
+                item {
+                    FilterChip(
+                        selected = state.engineFilter == null,
+                        onClick = { onAction(HistoryAction.FilterByEngine(null)) },
+                        label = { Text(stringResource(Res.string.history_filter_all)) },
+                    )
+                }
+                items(state.presentEngines, key = { it.id }) { engineId ->
+                    FilterChip(
+                        selected = state.engineFilter == engineId,
+                        onClick = { onAction(HistoryAction.FilterByEngine(engineId)) },
+                        label = { Text(engineId.id) },
+                    )
+                }
             }
         }
 
@@ -159,6 +188,7 @@ private fun EngineFilters(state: HistoryState, onAction: (HistoryAction) -> Unit
 private fun HistoryRow(
     detection: Detection,
     canShare: Boolean,
+    advancedMode: Boolean,
     onAction: (HistoryAction) -> Unit,
 ) {
     val actions = ResultActionsFactory.actionsFor(detection.barcode, canShare)
@@ -169,18 +199,24 @@ private fun HistoryRow(
             modifier = Modifier.padding(Spacing.md),
             verticalArrangement = Arrangement.spacedBy(Spacing.xs),
         ) {
-            Text(detection.barcode.rawValue, style = MaterialTheme.typography.bodyMedium)
+            // Monoespaciada por lo mismo que en la pantalla de escaneo: es un dato que se coteja
+            // carácter a carácter, y en una proporcional `1`, `l` e `I` se confunden.
+            Text(detection.barcode.rawValue, style = CodeValueStyle)
             Text(
                 text = buildString {
-                    append(
-                        stringResource(
-                            Res.string.history_row_meta,
-                            detection.barcode.format.displayName,
-                            detection.engineId.id,
-                        ),
-                    )
-                    detection.latencyMillis?.let {
-                        append(stringResource(Res.string.history_row_latency, it))
+                    if (advancedMode) {
+                        append(
+                            stringResource(
+                                Res.string.history_row_meta,
+                                detection.barcode.format.displayName,
+                                detection.engineId.id,
+                            ),
+                        )
+                        detection.latencyMillis?.let {
+                            append(stringResource(Res.string.history_row_latency, it))
+                        }
+                    } else {
+                        append(detection.barcode.format.displayName)
                     }
                 },
                 style = MaterialTheme.typography.labelSmall,

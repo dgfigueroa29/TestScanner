@@ -98,6 +98,7 @@ include(":engines:mlkit-ocr")
 // Features
 include(":feature:scanner")
 include(":feature:history")
+include(":feature:settings")
 
 // Aplicaciones
 include(":composeApp")

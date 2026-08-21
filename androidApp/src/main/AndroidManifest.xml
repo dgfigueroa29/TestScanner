@@ -6,6 +6,11 @@
         cambiar la lista de permisos de una app publicada es visible para el usuario, y es preferible
         que la declaración sea estable. Los motores lo solicitan en tiempo de ejecución.
         El Google Code Scanner (Fase 2) no lo necesita: procesa fuera de la app.
+
+        No hay `INTERNET`, y su ausencia es una característica del producto y no un olvido: sin ese
+        permiso el sistema **garantiza** que nada de lo que se escanea puede salir del dispositivo
+        (RNF-03). Es lo que dice la sección "Acerca de" de Ajustes, y esta línea es lo que lo hace
+        verdad. Añadirlo alguna vez obliga a revisar ese texto y la ficha de Play.
     -->
     <uses-permission android:name="android.permission.CAMERA" />
 
@@ -16,16 +21,19 @@
     <application
         android:name=".TestScannerApplication"
         android:allowBackup="true"
-        android:label="TestScanner"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:localeConfig="@xml/locales_config"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.TestScanner"
+        android:theme="@style/Theme.Scanly"
         android:usesCleartextTraffic="false">
 
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
-            android:theme="@style/Theme.TestScanner">
+            android:theme="@style/Theme.Scanly">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

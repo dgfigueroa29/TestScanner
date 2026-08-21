@@ -217,6 +217,71 @@ recupera correctamente EAN-13 impresos sobre códigos dañados.
 
 ---
 
+## Fase 6 — De banco de pruebas a producto de Play 🚧
+
+Hasta aquí el criterio de todas las fases fue *técnico*. Este no: la app tenía que dejar de parecer
+lo que es por dentro. Un usuario que abre un lector de códigos no debería encontrarse ocho motores
+con sus latencias en la portada, ni una app llamada "TestScanner" sin icono.
+
+### Ronda 1 — marca, sistema de diseño, tema e idiomas ✅
+
+- [x] **Nombre y marca: Scanly.** `applicationId` a `com.scanly.app` — se cambia ahora porque
+      después de la primera publicación en Play ya no se puede. Los paquetes de Kotlin se quedan en
+      `com.testscanner.*` a conciencia: son doscientos archivos para cambiar algo que nadie ve
+- [x] **Icono de lanzador, que no existía.** Ni uno: el manifiesto no declaraba `android:icon`, así
+      que Android ponía su robot por defecto. Es un bloqueo duro de Play, y de los que no aparecen en
+      ningún CI. Adaptativo con capa `monochrome` (iconos temáticos de Android 13+), PNG de respaldo
+      para API 24-25 y el 512×512 de la ficha en `playstore/`
+- [x] **Los ~30 roles de color de Material 3 declarados.** Estaban los seis de siempre más los
+      `on*`; faltaban los `*Container`, que es lo que pinta un `FilterChip` seleccionado, la `Card`,
+      el `NavigationBar` y el indicador del ítem activo. Todos ellos salían **morados**, del relleno
+      de fábrica de `lightColorScheme()`. Es exactamente el mismo defecto que la Fase 5 arregló para
+      los `on*`, en la mitad de los roles que aquella no miró
+- [x] **`ContrastTest` pasa de 22 pares a 56**, con un umbral aparte a 3.0:1 para lo que no es texto
+      (`outline`). La lista de pares se declara una vez y se aplica a los dos temas, así que la
+      simetría entre claro y oscuro deja de depender de mantener dos copias a mano
+- [x] **Escala tipográfica y de formas propias.** No había ninguna: `MaterialTheme` usaba las de
+      fábrica. El valor de un código leído pasa a monoespaciada — es un dato que alguien coteja
+      carácter a carácter contra una etiqueta, y en proporcional `1`, `l` e `I` se confunden
+- [x] **Iconos en la barra de navegación.** Estaban en `icon = {}`, literalmente vacíos, y por eso
+      no había indicador de ítem activo: Material 3 lo dibuja **alrededor del icono**
+- [x] **Selector de tema Sistema / Claro / Oscuro**, persistido. Con él aparece un defecto que antes
+      no podía existir: `enableEdgeToEdge()` ata los iconos de las barras del sistema al modo oscuro
+      *del sistema*, así que forzar el tema de la app los volvía invisibles. `MainActivity` recibe el
+      valor resuelto y reajusta el estilo
+- [x] **Inglés y español.** Los cuatro catálogos duplicados en `values/` (inglés) y `values-es/`.
+      El inglés va en la carpeta sin calificador porque es el respaldo de todo idioma que no sea
+      español: antes, un teléfono en alemán veía castellano. 127 claves con paridad comprobada
+- [x] **Selector de idioma propio** sobre `LocalComposeEnvironment`, más `localeConfig` para el
+      selector por app de Android 13+. En Web no se muestra: `navigator.language` no se puede
+      escribir desde la página, y un control inerte es peor que no tenerlo
+- [x] **`:feature:settings`** con su ViewModel y sus tests, y **modo avanzado** como preferencia: el
+      catálogo de motores, el comparador, el filtro de formatos y las latencias vuelven con un
+      interruptor. `Navigator.pruneTo` saca del backstack lo que deja de estar disponible
+
+### Ronda 2 — la pantalla de escaneo 🔜
+
+- [ ] Visor a pantalla completa con el resultado en una hoja inferior, en vez del `LazyColumn` con
+      el visor como primer elemento de una lista
+- [ ] Estados vacíos y de permiso denegado con ilustración y una acción clara
+- [ ] Animaciones de transición entre destinos y de aparición del resultado
+- [ ] Objetivos táctiles y `enableEdgeToEdge` **mirados con los ojos** en un dispositivo (queda
+      pendiente desde la Fase 5)
+
+### Pendiente para publicar
+
+- [ ] Comprobar en Play Console que `com.scanly.app` está libre y que "Scanly" no colisiona con una
+      ficha existente. **Sin red en el entorno de desarrollo, esto no se pudo verificar aquí**
+- [ ] Capturas, gráfico de cabecera 1024×500 y textos de la ficha, en los dos idiomas
+- [ ] Política de privacidad publicada y formulario de seguridad de datos. Es el trámite más corto
+      de todos: sin `INTERNET`, la respuesta a casi todo es "no se recoge nada"
+- [ ] Firma de release y `bundle` en vez de APK
+
+**Criterio de salida:** alguien que no sabe qué es un motor de escaneo abre la app, lee un código y
+lo comparte, sin ver ni una vez la palabra "motor".
+
+---
+
 ## Qué cubre a los motores de cámara sin emulador
 
 La decisión de no tener tests instrumentados deja un hueco real y conviene decir exactamente cuál es

@@ -11,11 +11,13 @@
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>TestScanner</string>
+    <string>Scanly</string>
+    <key>CFBundleDisplayName</key>
+    <string>Scanly</string>
     <key>CFBundlePackageType</key>
     <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
+    <string>1.0.0</string>
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>LSRequiresIPhoneOS</key>
@@ -26,7 +28,7 @@
         AVCaptureDevice pide acceso. Es la causa número uno de crashes al estrenar un escáner.
     -->
     <key>NSCameraUsageDescription</key>
-    <string>TestScanner usa la cámara para leer códigos de barras y QR. Las imágenes se procesan en el dispositivo y no salen de él.</string>
+    <string>Scanly usa la cámara para leer códigos de barras y QR. Las imágenes se procesan en el dispositivo y no salen de él.</string>
 
     <key>UILaunchScreen</key>
     <dict/>

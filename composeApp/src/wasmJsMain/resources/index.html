@@ -1,11 +1,33 @@
 <!DOCTYPE html>
-<html lang="es">
+<!--
+    `lang` en inglés y no en español: es el respaldo, igual que el catálogo `values/`. El idioma real
+    de la interfaz lo decide `navigator.language` en el navegador, no este atributo.
+-->
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TestScanner</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Scanly</title>
+    <meta name="description" content="Scan barcodes and QR codes. Nothing leaves your device.">
+    <!--
+        Color de la barra del navegador en móvil, con las dos variantes para que no se quede en
+        blanco sobre una app en modo oscuro. Los valores son `ScannerPalette.*.BACKGROUND`.
+    -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F8FAFC">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0B1020">
     <style>
         html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; }
+
+        /*
+            El canvas de Compose tarda en aparecer. Sin esto, ese hueco es blanco también en modo
+            oscuro, que es el mismo destello de arranque que se corrige en Android con
+            `windowBackground`.
+        */
+        body { background-color: #F8FAFC; }
+
+        @media (prefers-color-scheme: dark) {
+            body { background-color: #0B1020; }
+        }
     </style>
 </head>
 <body>

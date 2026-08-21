@@ -1,10 +1,20 @@
-# TestScanner
+# Scanly
 
-Banco de pruebas de **motores de escaneo de códigos de barras y QR**, en Compose Multiplatform.
+Lector de **códigos de barras y QR** en Compose Multiplatform, sin cuenta, sin rastreo y sin red.
 
-El objetivo no es leer un código: es poder **elegir entre varias alternativas de escaneo**,
-compararlas y degradar con elegancia cuando una no está disponible — sobre Android, iOS, Desktop
-y Web con un único código base.
+Debajo hay un **banco de pruebas de motores de escaneo**: la app no lee un código de una sola
+manera, sino que elige entre varias alternativas, las compara y degrada con elegancia cuando una no
+está disponible — sobre Android, iOS, Desktop y Web con un único código base.
+
+Las dos cosas conviven porque son la misma app en dos modos. Por defecto Scanly es un lector: se
+apunta y se lee. El **modo avanzado** (Ajustes → Avanzado) devuelve el catálogo de los ocho motores,
+el comparador en paralelo y las latencias por lectura.
+
+> **Sobre los nombres.** El producto se llama Scanly y el `applicationId` de Play es
+> `com.scanly.app`. El repositorio, los paquetes de Kotlin y los módulos siguen siendo
+> `com.testscanner.*` **a propósito**: renombrarlos tocaría doscientos archivos para cambiar algo que
+> ningún usuario ve, y el `applicationId` —que sí es la identidad pública y permanente en Play— ya
+> está donde tiene que estar.
 
 ---
 
@@ -33,6 +43,9 @@ y Web con un único código base.
 | Acciones sobre el resultado (RF-13) | ✅ copiar, compartir y abrir, según el significado del código |
 | Navegación | ✅ propia, con backstack que sobrevive a que el sistema mate el proceso |
 | Build de release con R8 | ✅ `minify` y `shrinkResources`, con `assembleRelease` en CI |
+| Marca, icono y tema | ✅ Scanly: icono adaptativo con capa monocroma, paleta con los ~30 roles de Material 3, escala tipográfica y de formas propias |
+| Selector de tema claro/oscuro | ✅ Sistema / Claro / Oscuro, persistido, con las barras del sistema siguiendo al tema **de la app** |
+| Idiomas inglés y español | ✅ los tres catálogos en `values/` (inglés, respaldo de cualquier idioma) y `values-es/`, con selector propio y `localeConfig` para el selector por app de Android 13+ |
 | Accesibilidad (RNF-05) | ✅ contraste AA **verificado por test**, y semántica para lectores de pantalla |
 | Privacidad (RNF-03) | ✅ auditada: sin trazas, sin cliente HTTP, sin analítica y sin permiso `INTERNET` |
 | ZXing en Java (Desktop) | ✅ el único decodificador de escritorio; **verificado de verdad**, decodificando imágenes generadas en el test |
@@ -98,20 +111,55 @@ core/scanner-ui     capacidad de UI del motor: CameraPreviewEngine
 core/scanner-testing suite de contrato que todo motor hereda
 core/domain         casos de uso, políticas de selección y decoradores del SPI
 core/data           registro de motores, preferencias e historial
-core/designsystem   tema y componentes Compose compartidos
+core/designsystem   tema, paleta, tipografía, formas, marca y cambio de idioma en caliente
 core/permissions    abstracción de permisos por plataforma
 core/platform       acciones del sistema: copiar, compartir, abrir, elegir imagen, guardar archivo
 core/database       Room KMP: historial persistente (sin target wasmJs)
 engines/*           un módulo por alternativa de escaneo
 feature/scanner     MVI, pantalla de escaneo y comparador de motores
 feature/history     historial filtrable por motor
+feature/settings    tema, idioma y modo avanzado
 composeApp          raíz Compose Multiplatform y composition root de la DI
 androidApp          shell de Android
 iosApp              shell de iOS (Xcode)
+playstore/          material de la ficha de Play (icono 512×512)
 ```
 
 La regla de dependencias es estricta: un módulo `engines/*` depende solo de `:core:scanner-api`
 y de su SDK nativo. Nunca de `:feature:*`, ni de `:core:data`, ni de otro motor.
+
+---
+
+## Marca, tema e idiomas
+
+**El tema.** `ScanlyTheme` declara los ~30 roles de color de Material 3, y no solo los seis
+habituales. No es exhaustividad por gusto: `lightColorScheme()` rellena con su paleta de fábrica todo
+lo que no se le pase, así que un `FilterChip` seleccionado o el indicador del ítem activo de la barra
+salían **morados** en una app cuya marca es azul. `ContrastTest` mide 50 pares de color a 4.5:1 y 6
+más a 3.0:1, sobre los dos esquemas, con aritmética de WCAG en `commonTest`: sin dispositivo y sin
+renderizar nada.
+
+**El selector claro/oscuro** vive en Ajustes y persiste. En Android hay una segunda mitad que no
+pinta Compose: los iconos de las barras del sistema. Con `enableEdgeToEdge()` a secas siguen al modo
+oscuro *del sistema*, y en cuanto el usuario elige un tema distinto dejan de coincidir — teléfono en
+claro y app en oscuro daba iconos oscuros sobre fondo oscuro. `MainActivity` recibe el valor ya
+resuelto y reajusta el estilo de las barras.
+
+**Los idiomas.** Los cuatro catálogos de textos viven en `values/` (inglés) y `values-es/`. El
+inglés está en la carpeta **sin calificador** a propósito: es el respaldo de cualquier idioma que no
+sea español, así que un teléfono en alemán ve inglés y no castellano. El selector propio va por
+encima del idioma del sistema con `LocalComposeEnvironment`, que es el mecanismo de Compose
+Multiplatform para eso, y `androidApp` declara `localeConfig` para que Scanly aparezca además en el
+selector de idioma por app de Android 13+.
+
+En Web el selector **no se muestra**: el idioma sale de `navigator.language`, que una página no
+puede escribir. Preferimos no ofrecer el control a ofrecerlo roto —
+`PlatformSupportsLanguageOverride` es lo que lo decide, y es `false` solo ahí.
+
+**El icono** se dibuja dos veces, y las dos copias lo dicen: `ScanlyMark` como `ImageVector` para la
+UI y `ic_launcher_foreground.xml` para el lanzador, con las mismas coordenadas escaladas. Lleva capa
+`monochrome`, así que se tiñe con los iconos temáticos de Android 13+, y hay PNG de respaldo para
+API 24 y 25, que no entienden iconos adaptativos.
 
 ---
 

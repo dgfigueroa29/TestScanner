@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Textos de nivel de app: el nombre del producto y los destinos de navegación. Los textos de cada
+  pantalla viven en su propia feature (deuda D5).
+
+  Este catálogo lleva el calificador `-es`, así que solo lo ven los dispositivos en español. El de
+  `values/` no lleva ninguno y por eso es el respaldo de todos los demás idiomas: está en inglés.
+-->
+<resources>
+    <!-- El nombre de marca no se traduce a propósito: es la misma palabra en cualquier ficha. -->
+    <string name="app_name">Scanly</string>
+    <string name="app_tagline">Escaneá lo que sea. Nada sale de tu teléfono.</string>
+
+    <string name="destination_scanner">Escanear</string>
+    <string name="destination_comparison">Comparar</string>
+    <string name="destination_history">Historial</string>
+    <string name="destination_settings">Ajustes</string>
+</resources>

@@ -29,8 +29,19 @@ sealed interface Destination {
         override val id: String get() = "history"
     }
 
+    data object Settings : Destination {
+        override val id: String get() = "settings"
+    }
+
     companion object {
-        private val all = listOf(Scanner, Comparison, History)
+        /**
+         * Todos los destinos, en el orden en que aparecen en la barra de navegación.
+         *
+         * Es público para que el test que comprueba que cada uno se puede guardar y recuperar
+         * itere sobre **esta** lista y no sobre una copia escrita a mano. Con la copia, añadir un
+         * destino y olvidar su id dejaba el test en verde: comprobaba los tres de siempre.
+         */
+        val all: List<Destination> = listOf(Scanner, Comparison, History, Settings)
 
         fun fromId(id: String): Destination? = all.firstOrNull { it.id == id }
     }
@@ -43,7 +54,7 @@ sealed interface Destination {
  * salida: si el grafo pasa de seis destinos o aparece la necesidad de deep links, se migra a
  * `navigation-compose` multiplataforma reimplementando esta clase, sin tocar pantallas.
  */
-class Navigator(initial: Destination = Destination.Scanner) {
+class Navigator(private val initial: Destination = Destination.Scanner) {
 
     private val _backstack = MutableStateFlow(listOf(initial))
     val backstack: StateFlow<List<Destination>> = _backstack.asStateFlow()
@@ -57,6 +68,23 @@ class Navigator(initial: Destination = Destination.Scanner) {
         // hacer lo que el usuario espera.
         if (current == destination) return
         _backstack.update { it + destination }
+    }
+
+    /**
+     * Deja en el backstack solo los destinos que siguen estando disponibles.
+     *
+     * Hace falta porque la lista de destinos **cambia en caliente**: apagar el modo avanzado retira
+     * el comparador. Sin esto, quien lo apagara teniéndolo en pantalla se quedaba en un destino que
+     * ya no sale en ninguna barra —sin ítem activo y sin forma de volver salvo el botón atrás—, y
+     * apilar encima el escáner tampoco servía: el atrás lo devolvía justo a donde no debía estar.
+     *
+     * Si no queda nada, se vuelve al destino inicial en lugar de dejar el backstack vacío, que es lo
+     * único que este tipo no puede representar: `current` es `last()`.
+     */
+    fun pruneTo(available: Collection<Destination>) {
+        _backstack.update { stack ->
+            stack.filter { it in available }.ifEmpty { listOf(initial) }
+        }
     }
 
     /** Devuelve `false` si no había nada que desapilar, para que la plataforma cierre la pantalla. */

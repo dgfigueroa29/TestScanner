@@ -1,104 +1,112 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Textos de la pantalla de escaneo y de la de comparación (deuda D5).
+  Scanner and comparison screen strings.
 
-  Los recursos de Compose son por módulo: cada feature tiene los suyos y no hay un fichero global
-  que crezca sin dueño. Los que llevan `%1$s` reciben datos que produce el dominio — el id de un
-  motor, un formato, una latencia—; el texto que los rodea es lo único que se traduce.
+  This is `values/` with no qualifier, so it is the **fallback for every locale**: a phone set to
+  German, Japanese or Portuguese lands here. That is why the default catalogue is English and the
+  Spanish one lives in `values-es/`, and not the other way round — with Spanish as the default, a
+  German user would have got Spanish.
+
+  Compose resources are per module: each feature owns its own catalogue and there is no global file
+  growing without an owner. The ones carrying `%1$s` receive data produced by the domain — an engine
+  id, a format, a latency; only the text around them is translated.
 -->
 <resources>
-    <!-- Estado de la sesión -->
-    <string name="session_idle">Sesión detenida</string>
-    <string name="session_starting">Arrancando…</string>
-    <string name="session_scanning">Escaneando con %1$s</string>
-    <string name="session_finished">Sesión terminada</string>
-    <string name="session_switched_from">Se degradó desde %1$s: el motor anterior no pudo continuar.</string>
+    <!-- Session state -->
+    <string name="session_idle">Ready to scan</string>
+    <string name="session_starting">Starting…</string>
+    <string name="session_scanning">Scanning with %1$s</string>
+    <!-- Basic mode: which engine is reading is workbench information, and the id is internal. -->
+    <string name="session_scanning_simple">Scanning…</string>
+    <string name="session_finished">Session finished</string>
+    <string name="session_switched_from">Fell back from %1$s: the previous engine could not continue.</string>
     <string name="session_error">Error: %1$s</string>
 
-    <!-- Controles -->
-    <string name="action_scan">Escanear</string>
-    <string name="action_stop">Detener</string>
+    <!-- Controls -->
+    <string name="action_scan">Scan</string>
+    <string name="action_stop">Stop</string>
     <string name="action_auto">Auto</string>
-    <string name="action_dismiss">Descartar</string>
-    <string name="action_scan_from_image">Desde imagen</string>
-    <string name="action_grant_camera">Conceder permiso de cámara</string>
-    <string name="action_submit">Enviar</string>
-    <string name="continuous_scan">Escaneo continuo</string>
-    <string name="torch_on">Linterna encendida</string>
-    <string name="torch_off">Linterna</string>
+    <string name="action_dismiss">Dismiss</string>
+    <string name="action_scan_from_image">From image</string>
+    <string name="action_grant_camera">Grant camera access</string>
+    <string name="action_submit">Submit</string>
+    <string name="continuous_scan">Continuous scanning</string>
+    <string name="torch_on">Torch on</string>
+    <string name="torch_off">Torch</string>
     <string name="zoom_ratio">Zoom %1$dx</string>
-    <string name="manual_input_label">Código</string>
+    <string name="manual_input_label">Code</string>
 
-    <!-- Catálogo -->
-    <string name="engines_title">Alternativas de escaneo</string>
-    <string name="detections_title">Detecciones</string>
+    <!-- Catalogue -->
+    <string name="engines_title">Scanning engines</string>
+    <string name="detections_title">Results</string>
     <string name="detection_meta">%1$s · %2$s</string>
     <string name="detection_latency"> · %1$d ms</string>
-    <string name="engine_selected">Elegido</string>
-    <string name="engine_select">Elegir</string>
-    <string name="engine_in_use">En uso</string>
-    <string name="engine_formats_count">%1$d formatos</string>
-    <string name="engine_supports_continuous"> · continuo</string>
-    <string name="engine_supports_multiple"> · múltiple</string>
-    <string name="engine_supports_torch"> · linterna</string>
-    <string name="engine_no_permissions"> · sin permisos</string>
+    <string name="engine_selected">Selected</string>
+    <string name="engine_select">Select</string>
+    <string name="engine_in_use">In use</string>
+    <string name="engine_formats_count">%1$d formats</string>
+    <string name="engine_supports_continuous"> · continuous</string>
+    <string name="engine_supports_multiple"> · multiple</string>
+    <string name="engine_supports_torch"> · torch</string>
+    <string name="engine_no_permissions"> · no permissions</string>
 
-    <!-- Disponibilidad -->
-    <string name="availability_available">Disponible</string>
-    <string name="availability_requires_permission">Requiere permiso de %1$s</string>
-    <string name="availability_requires_download">Requiere descargar su modelo</string>
-    <string name="availability_planned">Planificado para la fase %1$d</string>
-    <string name="availability_failed">No se pudo comprobar</string>
+    <!-- Availability -->
+    <string name="availability_available">Available</string>
+    <string name="availability_requires_permission">Requires %1$s permission</string>
+    <string name="availability_requires_download">Needs to download its model</string>
+    <string name="availability_planned">Planned for phase %1$d</string>
+    <string name="availability_failed">Could not be checked</string>
 
-    <!-- Filtro de formatos -->
-    <string name="formats_title">Formatos (%1$d de %2$d)</string>
-    <string name="formats_hint">Quitar formatos acelera la detección y evita lecturas cruzadas. Si los quitás todos vuelven todos: una petición sin formatos no es válida.</string>
+    <!-- Format filter -->
+    <string name="formats_title">Formats (%1$d of %2$d)</string>
+    <string name="formats_hint">Dropping formats speeds up detection and avoids cross reads. Clear them all and they all come back: a request with no formats is not valid.</string>
 
-    <!-- Acciones sobre el resultado (RF-13) -->
-    <string name="result_copy">Copiar</string>
-    <!-- Lo que se copia de un QR de WiFi: pegarle a alguien `WIFI:T:WPA;S:…;;` no le sirve. -->
-    <string name="share_wifi">Red: %1$s</string>
-    <string name="share_wifi_with_password">Red: %1$s · Clave: %2$s</string>
+    <!-- Result actions (RF-13) -->
+    <string name="result_copy">Copy</string>
+    <!-- What gets copied from a Wi-Fi QR: handing someone `WIFI:T:WPA;S:…;;` is no use to them. -->
+    <string name="share_wifi">Network: %1$s</string>
+    <string name="share_wifi_with_password">Network: %1$s · Password: %2$s</string>
     <string name="share_separator"> · </string>
-    <string name="result_share">Compartir</string>
-    <string name="result_open_link">Abrir enlace</string>
-    <string name="result_open_email">Escribir</string>
-    <string name="result_open_phone">Llamar</string>
-    <string name="result_open_sms">Enviar SMS</string>
-    <string name="result_open_map">Ver en el mapa</string>
+    <string name="result_share">Share</string>
+    <string name="result_open_link">Open link</string>
+    <string name="result_open_email">Write email</string>
+    <string name="result_open_phone">Call</string>
+    <string name="result_open_sms">Send SMS</string>
+    <string name="result_open_map">Open in maps</string>
 
-    <!-- Mensajes de una sola vez -->
-    <string name="message_engine_switched">Se cambió a otro motor porque el anterior no pudo continuar</string>
-    <string name="message_camera_permission_denied">Sin permiso de cámara solo quedan disponibles los motores que no la usan</string>
-    <string name="message_manual_input_unavailable">La entrada manual no está disponible</string>
-    <string name="message_copied">Copiado</string>
-    <string name="message_copy_failed">No se pudo copiar al portapapeles</string>
-    <string name="message_share_failed">No se pudo abrir la hoja de compartir</string>
-    <string name="message_open_failed">Ninguna app puede abrir esto</string>
-    <string name="message_no_code_in_image">No se encontró ningún código en la imagen</string>
+    <!-- One-off messages -->
+    <string name="message_engine_switched">Switched to another engine because the previous one could not continue</string>
+    <string name="message_camera_permission_denied">Without camera access only the engines that do not use it remain available</string>
+    <string name="message_manual_input_unavailable">Manual entry is not available</string>
+    <string name="message_copied">Copied</string>
+    <string name="message_copy_failed">Could not copy to the clipboard</string>
+    <string name="message_share_failed">Could not open the share sheet</string>
+    <string name="message_open_failed">No app can open this</string>
+    <string name="message_no_code_in_image">No code found in that image</string>
 
-    <!-- Comparación de motores (G5) -->
-    <string name="comparison_title">Comparar motores</string>
-    <string name="comparison_start">Comparar</string>
-    <string name="comparison_reset">Reiniciar</string>
-    <string name="comparison_hint">Apuntá al mismo código con la comparación en marcha: cada motor lo leerá por su cuenta y el marcador mostrará quién acierta antes.</string>
-    <string name="comparison_needs_two_engines">Hacen falta al menos dos motores disponibles para comparar. Ahora mismo hay %1$d.</string>
-    <string name="comparison_participants">Participan: %1$s</string>
-    <string name="comparison_leader">%1$s · mejor</string>
-    <string name="comparison_counts">%1$d códigos distintos · %2$d lecturas</string>
-    <string name="comparison_latencies">primera: %1$s · media: %2$s</string>
+    <!-- Engine comparison (G5) -->
+    <string name="comparison_title">Compare engines</string>
+    <string name="comparison_start">Compare</string>
+    <string name="comparison_reset">Reset</string>
+    <string name="comparison_hint">Point at the same code with the comparison running: every engine reads it on its own and the scoreboard shows which one gets there first.</string>
+    <string name="comparison_needs_two_engines">Comparing needs at least two available engines. Right now there are %1$d.</string>
+    <string name="comparison_participants">Taking part: %1$s</string>
+    <string name="comparison_leader">%1$s · best</string>
+    <string name="comparison_counts">%1$d distinct codes · %2$d reads</string>
+    <string name="comparison_latencies">first: %1$s · average: %2$s</string>
     <string name="comparison_frames">%1$d frames</string>
-    <string name="comparison_frames_per_detection"> · %1$d por lectura</string>
-    <string name="comparison_failures"> · %1$d fallos</string>
+    <string name="comparison_frames_per_detection"> · %1$d per read</string>
+    <string name="comparison_failures"> · %1$d failures</string>
     <string name="comparison_no_data">—</string>
     <string name="comparison_millis">%1$d ms</string>
-    <!-- Accesibilidad (RNF-05). Los botones de acción repiten etiqueta en cada resultado: sin
-         estas descripciones, un lector de pantalla anuncia "Copiar" cinco veces sin decir qué. -->
-    <string name="a11y_viewfinder">Visor de la cámara</string>
-    <string name="a11y_no_detections">Ningún código en el visor</string>
-    <string name="a11y_detections_in_view">%1$d códigos en el visor</string>
-    <string name="a11y_copy_value">Copiar %1$s</string>
-    <string name="a11y_share_value">Compartir %1$s</string>
-    <string name="a11y_open_value">Abrir %1$s</string>
-    <string name="a11y_zoom">Zoom de la cámara</string>
+
+    <!-- Accessibility (RNF-05). The action buttons repeat their label on every result: without
+         these descriptions, a screen reader announces "Copy" five times without saying what. -->
+    <string name="a11y_viewfinder">Camera viewfinder</string>
+    <string name="a11y_no_detections">No code in the viewfinder</string>
+    <string name="a11y_detections_in_view">%1$d codes in the viewfinder</string>
+    <string name="a11y_copy_value">Copy %1$s</string>
+    <string name="a11y_share_value">Share %1$s</string>
+    <string name="a11y_open_value">Open %1$s</string>
+    <string name="a11y_zoom">Camera zoom</string>
 </resources>

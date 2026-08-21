@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Fondo del icono adaptativo: el azul de marca, el mismo `primary` del tema claro
+        (`ScannerPalette.Light.PRIMARY`). Es un color y no un degradado a propósito: el sistema
+        aplica su propia máscara, sombra y animación de rebote sobre esta capa, y un degradado se
+        vuelve barro en cuanto el lanzador la escala a 48dp.
+    -->
+    <color name="ic_launcher_background">#2563EB</color>
+</resources>

@@ -1,8 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!--
-        Tema mínimo del sistema: el aspecto real lo define TestScannerTheme en Compose, compartido
-        con iOS, Desktop y Web. Este solo evita el flash de la ventana durante el arranque.
+        Tema mínimo del sistema: el aspecto real lo define `ScanlyTheme` en Compose, compartido
+        con iOS, Desktop y Web. Este solo cubre el hueco entre que el sistema crea la ventana y
+        Compose pinta la primera pantalla.
+
+        `windowBackground` es la única línea que hace trabajo, y hay un `values-night/` gemelo para
+        que ese arranque no sea blanco en un teléfono en modo oscuro. Queda un caso que esto no
+        puede cubrir: forzar el tema oscuro dentro de la app con el sistema en claro: el fondo de
+        arranque lo elige el sistema por su propia configuración, antes de que nadie pueda leer las
+        preferencias. Resolverlo del todo exige `androidx.core:core-splashscreen`, que es una
+        dependencia nueva y una decisión aparte.
     -->
-    <style name="Theme.TestScanner" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.Scanly" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/scanly_window_background</item>
+    </style>
 </resources>

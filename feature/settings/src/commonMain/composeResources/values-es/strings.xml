@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos de Ajustes. Solo lo ven los dispositivos en español; el respaldo está en `values/`. -->
+<resources>
+    <string name="settings_appearance">Aspecto</string>
+    <string name="settings_theme">Tema</string>
+    <string name="settings_theme_system">Sistema</string>
+    <string name="settings_theme_light">Claro</string>
+    <string name="settings_theme_dark">Oscuro</string>
+    <string name="settings_theme_hint">Seguir al sistema también sigue su horario, así que la app se pone oscura cuando lo hace el teléfono.</string>
+
+    <string name="settings_language">Idioma</string>
+    <string name="settings_language_system">Sistema</string>
+    <string name="settings_language_english">English</string>
+    <string name="settings_language_spanish">Español</string>
+
+    <string name="settings_advanced">Avanzado</string>
+    <string name="settings_advanced_mode">Banco de motores</string>
+    <string name="settings_advanced_mode_hint">Devuelve el catálogo de motores, la comparación en paralelo y las latencias de cada lectura. Apagado por defecto: escanear un código no debería obligar a elegir un decodificador.</string>
+
+    <string name="settings_about">Acerca de</string>
+    <string name="settings_privacy">Sin cuenta, sin rastreo y sin red. Scanly no pide permiso de internet, así que lo que escaneás no puede salir del dispositivo.</string>
+
+    <!-- Accesibilidad (RNF-05): las opciones de tema e idioma son chips cuya etiqueta sola no dice
+         qué ajustan. "Oscuro" por sí mismo podría ser cualquier cosa. -->
+    <string name="a11y_theme_option">Tema: %1$s</string>
+    <string name="a11y_language_option">Idioma: %1$s</string>
+</resources>

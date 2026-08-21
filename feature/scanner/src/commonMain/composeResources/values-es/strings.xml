@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Textos de la pantalla de escaneo y de la de comparación (deuda D5).
+
+  Los recursos de Compose son por módulo: cada feature tiene los suyos y no hay un fichero global
+  que crezca sin dueño. Los que llevan `%1$s` reciben datos que produce el dominio — el id de un
+  motor, un formato, una latencia—; el texto que los rodea es lo único que se traduce.
+-->
+<resources>
+    <!-- Estado de la sesión -->
+    <string name="session_idle">Listo para escanear</string>
+    <string name="session_starting">Arrancando…</string>
+    <string name="session_scanning">Escaneando con %1$s</string>
+    <!-- Modo básico: qué motor lee es dato de banco de pruebas, y el id es interno. -->
+    <string name="session_scanning_simple">Escaneando…</string>
+    <string name="session_finished">Sesión terminada</string>
+    <string name="session_switched_from">Se degradó desde %1$s: el motor anterior no pudo continuar.</string>
+    <string name="session_error">Error: %1$s</string>
+
+    <!-- Controles -->
+    <string name="action_scan">Escanear</string>
+    <string name="action_stop">Detener</string>
+    <string name="action_auto">Auto</string>
+    <string name="action_dismiss">Descartar</string>
+    <string name="action_scan_from_image">Desde imagen</string>
+    <string name="action_grant_camera">Conceder permiso de cámara</string>
+    <string name="action_submit">Enviar</string>
+    <string name="continuous_scan">Escaneo continuo</string>
+    <string name="torch_on">Linterna encendida</string>
+    <string name="torch_off">Linterna</string>
+    <string name="zoom_ratio">Zoom %1$dx</string>
+    <string name="manual_input_label">Código</string>
+
+    <!-- Catálogo -->
+    <string name="engines_title">Alternativas de escaneo</string>
+    <string name="detections_title">Detecciones</string>
+    <string name="detection_meta">%1$s · %2$s</string>
+    <string name="detection_latency"> · %1$d ms</string>
+    <string name="engine_selected">Elegido</string>
+    <string name="engine_select">Elegir</string>
+    <string name="engine_in_use">En uso</string>
+    <string name="engine_formats_count">%1$d formatos</string>
+    <string name="engine_supports_continuous"> · continuo</string>
+    <string name="engine_supports_multiple"> · múltiple</string>
+    <string name="engine_supports_torch"> · linterna</string>
+    <string name="engine_no_permissions"> · sin permisos</string>
+
+    <!-- Disponibilidad -->
+    <string name="availability_available">Disponible</string>
+    <string name="availability_requires_permission">Requiere permiso de %1$s</string>
+    <string name="availability_requires_download">Requiere descargar su modelo</string>
+    <string name="availability_planned">Planificado para la fase %1$d</string>
+    <string name="availability_failed">No se pudo comprobar</string>
+
+    <!-- Filtro de formatos -->
+    <string name="formats_title">Formatos (%1$d de %2$d)</string>
+    <string name="formats_hint">Quitar formatos acelera la detección y evita lecturas cruzadas. Si los quitás todos vuelven todos: una petición sin formatos no es válida.</string>
+
+    <!-- Acciones sobre el resultado (RF-13) -->
+    <string name="result_copy">Copiar</string>
+    <!-- Lo que se copia de un QR de WiFi: pegarle a alguien `WIFI:T:WPA;S:…;;` no le sirve. -->
+    <string name="share_wifi">Red: %1$s</string>
+    <string name="share_wifi_with_password">Red: %1$s · Clave: %2$s</string>
+    <string name="share_separator"> · </string>
+    <string name="result_share">Compartir</string>
+    <string name="result_open_link">Abrir enlace</string>
+    <string name="result_open_email">Escribir</string>
+    <string name="result_open_phone">Llamar</string>
+    <string name="result_open_sms">Enviar SMS</string>
+    <string name="result_open_map">Ver en el mapa</string>
+
+    <!-- Mensajes de una sola vez -->
+    <string name="message_engine_switched">Se cambió a otro motor porque el anterior no pudo continuar</string>
+    <string name="message_camera_permission_denied">Sin permiso de cámara solo quedan disponibles los motores que no la usan</string>
+    <string name="message_manual_input_unavailable">La entrada manual no está disponible</string>
+    <string name="message_copied">Copiado</string>
+    <string name="message_copy_failed">No se pudo copiar al portapapeles</string>
+    <string name="message_share_failed">No se pudo abrir la hoja de compartir</string>
+    <string name="message_open_failed">Ninguna app puede abrir esto</string>
+    <string name="message_no_code_in_image">No se encontró ningún código en la imagen</string>
+
+    <!-- Comparación de motores (G5) -->
+    <string name="comparison_title">Comparar motores</string>
+    <string name="comparison_start">Comparar</string>
+    <string name="comparison_reset">Reiniciar</string>
+    <string name="comparison_hint">Apuntá al mismo código con la comparación en marcha: cada motor lo leerá por su cuenta y el marcador mostrará quién acierta antes.</string>
+    <string name="comparison_needs_two_engines">Hacen falta al menos dos motores disponibles para comparar. Ahora mismo hay %1$d.</string>
+    <string name="comparison_participants">Participan: %1$s</string>
+    <string name="comparison_leader">%1$s · mejor</string>
+    <string name="comparison_counts">%1$d códigos distintos · %2$d lecturas</string>
+    <string name="comparison_latencies">primera: %1$s · media: %2$s</string>
+    <string name="comparison_frames">%1$d frames</string>
+    <string name="comparison_frames_per_detection"> · %1$d por lectura</string>
+    <string name="comparison_failures"> · %1$d fallos</string>
+    <string name="comparison_no_data">—</string>
+    <string name="comparison_millis">%1$d ms</string>
+    <!-- Accesibilidad (RNF-05). Los botones de acción repiten etiqueta en cada resultado: sin
+         estas descripciones, un lector de pantalla anuncia "Copiar" cinco veces sin decir qué. -->
+    <string name="a11y_viewfinder">Visor de la cámara</string>
+    <string name="a11y_no_detections">Ningún código en el visor</string>
+    <string name="a11y_detections_in_view">%1$d códigos en el visor</string>
+    <string name="a11y_copy_value">Copiar %1$s</string>
+    <string name="a11y_share_value">Compartir %1$s</string>
+    <string name="a11y_open_value">Abrir %1$s</string>
+    <string name="a11y_zoom">Zoom de la cámara</string>
+</resources>

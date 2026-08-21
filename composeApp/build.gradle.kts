@@ -49,6 +49,7 @@ kotlin {
             implementation(project(":core:designsystem"))
             implementation(project(":feature:scanner"))
             implementation(project(":feature:history"))
+            implementation(project(":feature:settings"))
 
             // Único módulo que conoce a todos los motores: es el composition root.
             implementation(project(":engines:manual"))
@@ -132,7 +133,7 @@ compose.desktop {
         mainClass = "com.testscanner.MainKt"
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "TestScanner"
+            packageName = "Scanly"
             packageVersion = "1.0.0"
         }
     }

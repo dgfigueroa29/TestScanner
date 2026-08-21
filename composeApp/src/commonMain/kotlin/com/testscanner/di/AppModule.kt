@@ -4,6 +4,7 @@ import com.testscanner.core.data.di.dataModule
 import com.testscanner.core.data.di.domainModule
 import com.testscanner.feature.history.di.historyFeatureModule
 import com.testscanner.feature.scanner.di.scannerFeatureModule
+import com.testscanner.feature.settings.di.settingsFeatureModule
 import org.koin.core.KoinApplication
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
@@ -23,6 +24,7 @@ fun appModules(): List<Module> = listOf(
     domainModule,
     scannerFeatureModule,
     historyFeatureModule,
+    settingsFeatureModule,
 )
 
 /**
