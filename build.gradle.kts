@@ -1,5 +1,6 @@
 import io.gitlab.arturbosch.detekt.Detekt
 import io.gitlab.arturbosch.detekt.extensions.DetektExtension
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 
 plugins {
     // Aporta `clean` en la raíz. Antes se registraba a mano, y eso rompía la build: el target
@@ -35,6 +36,24 @@ allprojects {
 
     dependencies {
         add("detektPlugins", detektFormatting)
+    }
+
+    // Cuando un test falla, decir **por qué**.
+    //
+    // Con la salida por defecto de Gradle, un fallo en CI aparecía como
+    // `java.lang.IllegalArgumentException at KoinGraphTest.kt:189`: el tipo de la excepción y la
+    // línea, sin el mensaje ni la causa. Sobre un fallo de cableado —donde el mensaje *es* toda la
+    // información— eso obliga a descargar el informe HTML del artefacto para enterarse de algo, y
+    // en la práctica significa adivinar y volver a lanzar el build.
+    //
+    // Solo `failed`: el ruido de listar cada test que pasa no aporta nada en un log de CI.
+    tasks.withType<Test>().configureEach {
+        testLogging {
+            events("failed")
+            exceptionFormat = TestExceptionFormat.FULL
+            showStackTraces = true
+            showCauses = true
+        }
     }
 
     tasks.withType<Detekt>().configureEach {
