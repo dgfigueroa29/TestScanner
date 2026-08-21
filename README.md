@@ -148,9 +148,14 @@ resuelto y reajusta el estilo de las barras.
 **Los idiomas.** Los cuatro catálogos de textos viven en `values/` (inglés) y `values-es/`. El
 inglés está en la carpeta **sin calificador** a propósito: es el respaldo de cualquier idioma que no
 sea español, así que un teléfono en alemán ve inglés y no castellano. El selector propio va por
-encima del idioma del sistema con `LocalComposeEnvironment`, que es el mecanismo de Compose
-Multiplatform para eso, y `androidApp` declara `localeConfig` para que Scanly aparezca además en el
+encima del idioma del sistema cambiando el locale de la plataforma y tirando el subárbol de
+Compose con `key(tag)`, y `androidApp` declara `localeConfig` para que Scanly aparezca además en el
 selector de idioma por app de Android 13+.
+
+Ese mecanismo es el segundo intento. El primero sustituía el entorno de recursos con
+`LocalComposeEnvironment`, que es lo que documentan varios ejemplos y **no compila con Compose
+Multiplatform 1.11.1**: esa interfaz y su `CompositionLocal` son `internal` a la librería. Lo dice
+`AppLanguage.kt` con el error exacto al lado, para que nadie lo vuelva a intentar.
 
 En Web el selector **no se muestra**: el idioma sale de `navigator.language`, que una página no
 puede escribir. Preferimos no ofrecer el control a ofrecerlo roto —

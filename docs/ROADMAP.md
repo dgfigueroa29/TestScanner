@@ -252,9 +252,12 @@ con sus latencias en la portada, ni una app llamada "TestScanner" sin icono.
 - [x] **Inglés y español.** Los cuatro catálogos duplicados en `values/` (inglés) y `values-es/`.
       El inglés va en la carpeta sin calificador porque es el respaldo de todo idioma que no sea
       español: antes, un teléfono en alemán veía castellano. 127 claves con paridad comprobada
-- [x] **Selector de idioma propio** sobre `LocalComposeEnvironment`, más `localeConfig` para el
-      selector por app de Android 13+. En Web no se muestra: `navigator.language` no se puede
-      escribir desde la página, y un control inerte es peor que no tenerlo
+- [x] **Selector de idioma propio**, más `localeConfig` para el selector por app de Android 13+.
+      En Web no se muestra: `navigator.language` no se puede escribir desde la página, y un control
+      inerte es peor que no tenerlo. El mecanismo es el segundo intento: sustituir el entorno de
+      recursos con `LocalComposeEnvironment` **no compila** en CMP 1.11.1 —esa interfaz y su
+      `CompositionLocal` son `internal`—, así que se cambia el locale de la plataforma y se tira el
+      subárbol con `key(tag)`, que es de donde `stringResource` saca el idioma de verdad
 - [x] **`:feature:settings`** con su ViewModel y sus tests, y **modo avanzado** como preferencia: el
       catálogo de motores, el comparador, el filtro de formatos y las latencias vuelven con un
       interruptor. `Navigator.pruneTo` saca del backstack lo que deja de estar disponible
