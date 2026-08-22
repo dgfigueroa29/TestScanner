@@ -33,6 +33,15 @@ interface DetectionDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertIgnoringDuplicates(detection: DetectionEntity)
 
+    /**
+     * Restituye una fila borrada, nota incluida.
+     *
+     * Es el único sitio donde `REPLACE` es lo correcto: no hay nada que conservar, porque lo que se
+     * escribe **es** el estado que tenía la fila antes de borrarse.
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(detection: DetectionEntity)
+
     /** `null` borra la nota. La fila puede no existir —podada o borrada—: entonces no hace nada. */
     @Query("UPDATE detections SET note = :note WHERE id = :id")
     suspend fun setNote(id: String, note: String?)

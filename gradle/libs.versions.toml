@@ -84,6 +84,11 @@ ksp = "2.3.10"
 
 # Test
 turbine = "1.2.1"
+# Robolectric: un `Context` de Android de verdad **en la JVM**, sin emulador. Es lo que permite que
+# `androidUnitTest` monte el grafo de Koin de Android, que es donde estaba el defecto D18. No
+# contradice la decisión D6 de no tener tests instrumentados: eso descarta lo que exige dispositivo,
+# y esto corre en el mismo job que el resto de tests.
+robolectric = "4.16"
 
 # Quality
 detekt = "1.23.8"
@@ -128,6 +133,7 @@ room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
 
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 
 detekt-formatting = { module = "io.gitlab.arturbosch.detekt:detekt-formatting", version.ref = "detekt" }
 

@@ -39,6 +39,15 @@ class HistoryViewModel(
     private val _effects = MutableSharedFlow<HistoryEffect>()
     val effects: SharedFlow<HistoryEffect> = _effects.asSharedFlow()
 
+    /**
+     * La última lectura borrada, esperando por si el usuario se arrepiente.
+     *
+     * Vive en el ViewModel y no en el estado a propósito: no se pinta en ninguna parte y meterlo en
+     * `HistoryState` haría que cada borrado repintara la lista entera por un dato que nadie mira.
+     * Guarda el [HistoryEntry] completo —nota incluida— porque restituir media fila no es restituir.
+     */
+    private var lastDeleted: HistoryEntry? = null
+
     init {
         viewModelScope.launch {
             history.observe().collect { entries ->
@@ -55,6 +64,7 @@ class HistoryViewModel(
             is HistoryAction.EditNote -> _state.update { it.copy(editingNoteFor = action.detectionId) }
             is HistoryAction.SetNote -> setNote(action.detectionId, action.note)
             is HistoryAction.Delete -> delete(action.detectionId)
+            HistoryAction.UndoDelete -> undoDelete()
             is HistoryAction.Export -> export(action.format)
             HistoryAction.ConfirmClear -> _state.update { it.copy(isConfirmingClear = true) }
             HistoryAction.DismissClear -> _state.update { it.copy(isConfirmingClear = false) }
@@ -121,11 +131,35 @@ class HistoryViewModel(
         }
     }
 
+    /**
+     * Borra una lectura y se la guarda por si el usuario se arrepiente.
+     *
+     * La copia se toma **antes** de borrar y del estado, que es el único sitio donde todavía existe:
+     * después del `delete` el almacén ya no la tiene y no habría de dónde sacarla. Si la fila no
+     * está en el estado —una carrera con la poda— no se borra nada y no se ofrece deshacer.
+     */
     private fun delete(detectionId: String) {
+        val entry = _state.value.entries.firstOrNull { it.id == detectionId } ?: return
+        lastDeleted = entry
+
         viewModelScope.launch {
             history.delete(detectionId)
-            _effects.emit(HistoryEffect.ShowMessage(HistoryMessage.EntryDeleted))
+            _effects.emit(HistoryEffect.ShowMessage(HistoryMessage.EntryDeleted, undoable = true))
         }
+    }
+
+    /**
+     * Devuelve al historial lo último que se borró.
+     *
+     * `lastDeleted` se limpia al restituir para que un segundo toque en un aviso que siga en
+     * pantalla no vuelva a insertar lo mismo. No hace falta más: restituir es idempotente en las
+     * tres implementaciones, pero un no-op explícito se lee mejor que confiar en ello.
+     */
+    private fun undoDelete() {
+        val entry = lastDeleted ?: return
+        lastDeleted = null
+
+        viewModelScope.launch { history.restore(entry) }
     }
 
     /**

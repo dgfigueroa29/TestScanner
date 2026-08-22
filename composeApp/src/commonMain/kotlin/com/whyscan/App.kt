@@ -1,5 +1,12 @@
 package com.whyscan
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -149,17 +156,55 @@ private fun AppScaffold(navigator: Navigator, advancedMode: Boolean) {
         },
     ) { padding ->
         CompositionLocalProvider(LocalSnackbarHostState provides snackbarHostState) {
-            Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-                when (current) {
-                    Destination.Scanner -> ScannerScreen(advancedMode = advancedMode)
-                    Destination.Comparison -> ComparisonScreen()
-                    Destination.History -> HistoryScreen(advancedMode = advancedMode)
-                    Destination.Settings -> SettingsScreen()
+            AnimatedContent(
+                targetState = current,
+                transitionSpec = { fadeThrough() },
+                modifier = Modifier.fillMaxSize().padding(padding),
+                label = "destino",
+            ) { destination ->
+                Column(modifier = Modifier.fillMaxSize()) {
+                    when (destination) {
+                        Destination.Scanner -> ScannerScreen(advancedMode = advancedMode)
+                        Destination.Comparison -> ComparisonScreen()
+                        Destination.History -> HistoryScreen(advancedMode = advancedMode)
+                        Destination.Settings -> SettingsScreen()
+                    }
                 }
             }
         }
     }
 }
+
+/**
+ * Transición entre destinos: *fade through* de Material 3.
+ *
+ * **Fundido y no deslizamiento**, y no es una cuestión de gusto. Un deslizamiento comunica jerarquía
+ * —de dónde vengo y a dónde vuelvo— y aquí no la hay: los cuatro destinos son hermanos y se alcanzan
+ * desde la misma barra, en cualquier orden. Deslizar contaría una relación entre pantallas que no
+ * existe, y obligaría además a decidir la dirección a partir del índice en la barra, que es
+ * exactamente el tipo de detalle que se rompe al reordenar los ítems o al ocultar el comparador.
+ *
+ * Los tiempos son los de la especificación y están escogidos para que **no se solapen**: lo que sale
+ * se va en 90 ms y lo que entra empieza justo después. Solapar dos pantallas a media opacidad da
+ * unos milisegundos de puré visual, y sobre un visor de cámara se nota más que en ningún otro sitio.
+ *
+ * El `scaleIn` arranca en 0,92 y no en 0: es un matiz de que el contenido "llega", no una entrada
+ * con voluntad propia. Una animación que se nota es una animación que estorba a la tercera vez.
+ */
+private fun fadeThrough(): ContentTransform =
+    fadeIn(tween(durationMillis = ENTER_MILLIS, delayMillis = EXIT_MILLIS)) +
+        scaleIn(
+            animationSpec = tween(durationMillis = ENTER_MILLIS, delayMillis = EXIT_MILLIS),
+            initialScale = ENTER_SCALE,
+        ) togetherWith fadeOut(tween(durationMillis = EXIT_MILLIS))
+
+/** Lo que tarda en irse la pantalla saliente. */
+private const val EXIT_MILLIS = 90
+
+/** Lo que tarda en llegar la entrante, empezando cuando la otra ya se fue del todo. */
+private const val ENTER_MILLIS = 220
+
+private const val ENTER_SCALE = 0.92f
 
 /**
  * Qué destinos se ofrecen.

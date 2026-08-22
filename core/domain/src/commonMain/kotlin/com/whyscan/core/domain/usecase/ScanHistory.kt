@@ -41,8 +41,11 @@ class ScanHistory(
         repository.setNote(detectionId, HistoryEntry.normalizeNote(note))
     }
 
-    /** Borra una lectura del historial. */
+    /** Borra una lectura del historial. Se puede deshacer con [restore]. */
     suspend fun delete(detectionId: String) = repository.delete(detectionId)
+
+    /** Devuelve al historial una lectura borrada, con su nota y en su sitio por fecha. */
+    suspend fun restore(entry: HistoryEntry) = repository.restore(entry)
 
     /** Vacía el historial entero. */
     suspend fun clear() = repository.clear()

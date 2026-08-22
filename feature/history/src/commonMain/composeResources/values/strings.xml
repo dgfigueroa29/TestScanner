@@ -7,6 +7,7 @@
     <string name="history_clear">Clear</string>
     <string name="history_export_csv">CSV</string>
     <string name="history_export_json">JSON</string>
+    <string name="history_export_text">Text</string>
     <string name="history_row_meta">%1$s · %2$s</string>
     <string name="history_row_latency"> · %1$d ms</string>
 
@@ -53,6 +54,7 @@
     <string name="message_note_saved">Note saved</string>
     <string name="message_note_removed">Note removed</string>
     <string name="message_entry_deleted">Scan deleted</string>
+    <string name="message_undo">Undo</string>
 
     <!-- Accessibility (RNF-05): same reason as on the scanner screen. -->
     <string name="a11y_copy_value">Copy %1$s</string>

@@ -70,6 +70,16 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
         }
 
+        // Existe para una sola cosa: montar el `platformModule` de **Android** y comprobar que
+        // resuelve, que es la mitad de la deuda D18 que `desktopTest` no puede cubrir. Robolectric
+        // da un `Context` de verdad en la JVM, así que corre en el mismo job que el resto de tests
+        // y no contradice la decisión D6 —que descarta lo que exige un dispositivo, no todo lo que
+        // se llame "Android".
+        androidUnitTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.robolectric)
+        }
+
         val desktopMain by getting
 
         androidMain.dependencies {
@@ -121,6 +131,11 @@ android {
     compileSdk = libs.versions.compileSdk.get().toInt()
     defaultConfig {
         minSdk = libs.versions.minSdk.get().toInt()
+    }
+
+    // Robolectric necesita el manifiesto y los recursos fusionados para levantar su `Application`.
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

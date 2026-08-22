@@ -64,6 +64,15 @@ interface ScanHistoryRepository {
     suspend fun save(detection: Detection)
 
     /**
+     * Vuelve a poner una fila que se había borrado, **con su nota**.
+     *
+     * No es `save` con un argumento más: `save` registra un hecho nuevo del motor y por eso ignora
+     * la nota; esto restituye algo que ya existía tal y como estaba. Que sean dos operaciones
+     * distintas es lo que permite que `save` sea idempotente sin destruir nada.
+     */
+    suspend fun restore(entry: HistoryEntry)
+
+    /**
      * Asocia —o borra, con `null`— la nota de una fila. Si la fila no existe no hace nada: puede
      * haberse podado o haberla borrado el usuario mientras tenía el campo abierto.
      */

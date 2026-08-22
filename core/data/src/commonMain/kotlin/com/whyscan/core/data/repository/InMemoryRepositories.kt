@@ -68,6 +68,13 @@ class InMemoryScanHistoryRepository : ScanHistoryRepository {
         }
     }
 
+    override suspend fun restore(entry: HistoryEntry) {
+        state.update { current ->
+            (current.filterNot { it.id == entry.id } + entry)
+                .sortedByDescending { it.detection.detectedAtMillis }
+        }
+    }
+
     override suspend fun setNote(detectionId: String, note: String?) {
         state.update { current ->
             current.map { if (it.id == detectionId) it.copy(note = note) else it }

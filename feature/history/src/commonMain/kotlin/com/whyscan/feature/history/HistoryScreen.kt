@@ -20,6 +20,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -42,6 +44,7 @@ import com.whyscan.feature.history.resources.history_clear_title
 import com.whyscan.feature.history.resources.history_empty
 import com.whyscan.feature.history.resources.history_export_csv
 import com.whyscan.feature.history.resources.history_export_json
+import com.whyscan.feature.history.resources.history_export_text
 import com.whyscan.feature.history.resources.history_filter_all
 import com.whyscan.feature.history.resources.history_no_matches
 import com.whyscan.feature.history.resources.history_search
@@ -56,6 +59,7 @@ import com.whyscan.feature.history.resources.message_note_saved
 import com.whyscan.feature.history.resources.message_nothing_to_export
 import com.whyscan.feature.history.resources.message_open_failed
 import com.whyscan.feature.history.resources.message_share_failed
+import com.whyscan.feature.history.resources.message_undo
 import com.whyscan.feature.history.resources.share_separator
 import com.whyscan.feature.history.resources.share_wifi
 import com.whyscan.feature.history.resources.share_wifi_with_password
@@ -75,7 +79,19 @@ fun HistoryScreen(
     LaunchedEffect(viewModel) {
         viewModel.effects.collect { effect ->
             when (effect) {
-                is HistoryEffect.ShowMessage -> snackbarHostState.showSnackbar(resolve(effect.message))
+                is HistoryEffect.ShowMessage -> {
+                    val result = snackbarHostState.showSnackbar(
+                        message = resolve(effect.message),
+                        actionLabel = if (effect.undoable) getString(Res.string.message_undo) else null,
+                        // Deshacer sin prisa: el aviso se queda hasta que el usuario decide. Un
+                        // borrado que se puede revertir durante dos segundos y medio no se puede
+                        // revertir de verdad — no da tiempo ni a leer qué desapareció.
+                        duration = if (effect.undoable) SnackbarDuration.Long else SnackbarDuration.Short,
+                    )
+                    if (result == SnackbarResult.ActionPerformed) {
+                        viewModel.onAction(HistoryAction.UndoDelete)
+                    }
+                }
             }
         }
     }
@@ -301,6 +317,7 @@ private suspend fun resolve(message: HistoryMessage): String = when (message) {
 private fun ExportFormat.labelResource(): StringResource = when (this) {
     ExportFormat.Csv -> Res.string.history_export_csv
     ExportFormat.Json -> Res.string.history_export_json
+    ExportFormat.Text -> Res.string.history_export_text
 }
 
 /**

@@ -27,6 +27,14 @@ class RoomScanHistoryRepository(
         dao.trimTo(maxEntries)
     }
 
+    /**
+     * `REPLACE` aquí sí, y solo aquí: restituir es la única operación que debe pisar lo que haya.
+     * El orden lo pone la consulta —por `detectedAtMillis`—, así que la fila vuelve a su sitio y no
+     * al principio de la lista.
+     */
+    override suspend fun restore(entry: HistoryEntry) =
+        dao.upsert(entry.detection.toEntity().copy(note = entry.note))
+
     override suspend fun setNote(detectionId: String, note: String?) = dao.setNote(detectionId, note)
 
     override suspend fun delete(detectionId: String) = dao.delete(detectionId)

@@ -69,6 +69,22 @@ class SettingsScanHistoryRepository(
         persist()
     }
 
+    /**
+     * Restituye una fila borrada en **su sitio por fecha** y no al principio.
+     *
+     * Room ordena en la consulta (`ORDER BY detectedAtMillis DESC`), así que allí esto sale gratis.
+     * Aquí la lista es el orden, y sin reordenar una lectura de ayer restituida aparecería encima de
+     * la de hace un minuto. Que las cuatro plataformas muestren el mismo historial en el mismo orden
+     * es la condición para que las exportaciones sean comparables.
+     */
+    override suspend fun restore(entry: HistoryEntry) {
+        state.update { current ->
+            (current.filterNot { it.id == entry.id } + entry)
+                .sortedByDescending { it.detection.detectedAtMillis }
+        }
+        persist()
+    }
+
     override suspend fun setNote(detectionId: String, note: String?) {
         state.update { current ->
             current.map { if (it.id == detectionId) it.copy(note = note) else it }

@@ -83,6 +83,7 @@ class ScanSessionsTest {
             saved += detection
         }
 
+        override suspend fun restore(entry: HistoryEntry) = Unit
         override suspend fun setNote(detectionId: String, note: String?) = Unit
         override suspend fun delete(detectionId: String) = Unit
         override suspend fun clear() = saved.clear()

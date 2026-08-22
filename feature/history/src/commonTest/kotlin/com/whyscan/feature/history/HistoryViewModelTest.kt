@@ -43,6 +43,11 @@ class HistoryViewModelTest {
         override suspend fun save(detection: Detection) =
             state.update { listOf(HistoryEntry(detection)) + it }
 
+        override suspend fun restore(entry: HistoryEntry) = state.update { current ->
+            (current.filterNot { it.id == entry.id } + entry)
+                .sortedByDescending { it.detection.detectedAtMillis }
+        }
+
         override suspend fun setNote(detectionId: String, note: String?) = state.update { current ->
             current.map { if (it.id == detectionId) it.copy(note = note) else it }
         }
@@ -447,5 +452,113 @@ class HistoryViewModelTest {
 
         assertTrue(!viewModel.state.value.isConfirmingClear)
         assertEquals(2, repository.entries.size)
+    }
+
+    // --- Deshacer un borrado (Ronda 4) ---
+
+    @Test
+    fun `deshacer devuelve la lectura borrada`() = runTest {
+        val (viewModel, repository) = viewModel(listOf(mlKit, zxing))
+
+        viewModel.onAction(HistoryAction.Delete(mlKit.id))
+        viewModel.onAction(HistoryAction.UndoDelete)
+
+        assertEquals(
+            listOf(mlKit, zxing).sortedByDescending { it.detectedAtMillis },
+            repository.entries.map { it.detection },
+        )
+    }
+
+    @Test
+    fun `deshacer devuelve tambien la nota`() = runTest {
+        // Restituir media fila no es restituir: la nota es lo que costó escribir.
+        val (viewModel, repository) = viewModel(listOf(mlKit))
+
+        viewModel.onAction(HistoryAction.SetNote(mlKit.id, "factura de marzo"))
+        viewModel.onAction(HistoryAction.Delete(mlKit.id))
+        viewModel.onAction(HistoryAction.UndoDelete)
+
+        assertEquals("factura de marzo", repository.entries.single().note)
+    }
+
+    @Test
+    fun `la lectura restituida vuelve a su sitio por fecha, no al principio`() = runTest {
+        // `manual` es la más antigua de las tres. Sin ordenar, restituirla la pondría arriba.
+        val (viewModel, repository) = viewModel(listOf(mlKit, zxing, manual))
+
+        viewModel.onAction(HistoryAction.Delete(manual.id))
+        viewModel.onAction(HistoryAction.UndoDelete)
+
+        assertEquals(manual, repository.entries.last().detection)
+    }
+
+    @Test
+    fun `solo el aviso del borrado ofrece deshacer`() = runTest {
+        val (viewModel, _) = viewModel(listOf(mlKit))
+
+        viewModel.effects.test {
+            viewModel.onAction(HistoryAction.SetNote(mlKit.id, "algo"))
+            assertEquals(false, (awaitItem() as HistoryEffect.ShowMessage).undoable)
+
+            viewModel.onAction(HistoryAction.Delete(mlKit.id))
+            assertEquals(true, (awaitItem() as HistoryEffect.ShowMessage).undoable)
+        }
+    }
+
+    @Test
+    fun `deshacer dos veces no duplica la lectura`() = runTest {
+        // El aviso puede seguir en pantalla tras el primer toque.
+        val (viewModel, repository) = viewModel(listOf(mlKit))
+
+        viewModel.onAction(HistoryAction.Delete(mlKit.id))
+        viewModel.onAction(HistoryAction.UndoDelete)
+        viewModel.onAction(HistoryAction.UndoDelete)
+
+        assertEquals(1, repository.entries.size)
+    }
+
+    @Test
+    fun `deshacer sin nada borrado no hace nada`() = runTest {
+        val (viewModel, repository) = viewModel(listOf(mlKit))
+
+        viewModel.onAction(HistoryAction.UndoDelete)
+
+        assertEquals(1, repository.entries.size)
+    }
+
+    // --- Búsqueda sin acentos (Ronda 4) ---
+
+    @Test
+    fun `la busqueda encuentra sin escribir la tilde`() = runTest {
+        // Media gente escribe "factura" buscando lo que guardó como "Factúra", y desde un teclado
+        // sin tildes no hay otra opción.
+        val (viewModel, _) = viewModel(listOf(mlKit))
+
+        viewModel.onAction(HistoryAction.SetNote(mlKit.id, "Factúra de línea aérea"))
+        viewModel.onAction(HistoryAction.Search("factura"))
+
+        assertEquals(1, viewModel.state.value.visible.size)
+    }
+
+    @Test
+    fun `la busqueda encuentra tambien escribiendo la tilde sobre texto sin ella`() = runTest {
+        val (viewModel, _) = viewModel(listOf(mlKit))
+
+        viewModel.onAction(HistoryAction.SetNote(mlKit.id, "factura"))
+        viewModel.onAction(HistoryAction.Search("factúra"))
+
+        assertEquals(1, viewModel.state.value.visible.size)
+    }
+
+    @Test
+    fun `la enie no se confunde con la ene`() = runTest {
+        // En español es una letra distinta, no una `n` con adorno. Que "ano" encontrara "año" sería
+        // desconcertante en el mejor de los casos.
+        val (viewModel, _) = viewModel(listOf(mlKit))
+
+        viewModel.onAction(HistoryAction.SetNote(mlKit.id, "año fiscal"))
+        viewModel.onAction(HistoryAction.Search("ano"))
+
+        assertTrue(viewModel.state.value.visible.isEmpty())
     }
 }

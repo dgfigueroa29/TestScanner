@@ -43,19 +43,44 @@ data class HistoryState(
 }
 
 /**
- * Búsqueda por subcadena, sin distinguir mayúsculas, sobre el valor y la nota.
+ * Búsqueda por subcadena sobre el valor y la nota, **sin distinguir mayúsculas ni acentos**.
  *
- * Es deliberadamente tonta: sin tokenizar, sin normalizar acentos y sin puntuación. Un historial son
- * unos cientos de filas y el usuario busca lo que él mismo escribió hace un rato, así que "empieza a
- * teclear y va quedando menos" es exactamente el comportamiento esperado. Cualquier cosa más lista
- * sorprendería más de lo que ayuda.
+ * Sigue siendo deliberadamente simple —sin tokenizar y sin puntuación—: un historial son unos
+ * cientos de filas y el usuario busca lo que él mismo escribió hace un rato, así que "empiezo a
+ * teclear y va quedando menos" es exactamente lo que espera.
+ *
+ * Los acentos sí importan y por eso se quitan. En español la mitad de la gente escribe "factura" al
+ * buscar lo que guardó como "Factúra", y quien busca desde un teclado sin tildes no tiene otra
+ * opción. Que la búsqueda no encuentre algo que está delante es el peor fallo posible de un
+ * buscador: no parece un fallo, parece que el dato no existe.
  */
 private fun HistoryEntry.matches(query: String): Boolean {
     if (query.isBlank()) return true
 
-    val needle = query.trim()
-    return detection.barcode.rawValue.contains(needle, ignoreCase = true) ||
-        note?.contains(needle, ignoreCase = true) == true
+    val needle = query.trim().foldForSearch()
+    return detection.barcode.rawValue.foldForSearch().contains(needle) ||
+        note?.foldForSearch()?.contains(needle) == true
+}
+
+/**
+ * Minúsculas y sin diacríticos, para comparar.
+ *
+ * Es un mapa a mano y no `java.text.Normalizer`, que no existe en `commonMain` — y traer una
+ * librería de normalización Unicode para esto sería desproporcionado. Cubre los diacríticos de los
+ * dos idiomas que la app habla, más la diéresis y la eñe, que es exactamente el alcance del
+ * problema. Si algún día hay un tercer idioma, esta función es el sitio donde se ve qué falta.
+ */
+private fun String.foldForSearch(): String = lowercase().map { ACCENTS[it] ?: it }.joinToString("")
+
+private val ACCENTS: Map<Char, Char> = buildMap {
+    "áàäâã".forEach { put(it, 'a') }
+    "éèëê".forEach { put(it, 'e') }
+    "íìïî".forEach { put(it, 'i') }
+    "óòöôõ".forEach { put(it, 'o') }
+    "úùüû".forEach { put(it, 'u') }
+    put('ç', 'c')
+    // La eñe **no** se pliega a `n`: en español es una letra distinta, no una `n` con adorno, y
+    // hacer que "ano" encuentre "año" sería un resultado desconcertante en el mejor de los casos.
 }
 
 sealed interface HistoryAction {
@@ -72,8 +97,18 @@ sealed interface HistoryAction {
     /** Guarda la nota. Una cadena vacía o en blanco borra la que hubiera. */
     data class SetNote(val detectionId: String, val note: String) : HistoryAction
 
-    /** Borra una sola lectura. No pide confirmación: es una fila y se ve cuál. */
+    /**
+     * Borra una sola lectura.
+     *
+     * **No pide confirmación, y por eso puede deshacerse.** Son las dos caras de la misma decisión:
+     * un diálogo por cada fila que se borra convierte una tarea de limpiar veinte lecturas en veinte
+     * interrupciones, mientras que un "Deshacer" en el aviso cuesta un toque solo a quien se
+     * equivocó. Vaciar el historial entero sí pregunta, porque ahí no hay nada que devolver.
+     */
     data class Delete(val detectionId: String) : HistoryAction
+
+    /** Devuelve al historial la última lectura borrada. */
+    data object UndoDelete : HistoryAction
 
     /** Sacar el historial a un archivo (RF-11). */
     data class Export(val format: ExportFormat) : HistoryAction
@@ -92,5 +127,13 @@ sealed interface HistoryAction {
 
 /** Eventos de una sola vez del historial. */
 sealed interface HistoryEffect {
-    data class ShowMessage(val message: HistoryMessage) : HistoryEffect
+    /**
+     * @param undoable si el aviso debe ofrecer "Deshacer". Es un booleano y no otro tipo de efecto
+     *   porque quien decide **qué** se deshace es el ViewModel, que guarda lo borrado; la pantalla
+     *   solo necesita saber si pintar el botón.
+     */
+    data class ShowMessage(
+        val message: HistoryMessage,
+        val undoable: Boolean = false,
+    ) : HistoryEffect
 }

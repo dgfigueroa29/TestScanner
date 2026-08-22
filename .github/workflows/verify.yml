@@ -42,6 +42,12 @@ jobs:
       - name: Tests multiplataforma del núcleo y las features
         run: ./gradlew jvmTest desktopTest
 
+      # Aparte de la línea de arriba porque la tarea se llama distinto, no porque sea otra clase de
+      # test: es JVM y sin emulador, como todo lo demás. Monta el `platformModule` de Android con
+      # Robolectric y comprueba que resuelve — la mitad de D18 que `desktopTest` no puede cubrir.
+      - name: Tests de JVM del grafo de Android
+        run: ./gradlew :composeApp:testDebugUnitTest
+
       - name: Publicar informes
         if: always()
         uses: actions/upload-artifact@v4

@@ -6,6 +6,7 @@
     <string name="history_clear">Borrar</string>
     <string name="history_export_csv">CSV</string>
     <string name="history_export_json">JSON</string>
+    <string name="history_export_text">Texto</string>
     <string name="history_row_meta">%1$s · %2$s</string>
     <string name="history_row_latency"> · %1$d ms</string>
 
@@ -52,6 +53,7 @@
     <string name="message_note_saved">Nota guardada</string>
     <string name="message_note_removed">Nota eliminada</string>
     <string name="message_entry_deleted">Lectura eliminada</string>
+    <string name="message_undo">Deshacer</string>
 
     <!-- Accesibilidad (RNF-05): mismo motivo que en la pantalla de escaneo. -->
     <string name="a11y_copy_value">Copiar %1$s</string>

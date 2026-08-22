@@ -218,4 +218,53 @@ class HistoryExporterTest {
         // En JSON nada se ejecuta, así que ahí no hace falta neutralizar nada.
         assertTrue(result.contains("\"note\": \"=formula\""), result)
     }
+
+    // --- Texto plano (Ronda 4) ---
+
+    @Test
+    fun `el texto plano es una lectura por linea y nada mas`() {
+        // CSV y JSON son para herramientas; esto es para pegar en un correo.
+        val result = HistoryExporter.export(
+            listOf(entry("hola"), entry("adios")),
+            ExportFormat.Text,
+        )
+
+        assertEquals(listOf("hola", "adios"), result.trim().lines())
+    }
+
+    @Test
+    fun `el texto plano no lleva cabecera`() {
+        // Una cabecera en un archivo que se va a pegar entero es una línea de basura.
+        val result = HistoryExporter.export(listOf(entry("hola")), ExportFormat.Text)
+
+        assertEquals(1, result.trim().lines().size)
+    }
+
+    @Test
+    fun `la nota va detras del valor cuando la hay`() {
+        val result = HistoryExporter.export(listOf(entry("hola", "pedido 42")), ExportFormat.Text)
+
+        assertTrue(result.trim().startsWith("hola"), result)
+        assertTrue(result.contains("pedido 42"), result)
+    }
+
+    @Test
+    fun `el texto plano no neutraliza formulas, y es a proposito`() {
+        // Esto no lo abre una hoja de cálculo. Meter una comilla delante rompería justo lo que este
+        // formato existe para dar: el valor tal cual, listo para pegar. Quien lo lleve a una hoja
+        // tiene el CSV, que sí lo protege.
+        val result = HistoryExporter.export(listOf(entry("=1+1")), ExportFormat.Text)
+
+        assertEquals("=1+1", result.trim())
+    }
+
+    @Test
+    fun `una nota con saltos de linea no rompe una lectura por linea`() {
+        val result = HistoryExporter.export(
+            listOf(entry("hola", "primera\nsegunda")),
+            ExportFormat.Text,
+        )
+
+        assertEquals(1, result.trim().lines().size, result)
+    }
 }

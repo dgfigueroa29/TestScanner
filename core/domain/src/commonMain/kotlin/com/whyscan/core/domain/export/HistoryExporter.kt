@@ -9,6 +9,16 @@ import kotlinx.serialization.json.Json
 enum class ExportFormat(val extension: String, val mimeType: String) {
     Csv("csv", "text/csv"),
     Json("json", "application/json"),
+
+    /**
+     * Una lectura por línea, sin cabecera ni comillas.
+     *
+     * CSV y JSON son para herramientas; esto es para personas. Lo que la gente hace de verdad con
+     * treinta códigos escaneados es pegarlos en un correo, en un chat o en una celda, y para eso los
+     * otros dos formatos estorban: uno mete comillas y comas donde nadie las quiere y el otro es
+     * ilegible sin un visor.
+     */
+    Text("txt", "text/plain"),
 }
 
 /**
@@ -45,6 +55,7 @@ object HistoryExporter {
     fun export(entries: List<HistoryEntry>, format: ExportFormat): String = when (format) {
         ExportFormat.Csv -> toCsv(entries)
         ExportFormat.Json -> toJson(entries)
+        ExportFormat.Text -> toText(entries)
     }
 
     /** Nombre sugerido; el diálogo del sistema es quien resuelve colisiones. */
@@ -69,6 +80,25 @@ object HistoryExporter {
                     entry.note.orEmpty(),
                 ).joinToString(SEPARATOR) { it.asCsvField() },
             )
+        }
+    }
+
+    /**
+     * Una lectura por línea: el valor, y la nota detrás cuando la hay.
+     *
+     * **Sin guardado anti-fórmula**, y es deliberado: esto no lo abre una hoja de cálculo, y meter
+     * una comilla delante de un valor que empieza por `-` rompería justo lo que este formato existe
+     * para dar — el valor tal cual, listo para pegar. Quien lo lleve a una hoja tiene el CSV, que sí
+     * lo protege. El formato dice para qué es y se comporta en consecuencia.
+     *
+     * Una nota con saltos de línea rompería el "una lectura por línea", así que se aplanan. Es lo
+     * único que se toca.
+     */
+    private fun toText(entries: List<HistoryEntry>): String = buildString {
+        entries.forEach { entry ->
+            append(entry.detection.barcode.rawValue)
+            entry.note?.let { append(NOTE_SEPARATOR).append(it.replace(NEWLINES, " ")) }
+            appendLine()
         }
     }
 
@@ -110,6 +140,11 @@ object HistoryExporter {
     )
 
     private const val SEPARATOR = ","
+
+    /** Separa el valor de la nota en el formato de texto. Legible y difícil de confundir con datos. */
+    private const val NOTE_SEPARATOR = "  —  "
+
+    private val NEWLINES = Regex("[\\r\\n]+")
 
     /** Caracteres con los que una hoja de cálculo interpreta la celda como fórmula. */
     private val FORMULA_STARTERS = setOf('=', '+', '-', '@', '\t', '\r')

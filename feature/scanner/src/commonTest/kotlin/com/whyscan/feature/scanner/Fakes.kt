@@ -117,6 +117,10 @@ class FakeHistoryRepository : ScanHistoryRepository {
         state.update { listOf(HistoryEntry(detection)) + it }
     }
 
+    override suspend fun restore(entry: HistoryEntry) {
+        state.update { current -> current.filterNot { it.id == entry.id } + entry }
+    }
+
     override suspend fun setNote(detectionId: String, note: String?) {
         state.update { current -> current.map { if (it.id == detectionId) it.copy(note = note) else it } }
     }
