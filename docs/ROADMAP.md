@@ -373,16 +373,19 @@ sea explícita.
       guardó como "Factúra", y desde un teclado sin tildes no hay otra opción. Que un buscador no
       encuentre algo que está delante no parece un fallo: parece que el dato no existe. La eñe **no**
       se pliega, que es una letra distinta y no una `n` con adorno
+- [x] **El historial se agrupa por día**, con cabeceras pegajosas que dicen "Hoy" y "Ayer" en lugar
+      de la fecha, que es lo que una persona reconoce sin leer. Es lo que hizo falta traer
+      `kotlinx-datetime`, la dependencia que §9.7 había evitado a conciencia: aquel razonamiento
+      —no arrastrar una librería de fechas por una columna de un CSV— sigue siendo correcto para
+      aquello y deja de serlo aquí, porque agrupar por día **no es aritmética sobre milisegundos**
+      (zona horaria, horario de verano y calendario). La agrupación recibe la zona por parámetro
+      para ser pura y probable
 - [x] **Exportar a texto plano.** Una lectura por línea, sin cabecera y sin comillas. CSV y JSON son
       para herramientas; lo que la gente hace con treinta códigos es pegarlos en un correo. No lleva
       guardado anti-fórmula **a propósito**, y hay un test que lo fija: esto no lo abre una hoja de
       cálculo, y una comilla delante rompería justo lo que el formato existe para dar
 
 **Pendiente**
-- [ ] **Ordenar y agrupar el historial por día.** Doscientas filas planas son doscientas filas
-      planas; una cabecera por fecha las convierte en algo que se recorre. Exige `kotlinx-datetime`,
-      que es la dependencia que §9.7 evitó a propósito para no formatear una columna — con
-      cabeceras de fecha en pantalla el cálculo cambia
 - [ ] **Anotar desde la pantalla de escaneo**, no solo desde el historial. El momento en que uno sabe
       para qué es un código es justo cuando lo acaba de leer
 

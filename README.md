@@ -47,6 +47,7 @@ el comparador en paralelo y las latencias por lectura.
 | Pantalla de escaneo | ✅ cámara a pantalla completa con el resultado en una hoja que la empuja, no que la tapa; la sesión arranca sola y se apaga al salir ([ADR-0010](docs/adr/ADR-0010-dos-disposiciones-de-la-pantalla-de-escaneo.md)) |
 | Lecturas repetidas | ✅ suprimidas en el dominio con ventana de dos segundos. Antes, tres segundos apuntando a un QR escribían noventa filas en el historial |
 | Notas en el historial | ✅ texto de referencia por lectura, con buscador que mira valor **y** nota ([ADR-0012](docs/adr/ADR-0012-la-nota-es-del-historial-no-de-la-deteccion.md)). La poda no se lleva lo anotado |
+| Historial agrupado por día | ✅ cabeceras pegajosas con "Hoy" y "Ayer", que es lo que una persona reconoce sin leer |
 | Borrado del historial | ✅ una lectura suelta **con deshacer**, o todo con confirmación que dice cuántas se pierden |
 | Exportación del historial | ✅ CSV, JSON y texto plano, guardado en las cuatro plataformas |
 | Migraciones de la base | ✅ `@AutoMigration`, y un test que abre una base v1 con datos y comprueba que siguen ahí |

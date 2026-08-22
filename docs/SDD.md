@@ -4,11 +4,11 @@
 |---|---|
 | Proyecto | WhyScan |
 | Documento | Software Design Document (SDD) |
-| Versión | 1.10 |
+| Versión | 1.11 |
 | Estado | Vigente — **el proyecto compila y pasa CI** en Android (con R8), Escritorio y Web, y el framework de iOS **enlaza entero** desde el workflow manual `ios.yml`. Fases 1, 2, 4 y 5 cerradas salvo lo listado como pendiente; la 3 (iOS) escrita y despriorizada por falta de dispositivo, no de compilación. **La app arrancó por primera vez en un dispositivo real** en la versión anterior, y ese arranque encontró un defecto que ninguna comprobación automática podía ver (§10); esta versión convierte esa comprobación en un test y, con él, destapa un segundo defecto de meses en la persistencia (§11) |
 | Fecha | 2026-08-22 |
 | Autor | Equipo WhyScan |
-| Alcance de esta versión | Cierre de D18 y D22 —el grafo de Android y la migración pasan a tener test (§10, §11, §13.1)—, deshacer un borrado, búsqueda sin acentos y exportación a texto plano (§9.7). Antes, en la misma fase: las notas del historial (ADR-0012), marca, tema, idiomas y el rediseño del escáner (ADR-0010, ADR-0011), y el renombrado a **WhyScan** (§1.1) |
+| Alcance de esta versión | Cierre de D18 y D22 —el grafo de Android y la migración pasan a tener test (§10, §11, §13.1)—, el historial agrupado por día, deshacer un borrado, búsqueda sin acentos y exportación a texto plano (§9.7). Antes, en la misma fase: las notas del historial (ADR-0012), marca, tema, idiomas y el rediseño del escáner (ADR-0010, ADR-0011), y el renombrado a **WhyScan** (§1.1) |
 
 ---
 
@@ -1139,7 +1139,8 @@ información que solo existía como posición o como color":
 | Decodificación real | `jvmTest` | ZXing (Java) decodificando imágenes que el propio ZXing genera en el test | kotlin-test |
 | **Grafo de dependencias** | `desktopTest` | Que el grafo real de Koin **resuelva**: arranca los módulos y pide cada tipo que la raíz de la app consume (`KoinGraphTest`, §10) | kotlin-test, koin-core |
 | Contraste de la paleta | `commonTest` | 56 pares de color contra su umbral WCAG, sobre los dos esquemas (§12.1) | kotlin-test |
-| Notas, búsqueda y borrado | `commonTest` | Que anotar, buscar por nota, borrar una fila y confirmar el vaciado hagan lo que dicen, y que la poda no se lleve lo anotado | kotlin-test, turbine |
+| Notas, búsqueda y borrado | `commonTest` | Que anotar, buscar por nota, borrar una fila, deshacerlo y confirmar el vaciado hagan lo que dicen, y que la poda no se lleve lo anotado | kotlin-test, turbine |
+| Agrupación por día | `commonTest` | Que el día dependa de la zona horaria y no del instante, con la zona por parámetro para que el test no dependa de dónde corre | kotlin-test, kotlinx-datetime |
 | **Grafo de Android** | `androidUnitTest` | Que el `platformModule` de Android resuelva, con un `Context` real en la JVM (`AndroidKoinGraphTest`, §10) | kotlin-test, Robolectric |
 | **Migración de la base** | `jvmTest` | Que una base v1 con filas dentro siga teniéndolas tras abrirla con el código v2 (`MigrationTest`, §11) | kotlin-test |
 
@@ -1517,6 +1518,40 @@ o por `=` no necesita mala intención para que la hoja de cálculo la ejecute, y
 de línea son mucho más probables en texto que escribe una persona que en un código de barras. La
 columna `note` va **la última** para que quien tenga un script leyendo por posición no se rompa al
 añadirla.
+
+#### El historial se agrupa por día, y eso cambió una decisión de este mismo apartado
+
+Una lista plana de doscientas lecturas se recorre pasando el dedo y esperando reconocer algo. Una
+cabecera por día le da al usuario lo único que **sí** recuerda de una lectura que no anotó —cuándo la
+hizo— y convierte el desplazamiento en navegación. Las cabeceras son pegajosas porque un día largo
+ocupa varias pantallas, y sin eso a la tercera ya no se sabe dónde uno está.
+
+**Esto obligó a revisar una decisión escrita más abajo en este mismo apartado.** El párrafo sobre
+`detectedAt` dice que la exportación guarda milisegundos desde época y no ISO-8601 para no arrastrar
+`kotlinx-datetime` por una columna de un CSV. Ese razonamiento sigue siendo válido para la
+exportación y deja de serlo aquí, porque **agrupar por día no es aritmética sobre milisegundos**:
+
+- "El mismo día" depende de la **zona horaria**. Dos lecturas separadas por un minuto pueden caer en
+  días distintos, y la medianoche no llega cada 86 400 000 ms exactos — el horario de verano mueve
+  esa frontera dos veces al año.
+- "El día anterior" depende del **calendario**, no de restar un día de milisegundos.
+
+Escribir eso a mano es reimplementar peor una librería de primera parte y multiplataforma. Se fija en
+la 0.6.2 y no en la última: a partir de la 0.7 `kotlinx.datetime.Instant` se muda a
+`kotlin.time.Instant` con su periodo de deprecación y sus opt-in, y aquí solo hace falta "en qué día
+local cayó este instante", que es API estable desde hace años.
+
+**La zona horaria entra por parámetro y el día de hoy también**, y las dos cosas son la misma
+decisión: leer el reloj o la zona del sistema dentro de la función la haría impredecible. Con
+`currentSystemDefault()` dentro, el test que comprueba que un instante cae en días distintos según la
+zona pasaría o fallaría según dónde corriera el runner. Y con el día de hoy en un `remember`, "Hoy"
+quedaría congelado en el instante en que se compuso: con la app abierta a medianoche pasaría a ser
+mentira sin que nada la recompusiera.
+
+Los nombres de mes viven en `composeResources` porque son la única parte de una fecha que hay que
+traducir, y se resuelven con un `when` explícito y no con un array indexado por el número de mes: un
+array escrito con un elemento de menos devuelve el mes equivocado en silencio, y nadie lo nota hasta
+que llega ese mes.
 
 #### Un tercer formato, que no protege nada a propósito
 
