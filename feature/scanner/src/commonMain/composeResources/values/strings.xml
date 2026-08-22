@@ -112,6 +112,10 @@
     <string name="permission_body">WhyScan needs the camera to read codes. Frames are processed on the device and never leave it — the app has no internet permission at all.</string>
     <string name="no_camera_title">No live camera here</string>
     <string name="no_camera_body">This device has no capture WhyScan can drive. You can still scan a picture or type a code by hand.</string>
+
+    <!-- Cámara pausada. No es un estado de carga: la app espera al usuario, no al revés. -->
+    <string name="paused_title">Camera paused</string>
+    <string name="paused_body">Nothing is being captured right now. Resume when you are ready to scan again.</string>
     <string name="session_paused">Paused</string>
     <string name="action_resume">Resume</string>
 

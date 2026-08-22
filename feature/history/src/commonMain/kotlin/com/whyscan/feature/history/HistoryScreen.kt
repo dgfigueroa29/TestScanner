@@ -9,11 +9,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -21,43 +27,35 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.whyscan.core.designsystem.CodeValueStyle
 import com.whyscan.core.designsystem.LocalSnackbarHostState
 import com.whyscan.core.designsystem.Spacing
 import com.whyscan.core.domain.export.ExportFormat
-import com.whyscan.core.domain.scan.OpenKind
-import com.whyscan.core.domain.scan.ResultAction
-import com.whyscan.core.domain.scan.ResultActionsFactory
 import com.whyscan.core.domain.scan.ShareableContent
-import com.whyscan.core.model.Detection
 import com.whyscan.feature.history.resources.Res
-import com.whyscan.feature.history.resources.a11y_copy_value
-import com.whyscan.feature.history.resources.a11y_open_value
-import com.whyscan.feature.history.resources.a11y_share_value
 import com.whyscan.feature.history.resources.history_clear
+import com.whyscan.feature.history.resources.history_clear_body
+import com.whyscan.feature.history.resources.history_clear_cancel
+import com.whyscan.feature.history.resources.history_clear_confirm
+import com.whyscan.feature.history.resources.history_clear_title
 import com.whyscan.feature.history.resources.history_empty
 import com.whyscan.feature.history.resources.history_export_csv
 import com.whyscan.feature.history.resources.history_export_json
 import com.whyscan.feature.history.resources.history_filter_all
-import com.whyscan.feature.history.resources.history_row_latency
-import com.whyscan.feature.history.resources.history_row_meta
+import com.whyscan.feature.history.resources.history_no_matches
+import com.whyscan.feature.history.resources.history_search
+import com.whyscan.feature.history.resources.history_search_clear
 import com.whyscan.feature.history.resources.message_copied
 import com.whyscan.feature.history.resources.message_copy_failed
+import com.whyscan.feature.history.resources.message_entry_deleted
 import com.whyscan.feature.history.resources.message_exported
 import com.whyscan.feature.history.resources.message_exported_to
+import com.whyscan.feature.history.resources.message_note_removed
+import com.whyscan.feature.history.resources.message_note_saved
 import com.whyscan.feature.history.resources.message_nothing_to_export
 import com.whyscan.feature.history.resources.message_open_failed
 import com.whyscan.feature.history.resources.message_share_failed
-import com.whyscan.feature.history.resources.result_copy
-import com.whyscan.feature.history.resources.result_open_email
-import com.whyscan.feature.history.resources.result_open_link
-import com.whyscan.feature.history.resources.result_open_map
-import com.whyscan.feature.history.resources.result_open_phone
-import com.whyscan.feature.history.resources.result_open_sms
-import com.whyscan.feature.history.resources.result_share
 import com.whyscan.feature.history.resources.share_separator
 import com.whyscan.feature.history.resources.share_wifi
 import com.whyscan.feature.history.resources.share_wifi_with_password
@@ -97,32 +95,68 @@ fun HistoryContent(
     modifier: Modifier = Modifier,
     advancedMode: Boolean = false,
 ) {
+    if (state.isConfirmingClear) {
+        ClearConfirmation(count = state.entries.size, onAction = onAction)
+    }
+
     when {
         state.isLoading -> Centered(modifier) { CircularProgressIndicator() }
 
-        state.isEmpty -> Centered(modifier) {
-            Text(
-                text = stringResource(Res.string.history_empty),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        state.isEmpty -> Centered(modifier) { EmptyMessage(stringResource(Res.string.history_empty)) }
 
         else -> Column(modifier = modifier.fillMaxSize().padding(Spacing.md)) {
+            SearchField(query = state.query, onAction = onAction)
+
             HistoryToolbar(state, onAction, advancedMode)
 
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                items(state.visible, key = { it.id }) { detection ->
-                    HistoryRow(
-                        detection = detection,
-                        canShare = state.canShare,
-                        advancedMode = advancedMode,
-                        onAction = onAction,
-                    )
+            // Un historial lleno cuyo filtro no deja nada no es lo mismo que un historial vacío, y
+            // decir "todavía no escaneaste nada" cuando hay cien lecturas detrás es mentir.
+            if (state.isFilteredEmpty) {
+                Centered(Modifier) { EmptyMessage(stringResource(Res.string.history_no_matches)) }
+            } else {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    items(state.visible, key = { it.id }) { entry ->
+                        HistoryRow(
+                            entry = entry,
+                            canShare = state.canShare,
+                            advancedMode = advancedMode,
+                            isEditingNote = state.editingNoteFor == entry.id,
+                            onAction = onAction,
+                        )
+                    }
                 }
             }
         }
     }
+}
+
+/**
+ * Buscador sobre el valor y sobre la nota.
+ *
+ * Está siempre y no detrás de un icono: cuando el historial tiene doscientas filas, buscar deja de
+ * ser una función avanzada y pasa a ser la forma normal de usar la pantalla. La cruz para limpiar
+ * solo aparece cuando hay algo que limpiar, que es la convención de todos los buscadores.
+ */
+@Composable
+private fun SearchField(query: String, onAction: (HistoryAction) -> Unit) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = { onAction(HistoryAction.Search(it)) },
+        modifier = Modifier.fillMaxWidth().padding(bottom = Spacing.sm),
+        placeholder = { Text(stringResource(Res.string.history_search)) },
+        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+        trailingIcon = {
+            if (query.isNotEmpty()) {
+                IconButton(onClick = { onAction(HistoryAction.Search("")) }) {
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = stringResource(Res.string.history_search_clear),
+                    )
+                }
+            }
+        },
+        singleLine = true,
+    )
 }
 
 /**
@@ -177,67 +211,54 @@ private fun HistoryToolbar(
                     Text(stringResource(format.labelResource()))
                 }
             }
-            OutlinedButton(onClick = { onAction(HistoryAction.Clear) }) {
+            OutlinedButton(onClick = { onAction(HistoryAction.ConfirmClear) }) {
                 Text(stringResource(Res.string.history_clear))
             }
         }
     }
 }
 
+/**
+ * Confirmación de vaciado.
+ *
+ * Dice **cuántas** lecturas se van a borrar y que no hay vuelta atrás. Las dos cosas importan: el
+ * número convierte una advertencia genérica en un hecho comprobable, y "no se puede deshacer" es
+ * literal aquí — sin cuenta, sin nube y sin papelera, el historial es el único sitio donde existen
+ * esos datos.
+ *
+ * El botón de confirmar va en color de error y el de cancelar es el que queda a mano, que es la
+ * convención para que el gesto por inercia sea el que no destruye nada.
+ */
 @Composable
-private fun HistoryRow(
-    detection: Detection,
-    canShare: Boolean,
-    advancedMode: Boolean,
-    onAction: (HistoryAction) -> Unit,
-) {
-    val actions = ResultActionsFactory.actionsFor(detection.barcode, canShare)
-    val shareable = ResultActionsFactory.shareableContent(detection.barcode).asText()
-
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(Spacing.md),
-            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
-        ) {
-            // Monoespaciada por lo mismo que en la pantalla de escaneo: es un dato que se coteja
-            // carácter a carácter, y en una proporcional `1`, `l` e `I` se confunden.
-            Text(detection.barcode.rawValue, style = CodeValueStyle)
-            Text(
-                text = buildString {
-                    if (advancedMode) {
-                        append(
-                            stringResource(
-                                Res.string.history_row_meta,
-                                detection.barcode.format.displayName,
-                                detection.engineId.id,
-                            ),
-                        )
-                        detection.latencyMillis?.let {
-                            append(stringResource(Res.string.history_row_latency, it))
-                        }
-                    } else {
-                        append(detection.barcode.format.displayName)
-                    }
-                },
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                actions.forEach { action ->
-                    // El historial es una lista larga de botones que se llaman igual. Sin el valor
-                    // dentro de la descripción, un lector de pantalla los hace indistinguibles.
-                    val spoken = stringResource(action.spokenResource(), detection.barcode.rawValue)
-                    TextButton(
-                        onClick = { onAction(HistoryAction.RunResultAction(action, shareable)) },
-                        modifier = Modifier.semantics { contentDescription = spoken },
-                    ) {
-                        Text(stringResource(action.labelResource()))
-                    }
-                }
+private fun ClearConfirmation(count: Int, onAction: (HistoryAction) -> Unit) {
+    AlertDialog(
+        onDismissRequest = { onAction(HistoryAction.DismissClear) },
+        title = { Text(stringResource(Res.string.history_clear_title)) },
+        text = { Text(stringResource(Res.string.history_clear_body, count)) },
+        confirmButton = {
+            TextButton(onClick = { onAction(HistoryAction.Clear) }) {
+                Text(
+                    text = stringResource(Res.string.history_clear_confirm),
+                    color = MaterialTheme.colorScheme.error,
+                )
             }
-        }
-    }
+        },
+        dismissButton = {
+            TextButton(onClick = { onAction(HistoryAction.DismissClear) }) {
+                Text(stringResource(Res.string.history_clear_cancel))
+            }
+        },
+    )
+}
+
+@Composable
+private fun EmptyMessage(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+    )
 }
 
 @Composable
@@ -248,26 +269,6 @@ private fun Centered(modifier: Modifier, content: @Composable () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         content()
-    }
-}
-
-/** Cómo la anuncia un lector de pantalla, con el valor dentro para distinguir un botón de otro. */
-private fun ResultAction.spokenResource(): StringResource = when (this) {
-    ResultAction.Copy -> Res.string.a11y_copy_value
-    ResultAction.Share -> Res.string.a11y_share_value
-    is ResultAction.Open -> Res.string.a11y_open_value
-}
-
-/** Cómo se llama en pantalla cada acción sobre el resultado (RF-13). */
-private fun ResultAction.labelResource(): StringResource = when (this) {
-    ResultAction.Copy -> Res.string.result_copy
-    ResultAction.Share -> Res.string.result_share
-    is ResultAction.Open -> when (kind) {
-        OpenKind.Link -> Res.string.result_open_link
-        OpenKind.Email -> Res.string.result_open_email
-        OpenKind.Phone -> Res.string.result_open_phone
-        OpenKind.Sms -> Res.string.result_open_sms
-        OpenKind.Map -> Res.string.result_open_map
     }
 }
 
@@ -283,6 +284,9 @@ private suspend fun resolve(message: HistoryMessage): String = when (message) {
     HistoryMessage.ShareFailed -> getString(Res.string.message_share_failed)
     HistoryMessage.OpenFailed -> getString(Res.string.message_open_failed)
     HistoryMessage.NothingToExport -> getString(Res.string.message_nothing_to_export)
+    HistoryMessage.NoteSaved -> getString(Res.string.message_note_saved)
+    HistoryMessage.NoteRemoved -> getString(Res.string.message_note_removed)
+    HistoryMessage.EntryDeleted -> getString(Res.string.message_entry_deleted)
 
     // iOS y el navegador no revelan dónde acabó el archivo, así que hay dos mensajes: uno que dice
     // el destino y otro que solo confirma. Fingir una ruta sería peor que no darla.
@@ -307,7 +311,7 @@ private fun ExportFormat.labelResource(): StringResource = when (this) {
  * dominio (deuda D15).
  */
 @Composable
-private fun ShareableContent.asText(): String = when (this) {
+internal fun ShareableContent.asText(): String = when (this) {
     is ShareableContent.Raw -> value
 
     is ShareableContent.Wifi ->

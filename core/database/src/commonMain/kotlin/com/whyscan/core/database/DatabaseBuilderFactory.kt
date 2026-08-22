@@ -52,9 +52,25 @@ internal expect val queryDispatcher: CoroutineDispatcher
  *    se le da driver. Funcionaba usando justo el driver que este archivo existe para no usar.
  *
  * Lo encontró `KoinGraphTest` en su primera ejecución. El nombre nuevo no puede volver a colisionar.
+ *
+ * ## Por qué la migración destructiva ya no vale para las subidas de versión
+ *
+ * Aquí ponía `fallbackToDestructiveMigration(dropAllTables = true)`, que traducido es: *ante
+ * cualquier cambio de esquema, borra la base entera y empieza de cero*. Mientras hubo una sola
+ * versión no se notó — no había ningún salto que dar—, pero era una bomba con temporizador: el
+ * primer `version = 2` habría borrado el historial de todos los usuarios en silencio, sin registro,
+ * sin aviso y sin forma de recuperarlo. En una app sin cuenta ni copia en la nube, ese historial es
+ * el único dato que existe.
+ *
+ * Ahora la subida de versión va por `@AutoMigration` (ver `ScanDatabase`) y lo destructivo queda
+ * **solo para las bajadas**: abrir con una versión vieja del código una base escrita por una nueva.
+ * Ahí no hay alternativa —el código no conoce un esquema del futuro— y ocurre sobre todo en
+ * desarrollo, al saltar entre ramas. Lo que se pierde es un historial de pruebas; lo que se evita es
+ * perder el de alguien de verdad.
  */
 fun RoomDatabase.Builder<ScanDatabase>.buildBundled(): ScanDatabase = this
     .setDriver(BundledSQLiteDriver())
     .setQueryCoroutineContext(queryDispatcher)
-    .fallbackToDestructiveMigration(dropAllTables = true)
+    // Solo hacia atrás. Ver la nota de abajo.
+    .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
     .build()

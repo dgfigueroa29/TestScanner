@@ -6,6 +6,7 @@ import com.whyscan.core.domain.repository.ScanHistoryRepository
 import com.whyscan.core.model.Barcode
 import com.whyscan.core.model.BarcodeFormat
 import com.whyscan.core.model.Detection
+import com.whyscan.core.model.HistoryEntry
 import com.whyscan.core.model.ScanSource
 import com.whyscan.core.model.ScannerEngineId
 import kotlinx.coroutines.flow.Flow
@@ -48,22 +49,44 @@ class SettingsScanHistoryRepository(
 
     private val state = MutableStateFlow(load())
 
-    override fun observeHistory(): Flow<List<Detection>> = state.asStateFlow()
+    override fun observeHistory(): Flow<List<HistoryEntry>> = state.asStateFlow()
 
+    /**
+     * Una lectura repetida no reemplaza a la anterior: la ignora.
+     *
+     * Es la misma regla que aplican Room y el historial en memoria, y por el mismo motivo — el id es
+     * determinista, así que la fila en conflicto es la misma lectura, pero **puede tener una nota
+     * encima**. Reemplazarla la borraría.
+     */
     override suspend fun save(detection: Detection) {
-        state.update { (listOf(detection) + it).take(maxEntries) }
+        state.update { current ->
+            if (current.any { it.id == detection.id }) {
+                current
+            } else {
+                (listOf(HistoryEntry(detection)) + current).trimmedKeepingNotes(maxEntries)
+            }
+        }
         persist()
     }
 
-    override suspend fun findById(id: String): Detection? =
-        state.value.firstOrNull { it.id == id }
+    override suspend fun setNote(detectionId: String, note: String?) {
+        state.update { current ->
+            current.map { if (it.id == detectionId) it.copy(note = note) else it }
+        }
+        persist()
+    }
+
+    override suspend fun delete(detectionId: String) {
+        state.update { current -> current.filterNot { it.id == detectionId } }
+        persist()
+    }
 
     override suspend fun clear() {
         state.value = emptyList()
         persist()
     }
 
-    private fun load(): List<Detection> {
+    private fun load(): List<HistoryEntry> {
         val stored = settings.getStringOrNull(KEY) ?: return emptyList()
 
         // Un historial ilegible se descarta en lugar de reventar la app. Pasa de verdad: basta con
@@ -122,16 +145,25 @@ internal data class StoredDetection(
     val sourceName: String,
     val detectedAtMillis: Long,
     val latencyMillis: Long?,
+    /**
+     * Nota del usuario. Lleva valor por defecto **a propósito**: sin él, un historial guardado por
+     * una versión anterior —donde esta clave no existía— dejaría de decodificarse entero, y `load()`
+     * lo descartaría en bloque. Con el defecto, las entradas viejas se leen sin nota, que es lo
+     * correcto. Es la mitad simétrica de la migración de Room: nadie pierde su historial por una
+     * actualización, tampoco en el navegador.
+     */
+    val note: String? = null,
 )
 
-internal fun Detection.toStored() = StoredDetection(
-    id = id,
-    rawValue = barcode.rawValue,
-    formatId = barcode.format.id,
-    engineId = engineId.id,
-    sourceName = source.name,
-    detectedAtMillis = detectedAtMillis,
-    latencyMillis = latencyMillis,
+internal fun HistoryEntry.toStored() = StoredDetection(
+    id = detection.id,
+    rawValue = detection.barcode.rawValue,
+    formatId = detection.barcode.format.id,
+    engineId = detection.engineId.id,
+    sourceName = detection.source.name,
+    detectedAtMillis = detection.detectedAtMillis,
+    latencyMillis = detection.latencyMillis,
+    note = note,
 )
 
 /**
@@ -140,15 +172,18 @@ internal fun Detection.toStored() = StoredDetection(
  * Mismo criterio que la tabla de Room: si se elimina un motor del catálogo, sus entradas siguen
  * guardadas. Ignorarlas al leer es preferible a reventar el historial o a inventar un motor.
  */
-internal fun StoredDetection.toDomain(): Detection? {
+internal fun StoredDetection.toDomain(): HistoryEntry? {
     val engine = ScannerEngineId.fromId(engineId) ?: return null
 
-    return Detection(
-        id = id,
-        barcode = Barcode(rawValue = rawValue, format = BarcodeFormat.fromId(formatId)),
-        engineId = engine,
-        detectedAtMillis = detectedAtMillis,
-        latencyMillis = latencyMillis,
-        source = ScanSource.entries.firstOrNull { it.name == sourceName } ?: ScanSource.LiveCamera,
+    return HistoryEntry(
+        detection = Detection(
+            id = id,
+            barcode = Barcode(rawValue = rawValue, format = BarcodeFormat.fromId(formatId)),
+            engineId = engine,
+            detectedAtMillis = detectedAtMillis,
+            latencyMillis = latencyMillis,
+            source = ScanSource.entries.firstOrNull { it.name == sourceName } ?: ScanSource.LiveCamera,
+        ),
+        note = HistoryEntry.normalizeNote(note),
     )
 }

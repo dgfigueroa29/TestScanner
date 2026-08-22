@@ -8,6 +8,7 @@ import com.whyscan.core.domain.repository.ScannerEngineRepository
 import com.whyscan.core.model.Barcode
 import com.whyscan.core.model.BarcodeFormat
 import com.whyscan.core.model.Detection
+import com.whyscan.core.model.HistoryEntry
 import com.whyscan.core.model.Permission
 import com.whyscan.core.model.ScanImage
 import com.whyscan.core.model.ScanRequest
@@ -106,17 +107,23 @@ class FakePreferencesRepository(
 
 class FakeHistoryRepository : ScanHistoryRepository {
 
-    private val state = MutableStateFlow<List<Detection>>(emptyList())
+    private val state = MutableStateFlow<List<HistoryEntry>>(emptyList())
 
-    val saved: List<Detection> get() = state.value
+    val saved: List<Detection> get() = state.value.map { it.detection }
 
-    override fun observeHistory(): Flow<List<Detection>> = state.asStateFlow()
+    override fun observeHistory(): Flow<List<HistoryEntry>> = state.asStateFlow()
 
     override suspend fun save(detection: Detection) {
-        state.update { listOf(detection) + it }
+        state.update { listOf(HistoryEntry(detection)) + it }
     }
 
-    override suspend fun findById(id: String): Detection? = state.value.firstOrNull { it.id == id }
+    override suspend fun setNote(detectionId: String, note: String?) {
+        state.update { current -> current.map { if (it.id == detectionId) it.copy(note = note) else it } }
+    }
+
+    override suspend fun delete(detectionId: String) {
+        state.update { current -> current.filterNot { it.id == detectionId } }
+    }
 
     override suspend fun clear() {
         state.value = emptyList()

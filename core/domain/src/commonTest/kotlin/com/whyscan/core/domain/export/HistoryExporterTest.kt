@@ -4,6 +4,7 @@ import com.whyscan.core.model.Barcode
 import com.whyscan.core.model.BarcodeFormat
 import com.whyscan.core.model.BarcodeValueType
 import com.whyscan.core.model.Detection
+import com.whyscan.core.model.HistoryEntry
 import com.whyscan.core.model.ScannerEngineId
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -30,18 +31,23 @@ class HistoryExporterTest {
         latencyMillis = latency,
     )
 
+    private fun entry(value: String, note: String? = null) = HistoryEntry(detection(value), note)
+
     private fun csv(vararg detections: Detection) =
-        HistoryExporter.export(detections.toList(), ExportFormat.Csv)
+        HistoryExporter.export(detections.map { HistoryEntry(it) }, ExportFormat.Csv)
 
     private fun json(vararg detections: Detection) =
-        HistoryExporter.export(detections.toList(), ExportFormat.Json)
+        HistoryExporter.export(detections.map { HistoryEntry(it) }, ExportFormat.Json)
 
     @Test
     fun `el_CSV_empieza_por_la_cabecera_aunque_no_haya_nada_que_exportar`() {
         // Un archivo vacío del todo no se distingue de una exportación fallida.
         val result = HistoryExporter.export(emptyList(), ExportFormat.Csv)
 
-        assertEquals("value,format,engine,detected_at,latency_ms,value_type,confidence", result.trim())
+        assertEquals(
+            "value,format,engine,detected_at,latency_ms,value_type,confidence,note",
+            result.trim(),
+        )
     }
 
     @Test
@@ -165,5 +171,51 @@ class HistoryExporterTest {
     fun `cada_formato_declara_su_tipo_MIME`() {
         assertEquals("text/csv", ExportFormat.Csv.mimeType)
         assertEquals("application/json", ExportFormat.Json.mimeType)
+    }
+
+    @Test
+    fun `la_nota_va_en_la_ultima_columna`() {
+        // Última a propósito: quien tenga un script leyendo por posición no se rompe al añadirla.
+        val lines = HistoryExporter.export(listOf(entry("hola", "pedido 42")), ExportFormat.Csv)
+            .trim()
+            .lines()
+
+        assertTrue(lines[1].endsWith(",pedido 42"), lines[1])
+    }
+
+    @Test
+    fun `una_nota_sin_texto_deja_la_celda_vacia`() {
+        val lines = HistoryExporter.export(listOf(entry("hola")), ExportFormat.Csv).trim().lines()
+
+        assertTrue(lines[1].endsWith(","), lines[1])
+    }
+
+    @Test
+    fun `una_nota_que_empieza_por_igual_no_se_ejecuta_al_abrir_la_hoja`() {
+        // El mismo guardado que ya protegía al valor leído. La nota lo necesita igual: es texto
+        // libre que escribe una persona, y `=` o `-` al principio no tienen por qué ser un ataque
+        // para que Excel los ejecute.
+        val lines = HistoryExporter.export(listOf(entry("hola", "=HYPERLINK(\"http://x\")")), ExportFormat.Csv)
+            .trim()
+            .lines()
+
+        assertTrue(lines[1].contains("'=HYPERLINK"), lines[1])
+    }
+
+    @Test
+    fun `una_nota_con_comas_se_entrecomilla`() {
+        val lines = HistoryExporter.export(listOf(entry("hola", "uno, dos")), ExportFormat.Csv)
+            .trim()
+            .lines()
+
+        assertTrue(lines[1].endsWith("\"uno, dos\""), lines[1])
+    }
+
+    @Test
+    fun `el_JSON_conserva_la_nota_intacta`() {
+        val result = HistoryExporter.export(listOf(entry("hola", "=formula")), ExportFormat.Json)
+
+        // En JSON nada se ejecuta, así que ahí no hace falta neutralizar nada.
+        assertTrue(result.contains("\"note\": \"=formula\""), result)
     }
 }

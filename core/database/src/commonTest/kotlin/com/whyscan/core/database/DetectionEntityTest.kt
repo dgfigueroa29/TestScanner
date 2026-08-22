@@ -25,12 +25,35 @@ class DetectionEntityTest {
         val restored = detection.toEntity().toDomain()
 
         assertEquals(detection.id, restored?.id)
-        assertEquals(detection.barcode.rawValue, restored?.barcode?.rawValue)
-        assertEquals(detection.barcode.format, restored?.barcode?.format)
-        assertEquals(detection.engineId, restored?.engineId)
-        assertEquals(detection.detectedAtMillis, restored?.detectedAtMillis)
-        assertEquals(detection.latencyMillis, restored?.latencyMillis)
-        assertEquals(detection.source, restored?.source)
+        assertEquals(detection.barcode.rawValue, restored?.detection?.barcode?.rawValue)
+        assertEquals(detection.barcode.format, restored?.detection?.barcode?.format)
+        assertEquals(detection.engineId, restored?.detection?.engineId)
+        assertEquals(detection.detectedAtMillis, restored?.detection?.detectedAtMillis)
+        assertEquals(detection.latencyMillis, restored?.detection?.latencyMillis)
+        assertEquals(detection.source, restored?.detection?.source)
+    }
+
+    @Test
+    fun `guardar_una_deteccion_no_escribe_nota`() {
+        // Es lo que hace correcto el `INSERT OR IGNORE` del DAO: si este mapeo pusiera `null`,
+        // reinsertar la misma lectura borraría lo que el usuario hubiera escrito.
+        assertNull(detection.toEntity().note)
+    }
+
+    @Test
+    fun `la_nota_va_y_vuelve`() {
+        val restored = detection.toEntity().copy(note = "factura de marzo").toDomain()
+
+        assertEquals("factura de marzo", restored?.note)
+    }
+
+    @Test
+    fun `una_nota_en_blanco_se_lee_como_ausencia_de_nota`() {
+        // Una fila escrita por una versión anterior podría traer `""`. "Tiene nota" tiene que
+        // significar lo mismo en las cuatro plataformas.
+        val restored = detection.toEntity().copy(note = "   ").toDomain()
+
+        assertNull(restored?.note)
     }
 
     @Test
@@ -52,6 +75,6 @@ class DetectionEntityTest {
         val row = detection.toEntity().copy(formatId = "SIMBOLOGIA_FUTURA")
         val restored = row.toDomain()
 
-        assertEquals(BarcodeFormat.Unknown("SIMBOLOGIA_FUTURA"), restored?.barcode?.format)
+        assertEquals(BarcodeFormat.Unknown("SIMBOLOGIA_FUTURA"), restored?.detection?.barcode?.format)
     }
 }

@@ -4,11 +4,11 @@ import app.cash.turbine.test
 import com.whyscan.core.domain.export.ExportFormat
 import com.whyscan.core.domain.repository.ScanHistoryRepository
 import com.whyscan.core.domain.scan.ResultAction
-import com.whyscan.core.domain.usecase.ClearScanHistoryUseCase
-import com.whyscan.core.domain.usecase.ObserveScanHistoryUseCase
+import com.whyscan.core.domain.usecase.ScanHistory
 import com.whyscan.core.model.Barcode
 import com.whyscan.core.model.BarcodeFormat
 import com.whyscan.core.model.Detection
+import com.whyscan.core.model.HistoryEntry
 import com.whyscan.core.model.ScannerEngineId
 import com.whyscan.core.platform.FileSaver
 import com.whyscan.core.platform.PlatformActions
@@ -27,16 +27,30 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HistoryViewModelTest {
 
     private class FakeHistory(initial: List<Detection>) : ScanHistoryRepository {
-        private val state = MutableStateFlow(initial)
-        override fun observeHistory(): Flow<List<Detection>> = state.asStateFlow()
-        override suspend fun save(detection: Detection) = state.update { listOf(detection) + it }
-        override suspend fun findById(id: String) = state.value.firstOrNull { it.id == id }
+        private val state = MutableStateFlow(initial.map { HistoryEntry(it) })
+
+        val entries: List<HistoryEntry> get() = state.value
+
+        override fun observeHistory(): Flow<List<HistoryEntry>> = state.asStateFlow()
+
+        override suspend fun save(detection: Detection) =
+            state.update { listOf(HistoryEntry(detection)) + it }
+
+        override suspend fun setNote(detectionId: String, note: String?) = state.update { current ->
+            current.map { if (it.id == detectionId) it.copy(note = note) else it }
+        }
+
+        override suspend fun delete(detectionId: String) = state.update { current ->
+            current.filterNot { it.id == detectionId }
+        }
+
         override suspend fun clear() {
             state.value = emptyList()
         }
@@ -109,8 +123,7 @@ class HistoryViewModelTest {
         actions = RecordingActions()
         saver = RecordingSaver()
         return HistoryViewModel(
-            observeHistory = ObserveScanHistoryUseCase(repository),
-            clearHistory = ClearScanHistoryUseCase(repository),
+            history = ScanHistory(repository),
             platformActions = actions,
             fileSaver = saver,
         ) to repository
@@ -149,7 +162,7 @@ class HistoryViewModelTest {
 
         viewModel.onAction(HistoryAction.FilterByEngine(ScannerEngineId.ZXingCpp))
 
-        assertEquals(listOf(zxing), viewModel.state.value.visible)
+        assertEquals(listOf(zxing), viewModel.state.value.visible.map { it.detection })
     }
 
     @Test
@@ -180,7 +193,7 @@ class HistoryViewModelTest {
         viewModel.onAction(HistoryAction.Clear)
 
         assertTrue(viewModel.state.value.isEmpty)
-        assertEquals(null, repository.findById(mlKit.id))
+        assertTrue(repository.entries.isEmpty())
     }
 
     @Test
@@ -241,8 +254,7 @@ class HistoryViewModelTest {
         actions = RecordingActions()
         saver = RecordingSaver { SaveFileResult.Cancelled }
         val viewModel = HistoryViewModel(
-            observeHistory = ObserveScanHistoryUseCase(repository),
-            clearHistory = ClearScanHistoryUseCase(repository),
+            history = ScanHistory(repository),
             platformActions = actions,
             fileSaver = saver,
         )
@@ -260,6 +272,180 @@ class HistoryViewModelTest {
         repository.save(detection(ScannerEngineId.ZXingCpp, "nuevo", 9))
 
         assertEquals(ScannerEngineId.MlKitCameraX, viewModel.state.value.engineFilter)
-        assertEquals(listOf(mlKit), viewModel.state.value.visible)
+        assertEquals(listOf(mlKit), viewModel.state.value.visible.map { it.detection })
+    }
+
+    // --- Notas del usuario ---
+
+    @Test
+    fun `una nota se guarda y queda en la entrada`() = runTest {
+        val (viewModel, repository) = viewModel(listOf(mlKit))
+
+        viewModel.onAction(HistoryAction.SetNote(mlKit.id, "factura de marzo"))
+
+        assertEquals("factura de marzo", repository.entries.single().note)
+    }
+
+    @Test
+    fun `una nota en blanco borra la que hubiera`() = runTest {
+        // Un campo de texto devuelve "" al borrarlo y espacios cuando se escapa la barra. Ninguna
+        // de las dos cosas es una nota, y si se guardaran la fila diría tener una y estaría vacía.
+        val (viewModel, repository) = viewModel(listOf(mlKit))
+
+        viewModel.onAction(HistoryAction.SetNote(mlKit.id, "algo"))
+        viewModel.onAction(HistoryAction.SetNote(mlKit.id, "   "))
+
+        assertNull(repository.entries.single().note)
+    }
+
+    @Test
+    fun `la nota se guarda sin espacios de sobra`() = runTest {
+        val (viewModel, repository) = viewModel(listOf(mlKit))
+
+        viewModel.onAction(HistoryAction.SetNote(mlKit.id, "  pedido 42  "))
+
+        assertEquals("pedido 42", repository.entries.single().note)
+    }
+
+    @Test
+    fun `guardar la nota cierra el campo`() = runTest {
+        val (viewModel, _) = viewModel(listOf(mlKit))
+
+        viewModel.onAction(HistoryAction.EditNote(mlKit.id))
+        assertEquals(mlKit.id, viewModel.state.value.editingNoteFor)
+
+        viewModel.onAction(HistoryAction.SetNote(mlKit.id, "algo"))
+        assertNull(viewModel.state.value.editingNoteFor)
+    }
+
+    @Test
+    fun `abrir la nota de otra fila cierra la anterior`() = runTest {
+        // Dos campos de texto abiertos a la vez sobre una lista es escribir en el sitio equivocado.
+        val (viewModel, _) = viewModel(listOf(mlKit, zxing))
+
+        viewModel.onAction(HistoryAction.EditNote(mlKit.id))
+        viewModel.onAction(HistoryAction.EditNote(zxing.id))
+
+        assertEquals(zxing.id, viewModel.state.value.editingNoteFor)
+    }
+
+    @Test
+    fun `poner una nota y quitarla dicen cosas distintas`() = runTest {
+        val (viewModel, _) = viewModel(listOf(mlKit))
+
+        viewModel.effects.test {
+            viewModel.onAction(HistoryAction.SetNote(mlKit.id, "algo"))
+            assertEquals(HistoryEffect.ShowMessage(HistoryMessage.NoteSaved), awaitItem())
+
+            viewModel.onAction(HistoryAction.SetNote(mlKit.id, ""))
+            assertEquals(HistoryEffect.ShowMessage(HistoryMessage.NoteRemoved), awaitItem())
+        }
+    }
+
+    // --- Búsqueda ---
+
+    @Test
+    fun `la busqueda filtra por el valor leido`() = runTest {
+        val (viewModel, _) = viewModel(listOf(mlKit, zxing, manual))
+
+        viewModel.onAction(HistoryAction.Search("b"))
+
+        assertEquals(listOf(zxing), viewModel.state.value.visible.map { it.detection })
+    }
+
+    @Test
+    fun `la busqueda encuentra tambien por la nota`() = runTest {
+        // Es la mitad del sentido de poder anotar: nadie recuerda una tirada de dígitos.
+        val (viewModel, _) = viewModel(listOf(mlKit, zxing))
+
+        viewModel.onAction(HistoryAction.SetNote(zxing.id, "factura de marzo"))
+        viewModel.onAction(HistoryAction.Search("marzo"))
+
+        assertEquals(listOf(zxing), viewModel.state.value.visible.map { it.detection })
+    }
+
+    @Test
+    fun `la busqueda no distingue mayusculas`() = runTest {
+        val (viewModel, _) = viewModel(listOf(mlKit))
+
+        viewModel.onAction(HistoryAction.SetNote(mlKit.id, "Factura"))
+        viewModel.onAction(HistoryAction.Search("FACTURA"))
+
+        assertEquals(1, viewModel.state.value.visible.size)
+    }
+
+    @Test
+    fun `la busqueda se combina con el filtro de motor`() = runTest {
+        val (viewModel, _) = viewModel(listOf(mlKit, zxing))
+
+        viewModel.onAction(HistoryAction.FilterByEngine(ScannerEngineId.MlKitCameraX))
+        viewModel.onAction(HistoryAction.Search("b"))
+
+        assertTrue(viewModel.state.value.visible.isEmpty())
+    }
+
+    @Test
+    fun `un historial lleno sin coincidencias no es un historial vacio`() = runTest {
+        // Decir "todavía no escaneaste nada" con cien lecturas detrás es mentirle al usuario.
+        val (viewModel, _) = viewModel(listOf(mlKit, zxing))
+
+        viewModel.onAction(HistoryAction.Search("no existe"))
+
+        assertTrue(!viewModel.state.value.isEmpty)
+        assertTrue(viewModel.state.value.isFilteredEmpty)
+    }
+
+    @Test
+    fun `exportar respeta tambien la busqueda`() = runTest {
+        val (viewModel, _) = viewModel(listOf(mlKit, zxing, manual))
+
+        viewModel.onAction(HistoryAction.Search("c"))
+        viewModel.onAction(HistoryAction.Export(ExportFormat.Csv))
+
+        val rows = saver.savedContent!!.trim().lines()
+        assertEquals(2, rows.size, saver.savedContent!!)
+    }
+
+    @Test
+    fun `la nota sale en el archivo exportado`() = runTest {
+        val (viewModel, _) = viewModel(listOf(mlKit))
+
+        viewModel.onAction(HistoryAction.SetNote(mlKit.id, "pedido 42"))
+        viewModel.onAction(HistoryAction.Export(ExportFormat.Csv))
+
+        assertTrue(saver.savedContent!!.contains("pedido 42"), saver.savedContent!!)
+    }
+
+    // --- Borrado ---
+
+    @Test
+    fun `borrar una entrada deja las demas`() = runTest {
+        val (viewModel, repository) = viewModel(listOf(mlKit, zxing))
+
+        viewModel.onAction(HistoryAction.Delete(mlKit.id))
+
+        assertEquals(listOf(zxing), repository.entries.map { it.detection })
+    }
+
+    @Test
+    fun `vaciar el historial pide confirmacion antes de borrar nada`() = runTest {
+        // Es la única acción irreversible de la app y no hay copia en ninguna parte.
+        val (viewModel, repository) = viewModel(listOf(mlKit, zxing))
+
+        viewModel.onAction(HistoryAction.ConfirmClear)
+
+        assertTrue(viewModel.state.value.isConfirmingClear)
+        assertEquals(2, repository.entries.size)
+    }
+
+    @Test
+    fun `cancelar la confirmacion no borra nada`() = runTest {
+        val (viewModel, repository) = viewModel(listOf(mlKit, zxing))
+
+        viewModel.onAction(HistoryAction.ConfirmClear)
+        viewModel.onAction(HistoryAction.DismissClear)
+
+        assertTrue(!viewModel.state.value.isConfirmingClear)
+        assertEquals(2, repository.entries.size)
     }
 }

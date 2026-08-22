@@ -10,6 +10,25 @@
     <string name="history_row_meta">%1$s · %2$s</string>
     <string name="history_row_latency"> · %1$d ms</string>
 
+    <!-- Search. Looks at the scanned value and at the note, which is half the point of notes. -->
+    <string name="history_search">Search value or note</string>
+    <string name="history_search_clear">Clear search</string>
+    <string name="history_no_matches">Nothing matches what you are looking for</string>
+
+    <!-- Notes: the user\'s own reference text for a scan. -->
+    <string name="history_note_add">Add note</string>
+    <string name="history_note_edit">Edit note</string>
+    <string name="history_note_hint">What is this code for?</string>
+    <string name="history_note_save">Save</string>
+    <string name="history_note_cancel">Cancel</string>
+
+    <!-- Deleting. One row goes straight through; wiping everything asks first. -->
+    <string name="history_delete">Delete</string>
+    <string name="history_clear_title">Clear the whole history?</string>
+    <string name="history_clear_body">%1$d scans will be deleted, notes included. There is no copy anywhere, so this cannot be undone.</string>
+    <string name="history_clear_confirm">Delete everything</string>
+    <string name="history_clear_cancel">Keep it</string>
+
     <!-- Result actions (RF-13) -->
     <string name="result_copy">Copy</string>
     <!-- What gets copied from a Wi-Fi QR: handing someone `WIFI:T:WPA;S:…;;` is no use to them. -->
@@ -31,9 +50,14 @@
     <string name="message_exported">History exported</string>
     <string name="message_exported_to">Saved to %1$s</string>
     <string name="message_nothing_to_export">There is nothing to export</string>
+    <string name="message_note_saved">Note saved</string>
+    <string name="message_note_removed">Note removed</string>
+    <string name="message_entry_deleted">Scan deleted</string>
 
     <!-- Accessibility (RNF-05): same reason as on the scanner screen. -->
     <string name="a11y_copy_value">Copy %1$s</string>
     <string name="a11y_share_value">Share %1$s</string>
     <string name="a11y_open_value">Open %1$s</string>
+    <string name="a11y_delete_value">Delete %1$s</string>
+    <string name="a11y_note_value">Note on %1$s</string>
 </resources>

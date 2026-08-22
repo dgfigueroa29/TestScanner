@@ -2,6 +2,7 @@ package com.whyscan.core.database
 
 import com.whyscan.core.domain.repository.ScanHistoryRepository
 import com.whyscan.core.model.Detection
+import com.whyscan.core.model.HistoryEntry
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -16,17 +17,19 @@ class RoomScanHistoryRepository(
     private val maxEntries: Int = DEFAULT_MAX_ENTRIES,
 ) : ScanHistoryRepository {
 
-    override fun observeHistory(): Flow<List<Detection>> =
+    override fun observeHistory(): Flow<List<HistoryEntry>> =
         // `mapNotNull` sobre las filas: una entrada de un motor eliminado del catálogo se ignora en
         // lugar de romper el historial entero.
         dao.observeAll().map { rows -> rows.mapNotNull { it.toDomain() } }
 
     override suspend fun save(detection: Detection) {
-        dao.upsert(detection.toEntity())
+        dao.insertIgnoringDuplicates(detection.toEntity())
         dao.trimTo(maxEntries)
     }
 
-    override suspend fun findById(id: String): Detection? = dao.findById(id)?.toDomain()
+    override suspend fun setNote(detectionId: String, note: String?) = dao.setNote(detectionId, note)
+
+    override suspend fun delete(detectionId: String) = dao.delete(detectionId)
 
     override suspend fun clear() = dao.clear()
 

@@ -3,6 +3,7 @@ package com.whyscan.core.domain.repository
 import com.whyscan.core.domain.model.EngineStatus
 import com.whyscan.core.model.BarcodeFormat
 import com.whyscan.core.model.Detection
+import com.whyscan.core.model.HistoryEntry
 import com.whyscan.core.model.ScannerEngineId
 import com.whyscan.core.model.ScannerPlatform
 import com.whyscan.core.scanner.BarcodeScannerEngine
@@ -52,10 +53,24 @@ interface ScanPreferencesRepository {
  *
  * En la Fase 1 la implementación es en memoria; la interfaz existe desde ya para que la feature se
  * construya contra el contrato y el cambio a Room KMP (Fase 2) no toque dominio ni UI.
+ *
+ * **Entra una [Detection] y salen [HistoryEntry]s.** La asimetría es la del dominio y no un
+ * descuido: guardar es un hecho de máquina —un motor leyó algo— y leer devuelve además lo que el
+ * usuario haya anotado encima. El motivo largo está en `HistoryEntry`.
  */
 interface ScanHistoryRepository {
-    fun observeHistory(): Flow<List<Detection>>
+    fun observeHistory(): Flow<List<HistoryEntry>>
+
     suspend fun save(detection: Detection)
-    suspend fun findById(id: String): Detection?
+
+    /**
+     * Asocia —o borra, con `null`— la nota de una fila. Si la fila no existe no hace nada: puede
+     * haberse podado o haberla borrado el usuario mientras tenía el campo abierto.
+     */
+    suspend fun setNote(detectionId: String, note: String?)
+
+    /** Borra una sola fila. Vaciar el historial entero es [clear]. */
+    suspend fun delete(detectionId: String)
+
     suspend fun clear()
 }

@@ -36,7 +36,7 @@ class SettingsScanHistoryRepositoryTest {
 
         val reopened = SettingsScanHistoryRepository(settings)
 
-        assertEquals(listOf("hola"), reopened.observeHistory().first().map { it.barcode.rawValue })
+        assertEquals(listOf("hola"), reopened.observeHistory().first().map { it.detection.barcode.rawValue })
     }
 
     @Test
@@ -49,10 +49,10 @@ class SettingsScanHistoryRepositoryTest {
 
         val restored = SettingsScanHistoryRepository(settings).observeHistory().first().single()
 
-        assertEquals(ScannerEngineId.ZXingCpp, restored.engineId)
-        assertEquals(BarcodeFormat.Ean13, restored.barcode.format)
-        assertEquals(20L, restored.latencyMillis)
-        assertEquals(ScanSource.LiveCamera, restored.source)
+        assertEquals(ScannerEngineId.ZXingCpp, restored.detection.engineId)
+        assertEquals(BarcodeFormat.Ean13, restored.detection.barcode.format)
+        assertEquals(20L, restored.detection.latencyMillis)
+        assertEquals(ScanSource.LiveCamera, restored.detection.source)
     }
 
     @Test
@@ -64,7 +64,7 @@ class SettingsScanHistoryRepositoryTest {
 
         assertEquals(
             listOf("segundo", "primero"),
-            repository.observeHistory().first().map { it.barcode.rawValue },
+            repository.observeHistory().first().map { it.detection.barcode.rawValue },
         )
     }
 
@@ -88,7 +88,7 @@ class SettingsScanHistoryRepositoryTest {
 
         val stored = repository.observeHistory().first()
         assertEquals(3, stored.size)
-        assertEquals("codigo-4", stored.first().barcode.rawValue)
+        assertEquals("codigo-4", stored.first().detection.barcode.rawValue)
     }
 
     @Test
@@ -126,7 +126,7 @@ class SettingsScanHistoryRepositoryTest {
 
         val restored = SettingsScanHistoryRepository(settings).observeHistory().first().single()
 
-        assertEquals(BarcodeFormat.Unknown("SIMBOLOGIA_FUTURA"), restored.barcode.format)
+        assertEquals(BarcodeFormat.Unknown("SIMBOLOGIA_FUTURA"), restored.detection.barcode.format)
     }
 
     @Test
@@ -141,13 +141,82 @@ class SettingsScanHistoryRepositoryTest {
     }
 
     @Test
-    fun `buscar_por_id_encuentra_lo_guardado`() = runTest {
-        val repository = SettingsScanHistoryRepository(MapSettings())
+    fun `la_nota_sobrevive_a_reconstruir_el_repositorio`() = runTest {
+        val settings = MapSettings()
+        val repository = SettingsScanHistoryRepository(settings)
         val detection = detection("hola")
         repository.save(detection)
 
-        assertEquals(detection.id, repository.findById(detection.id)?.id)
-        assertNull(repository.findById("no-existe"))
+        repository.setNote(detection.id, "factura de marzo")
+
+        val restored = SettingsScanHistoryRepository(settings).observeHistory().first().single()
+        assertEquals("factura de marzo", restored.note)
+    }
+
+    @Test
+    fun `un_historial_guardado_sin_notas_se_sigue_leyendo`() = runTest {
+        // La mitad simétrica de la migración de Room: nadie pierde su historial por actualizar.
+        // Sin el valor por defecto del campo `note`, esta entrada no decodificaría y `load()`
+        // descartaría el historial entero.
+        val settings = MapSettings().apply {
+            putString(
+                "scan_history",
+                """
+                [{"id":"1","rawValue":"hola","formatId":"QR_CODE","engineId":"mlkit_camerax",
+                  "sourceName":"LiveCamera","detectedAtMillis":1,"latencyMillis":null}]
+                """.trimIndent(),
+            )
+        }
+
+        val restored = SettingsScanHistoryRepository(settings).observeHistory().first().single()
+
+        assertEquals("hola", restored.detection.barcode.rawValue)
+        assertNull(restored.note)
+    }
+
+    @Test
+    fun `borrar_una_entrada_deja_las_demas`() = runTest {
+        val repository = SettingsScanHistoryRepository(MapSettings())
+        val primero = detection("primero", at = 1)
+        repository.save(primero)
+        repository.save(detection("segundo", at = 2))
+
+        repository.delete(primero.id)
+
+        assertEquals(
+            listOf("segundo"),
+            repository.observeHistory().first().map { it.detection.barcode.rawValue },
+        )
+    }
+
+    @Test
+    fun `una_lectura_repetida_no_se_lleva_por_delante_la_nota`() = runTest {
+        // El id es determinista, así que volver a leer el mismo código en el mismo milisegundo
+        // producía la misma fila. Reemplazarla borraba lo que el usuario había escrito.
+        val repository = SettingsScanHistoryRepository(MapSettings())
+        val detection = detection("hola")
+        repository.save(detection)
+        repository.setNote(detection.id, "no me borres")
+
+        repository.save(detection)
+
+        assertEquals("no me borres", repository.observeHistory().first().single().note)
+    }
+
+    @Test
+    fun `la_poda_respeta_las_entradas_con_nota`() = runTest {
+        // Una nota es la señal más clara de que esa lectura le importa a alguien. Borrarla por
+        // antigüedad es perder, sin avisar, lo único que el usuario escribió a mano.
+        val repository = SettingsScanHistoryRepository(MapSettings(), maxEntries = 3)
+        val anotada = detection("importante", at = 0)
+        repository.save(anotada)
+        repository.setNote(anotada.id, "esta me importa")
+
+        repeat(10) { repository.save(detection("relleno-$it", at = (it + 1).toLong())) }
+
+        val stored = repository.observeHistory().first()
+        assertTrue(stored.any { it.detection.barcode.rawValue == "importante" }, stored.toString())
+        assertEquals(1, stored.count { it.hasNote })
     }
 }
 

@@ -106,6 +106,10 @@
     <string name="permission_body">WhyScan necesita la cámara para leer códigos. Los frames se procesan en el dispositivo y no salen de él: la app no pide permiso de internet.</string>
     <string name="no_camera_title">Sin cámara en vivo</string>
     <string name="no_camera_body">Este dispositivo no tiene captura que WhyScan pueda manejar. Igual podés escanear una imagen o escribir un código a mano.</string>
+
+    <!-- Cámara pausada. No es un estado de carga: la app espera al usuario, no al revés. -->
+    <string name="paused_title">Cámara en pausa</string>
+    <string name="paused_body">Ahora mismo no se está capturando nada. Reanudá cuando quieras seguir escaneando.</string>
     <string name="session_paused">En pausa</string>
     <string name="action_resume">Reanudar</string>
 

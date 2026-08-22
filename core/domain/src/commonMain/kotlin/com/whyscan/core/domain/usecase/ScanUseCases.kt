@@ -165,23 +165,15 @@ class DecodeImageUseCase(
     }
 }
 
-/** Persiste una detección en el historial (RF-11). */
+/**
+ * Persiste una detección en el historial (RF-11).
+ *
+ * Es el único caso de uso suelto que sobrevive sobre el historial, y a propósito: lo llama el
+ * escáner al leer un código. Observar, anotar, borrar una fila y vaciar son cosas del usuario y van
+ * juntas en [ScanHistory].
+ */
 class SaveDetectionUseCase(
     private val repository: ScanHistoryRepository,
 ) {
     suspend operator fun invoke(detection: Detection) = repository.save(detection)
-}
-
-/** Historial de escaneos, más reciente primero. */
-class ObserveScanHistoryUseCase(
-    private val repository: ScanHistoryRepository,
-) {
-    operator fun invoke(): Flow<List<Detection>> = repository.observeHistory()
-}
-
-/** Vacía el historial. */
-class ClearScanHistoryUseCase(
-    private val repository: ScanHistoryRepository,
-) {
-    suspend operator fun invoke() = repository.clear()
 }

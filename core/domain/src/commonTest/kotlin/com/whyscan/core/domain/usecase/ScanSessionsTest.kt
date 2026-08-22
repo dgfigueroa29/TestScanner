@@ -7,6 +7,7 @@ import com.whyscan.core.domain.repository.ScanPreferences
 import com.whyscan.core.model.Barcode
 import com.whyscan.core.model.BarcodeFormat
 import com.whyscan.core.model.Detection
+import com.whyscan.core.model.HistoryEntry
 import com.whyscan.core.model.ScanImage
 import com.whyscan.core.model.ScanRequest
 import com.whyscan.core.model.ScanSource
@@ -75,14 +76,15 @@ class ScanSessionsTest {
 
     private class RecordingHistory : ScanHistoryRepository {
         val saved = mutableListOf<Detection>()
-        private val state = MutableStateFlow<List<Detection>>(emptyList())
+        private val state = MutableStateFlow<List<HistoryEntry>>(emptyList())
 
-        override fun observeHistory(): Flow<List<Detection>> = state.asStateFlow()
+        override fun observeHistory(): Flow<List<HistoryEntry>> = state.asStateFlow()
         override suspend fun save(detection: Detection) {
             saved += detection
         }
 
-        override suspend fun findById(id: String): Detection? = saved.firstOrNull { it.id == id }
+        override suspend fun setNote(detectionId: String, note: String?) = Unit
+        override suspend fun delete(detectionId: String) = Unit
         override suspend fun clear() = saved.clear()
     }
 

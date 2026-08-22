@@ -23,6 +23,13 @@ sealed interface HistoryMessage {
 
     data object NothingToExport : HistoryMessage
 
+    /** La nota se guardó. Se confirma porque el campo se cierra y si no, no queda ni rastro. */
+    data object NoteSaved : HistoryMessage
+
+    data object NoteRemoved : HistoryMessage
+
+    data object EntryDeleted : HistoryMessage
+
     /** Motivo que da la plataforma al no poder escribir. Ver la nota de `ScannerMessage.Raw`. */
     data class ExportFailed(val reason: String) : HistoryMessage
 }

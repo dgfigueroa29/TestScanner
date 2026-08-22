@@ -9,6 +9,25 @@
     <string name="history_row_meta">%1$s · %2$s</string>
     <string name="history_row_latency"> · %1$d ms</string>
 
+    <!-- Buscador. Mira el valor y la nota, que es la mitad del sentido de poder anotar. -->
+    <string name="history_search">Buscar valor o nota</string>
+    <string name="history_search_clear">Limpiar la búsqueda</string>
+    <string name="history_no_matches">Nada coincide con lo que estás buscando</string>
+
+    <!-- Notas: el texto de referencia que el usuario asocia a una lectura. -->
+    <string name="history_note_add">Agregar nota</string>
+    <string name="history_note_edit">Editar nota</string>
+    <string name="history_note_hint">¿Para qué es este código?</string>
+    <string name="history_note_save">Guardar</string>
+    <string name="history_note_cancel">Cancelar</string>
+
+    <!-- Borrado. Una fila va directo; vaciar todo pregunta antes. -->
+    <string name="history_delete">Eliminar</string>
+    <string name="history_clear_title">¿Borrar todo el historial?</string>
+    <string name="history_clear_body">Se van a eliminar %1$d lecturas, con sus notas. No hay copia en ninguna parte, así que no se puede deshacer.</string>
+    <string name="history_clear_confirm">Borrar todo</string>
+    <string name="history_clear_cancel">Conservarlo</string>
+
     <!-- Acciones sobre el resultado (RF-13) -->
     <string name="result_copy">Copiar</string>
     <!-- Lo que se copia de un QR de WiFi: pegarle a alguien `WIFI:T:WPA;S:…;;` no le sirve. -->
@@ -30,8 +49,14 @@
     <string name="message_exported">Historial exportado</string>
     <string name="message_exported_to">Guardado en %1$s</string>
     <string name="message_nothing_to_export">No hay nada que exportar</string>
+    <string name="message_note_saved">Nota guardada</string>
+    <string name="message_note_removed">Nota eliminada</string>
+    <string name="message_entry_deleted">Lectura eliminada</string>
+
     <!-- Accesibilidad (RNF-05): mismo motivo que en la pantalla de escaneo. -->
     <string name="a11y_copy_value">Copiar %1$s</string>
     <string name="a11y_share_value">Compartir %1$s</string>
     <string name="a11y_open_value">Abrir %1$s</string>
+    <string name="a11y_delete_value">Eliminar %1$s</string>
+    <string name="a11y_note_value">Nota de %1$s</string>
 </resources>

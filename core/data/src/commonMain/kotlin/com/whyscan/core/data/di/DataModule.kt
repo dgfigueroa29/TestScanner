@@ -4,10 +4,9 @@ import com.whyscan.core.data.repository.ScannerEngineRepositoryImpl
 import com.whyscan.core.data.repository.SettingsAppPreferencesRepository
 import com.whyscan.core.domain.repository.AppPreferencesRepository
 import com.whyscan.core.domain.repository.ScannerEngineRepository
-import com.whyscan.core.domain.usecase.ClearScanHistoryUseCase
 import com.whyscan.core.domain.usecase.DecodeImageUseCase
-import com.whyscan.core.domain.usecase.ObserveScanHistoryUseCase
 import com.whyscan.core.domain.usecase.SaveDetectionUseCase
+import com.whyscan.core.domain.usecase.ScanHistory
 import com.whyscan.core.domain.usecase.ScanSessions
 import com.whyscan.core.domain.usecase.ScanSettings
 import com.whyscan.core.domain.usecase.SelectScannerEngineUseCase
@@ -59,10 +58,9 @@ val domainModule: Module = module {
     factory { StartComparisonUseCase(get(), get()) }
     factory { DecodeImageUseCase(get(), get()) }
     factory { SaveDetectionUseCase(get()) }
-    factory { ObserveScanHistoryUseCase(get()) }
-    factory { ClearScanHistoryUseCase(get()) }
 
     // Agrupadores: una sola dependencia para quien usa varios de los de arriba a la vez (D16).
+    factory { ScanHistory(get()) }
     factory { ScanSettings(get()) }
     factory { ScanSessions(get(), get(), get()) }
 }

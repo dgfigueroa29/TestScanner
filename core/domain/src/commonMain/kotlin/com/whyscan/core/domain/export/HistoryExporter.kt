@@ -1,6 +1,7 @@
 package com.whyscan.core.domain.export
 
 import com.whyscan.core.model.Detection
+import com.whyscan.core.model.HistoryEntry
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -13,7 +14,7 @@ enum class ExportFormat(val extension: String, val mimeType: String) {
 /**
  * Convierte el historial en un archivo.
  *
- * Es lógica pura sobre [Detection], así que se prueba entera sin plataforma. Escribir el archivo —
+ * Es lógica pura sobre [HistoryEntry], así que se prueba entera sin plataforma. Escribir el archivo —
  * elegir carpeta, pedir permisos, abrir el diálogo del sistema — es cosa de `FileSaver` en
  * `:core:platform`; aquí solo se decide **qué** contiene.
  *
@@ -37,19 +38,22 @@ object HistoryExporter {
         "latency_ms",
         "value_type",
         "confidence",
+        // Última a propósito: quien tenga un script leyendo por posición no se rompe al añadirla.
+        "note",
     )
 
-    fun export(detections: List<Detection>, format: ExportFormat): String = when (format) {
-        ExportFormat.Csv -> toCsv(detections)
-        ExportFormat.Json -> toJson(detections)
+    fun export(entries: List<HistoryEntry>, format: ExportFormat): String = when (format) {
+        ExportFormat.Csv -> toCsv(entries)
+        ExportFormat.Json -> toJson(entries)
     }
 
     /** Nombre sugerido; el diálogo del sistema es quien resuelve colisiones. */
     fun fileName(format: ExportFormat): String = "historial-escaneos.${format.extension}"
 
-    private fun toCsv(detections: List<Detection>): String = buildString {
+    private fun toCsv(entries: List<HistoryEntry>): String = buildString {
         appendLine(COLUMNS.joinToString(SEPARATOR))
-        detections.forEach { detection ->
+        entries.forEach { entry ->
+            val detection = entry.detection
             appendLine(
                 listOf(
                     detection.barcode.rawValue,
@@ -59,6 +63,10 @@ object HistoryExporter {
                     detection.latencyMillis?.toString().orEmpty(),
                     detection.barcode.valueType.id,
                     detection.barcode.confidence?.toString().orEmpty(),
+                    // La nota pasa por `asCsvField` como todo lo demás, y no es una formalidad: es
+                    // texto libre que escribe una persona, así que puede empezar por `-` o `=` sin
+                    // ninguna mala intención y llevar comas y saltos de línea con toda naturalidad.
+                    entry.note.orEmpty(),
                 ).joinToString(SEPARATOR) { it.asCsvField() },
             )
         }
@@ -66,9 +74,9 @@ object HistoryExporter {
 
     // Con el serializador explícito y no con la variante `reified`: esa resuelve el serializador
     // por reflexión sobre la clase, que es justo lo que R8 puede dejar sin nombre en release.
-    private fun toJson(detections: List<Detection>): String = json.encodeToString(
+    private fun toJson(entries: List<HistoryEntry>): String = json.encodeToString(
         ExportedHistory.serializer(),
-        ExportedHistory(detections.map { it.toExported() }),
+        ExportedHistory(entries.map { it.toExported() }),
     )
 
     /**
@@ -90,14 +98,15 @@ object HistoryExporter {
         return if (needsQuotes) "\"${guarded.replace("\"", "\"\"")}\"" else guarded
     }
 
-    private fun Detection.toExported() = ExportedDetection(
-        value = barcode.rawValue,
-        format = barcode.format.id,
-        engine = engineId.id,
-        detectedAt = detectedAtMillis,
-        latencyMs = latencyMillis,
-        valueType = barcode.valueType.id,
-        confidence = barcode.confidence,
+    private fun HistoryEntry.toExported() = ExportedDetection(
+        value = detection.barcode.rawValue,
+        format = detection.barcode.format.id,
+        engine = detection.engineId.id,
+        detectedAt = detection.detectedAtMillis,
+        latencyMs = detection.latencyMillis,
+        valueType = detection.barcode.valueType.id,
+        confidence = detection.barcode.confidence,
+        note = note,
     )
 
     private const val SEPARATOR = ","
@@ -143,4 +152,6 @@ private data class ExportedDetection(
     val latencyMs: Long?,
     val valueType: String,
     val confidence: Float?,
+    /** `null` cuando no hay nota. En JSON no hace falta neutralizar nada: ahí nada se ejecuta. */
+    val note: String?,
 )

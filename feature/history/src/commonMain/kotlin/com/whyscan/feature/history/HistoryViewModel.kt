@@ -5,8 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.whyscan.core.domain.export.ExportFormat
 import com.whyscan.core.domain.export.HistoryExporter
 import com.whyscan.core.domain.scan.ResultAction
-import com.whyscan.core.domain.usecase.ClearScanHistoryUseCase
-import com.whyscan.core.domain.usecase.ObserveScanHistoryUseCase
+import com.whyscan.core.domain.usecase.ScanHistory
+import com.whyscan.core.model.HistoryEntry
 import com.whyscan.core.model.ScannerEngineId
 import com.whyscan.core.platform.FileSaver
 import com.whyscan.core.platform.PlatformActions
@@ -23,12 +23,12 @@ import kotlinx.coroutines.launch
 /**
  * Historial de escaneos.
  *
- * No sabe si detrás hay Room o un almacén en memoria — solo conoce los casos de uso. Esa es la razón
- * de que cambiar el almacén en la Fase 2 no haya tocado ni el dominio ni la UI.
+ * No sabe si detrás hay Room o un almacén en memoria — solo conoce [ScanHistory]. Esa es la razón de
+ * que cambiar el almacén en la Fase 2 no haya tocado ni el dominio ni la UI, y de que añadir las
+ * notas no haya tocado el escáner.
  */
 class HistoryViewModel(
-    private val observeHistory: ObserveScanHistoryUseCase,
-    private val clearHistory: ClearScanHistoryUseCase,
+    private val history: ScanHistory,
     private val platformActions: PlatformActions,
     private val fileSaver: FileSaver,
 ) : ViewModel() {
@@ -41,8 +41,8 @@ class HistoryViewModel(
 
     init {
         viewModelScope.launch {
-            observeHistory().collect { detections ->
-                _state.update { it.copy(detections = detections, isLoading = false) }
+            history.observe().collect { entries ->
+                _state.update { it.copy(entries = entries, isLoading = false) }
             }
         }
     }
@@ -50,8 +50,14 @@ class HistoryViewModel(
     fun onAction(action: HistoryAction) {
         when (action) {
             is HistoryAction.FilterByEngine -> filterBy(action.id)
+            is HistoryAction.Search -> _state.update { it.copy(query = action.query) }
             is HistoryAction.RunResultAction -> runResultAction(action.action, action.text)
+            is HistoryAction.EditNote -> _state.update { it.copy(editingNoteFor = action.detectionId) }
+            is HistoryAction.SetNote -> setNote(action.detectionId, action.note)
+            is HistoryAction.Delete -> delete(action.detectionId)
             is HistoryAction.Export -> export(action.format)
+            HistoryAction.ConfirmClear -> _state.update { it.copy(isConfirmingClear = true) }
+            HistoryAction.DismissClear -> _state.update { it.copy(isConfirmingClear = false) }
             HistoryAction.Clear -> clear()
         }
     }
@@ -90,16 +96,49 @@ class HistoryViewModel(
     }
 
     /**
+     * Asocia una nota a una lectura, o la borra si el texto queda vacío.
+     *
+     * El campo se cierra antes de que el guardado termine y no después, a propósito: la lista se
+     * repinta desde el `Flow` del almacén, así que esperar dejaría el teclado abierto un instante
+     * sobre una fila que ya cambió. Si el guardado fallara, el estado del que se repinta es el del
+     * almacén y la nota simplemente no aparecería — que es la verdad.
+     *
+     * Quién decide si `"  "` es una nota no se decide aquí: lo normaliza [ScanHistory] para las tres
+     * plataformas a la vez.
+     */
+    private fun setNote(detectionId: String, note: String) {
+        _state.update { it.copy(editingNoteFor = null) }
+
+        viewModelScope.launch {
+            history.setNote(detectionId, note)
+
+            val message = if (HistoryEntry.normalizeNote(note) == null) {
+                HistoryMessage.NoteRemoved
+            } else {
+                HistoryMessage.NoteSaved
+            }
+            _effects.emit(HistoryEffect.ShowMessage(message))
+        }
+    }
+
+    private fun delete(detectionId: String) {
+        viewModelScope.launch {
+            history.delete(detectionId)
+            _effects.emit(HistoryEffect.ShowMessage(HistoryMessage.EntryDeleted))
+        }
+    }
+
+    /**
      * Exporta lo que se está viendo, no todo el historial (RF-11).
      *
-     * Es deliberado: si el usuario filtró por un motor, exportar el conjunto entero le daría un
-     * archivo que no se parece a la pantalla que tiene delante. `visible` es justo lo que ve.
+     * Es deliberado: si el usuario filtró por un motor o buscó algo, exportar el conjunto entero le
+     * daría un archivo que no se parece a la pantalla que tiene delante. `visible` es justo lo que ve.
      */
     private fun export(format: ExportFormat) {
         if (_state.value.isExporting) return
 
-        val detections = _state.value.visible
-        if (detections.isEmpty()) {
+        val entries = _state.value.visible
+        if (entries.isEmpty()) {
             viewModelScope.launch { _effects.emit(HistoryEffect.ShowMessage(HistoryMessage.NothingToExport)) }
             return
         }
@@ -111,7 +150,7 @@ class HistoryViewModel(
                 val result = fileSaver.save(
                     suggestedName = HistoryExporter.fileName(format),
                     mimeType = format.mimeType,
-                    content = HistoryExporter.export(detections, format),
+                    content = HistoryExporter.export(entries, format),
                 )
 
                 val message = when (result) {
@@ -128,7 +167,9 @@ class HistoryViewModel(
         }
     }
 
+    /** Solo se llega aquí tras confirmar: ver la nota de `HistoryAction.ConfirmClear`. */
     private fun clear() {
-        viewModelScope.launch { clearHistory() }
+        _state.update { it.copy(isConfirmingClear = false) }
+        viewModelScope.launch { history.clear() }
     }
 }

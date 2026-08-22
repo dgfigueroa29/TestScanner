@@ -57,6 +57,8 @@ import com.whyscan.feature.scanner.resources.action_scan_from_image
 import com.whyscan.feature.scanner.resources.action_stop
 import com.whyscan.feature.scanner.resources.no_camera_body
 import com.whyscan.feature.scanner.resources.no_camera_title
+import com.whyscan.feature.scanner.resources.paused_body
+import com.whyscan.feature.scanner.resources.paused_title
 import com.whyscan.feature.scanner.resources.permission_body
 import com.whyscan.feature.scanner.resources.permission_title
 import com.whyscan.feature.scanner.resources.session_paused
@@ -71,10 +73,20 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * El visor y todo lo que se superpone a él.
  *
- * Cuatro cosas pueden ocupar este espacio y son excluyentes: el catálogo cargando, la petición de
- * permiso, el aviso de que aquí no hay cámara, o la cámara de verdad. Resolverlo con un `when` y no
- * con condiciones sueltas es lo que impide el estado imposible de siempre — el visor negro con un
- * cartel de permiso encima.
+ * Cinco cosas pueden ocupar este espacio y son excluyentes: el catálogo cargando, la petición de
+ * permiso, el aviso de que aquí no hay cámara, la cámara de verdad, o la cámara **pausada**.
+ * Resolverlo con un `when` y no con condiciones sueltas es lo que impide el estado imposible de
+ * siempre — el visor negro con un cartel de permiso encima.
+ *
+ * ## Por qué hay un caso "pausado" y antes no
+ *
+ * Al pausar, el ViewModel pone `activeEngineId = null` —correctamente: no hay motor corriendo— y con
+ * él desaparece la superficie de preview. El `when` no tenía un caso para eso, así que caía en la
+ * rama final y **dejaba un spinner girando para siempre**: la señal universal de "esto está a punto
+ * de terminar" sobre algo que no iba a terminar nunca, porque estaba esperando al usuario.
+ *
+ * Ahora el spinner solo aparece mientras [SessionStatus.Starting], que es cuando de verdad hay algo
+ * en marcha. Pausado es un estado con nombre, con su icono y con la salida a la vista.
  */
 @Composable
 internal fun ViewfinderArea(
@@ -100,9 +112,11 @@ internal fun ViewfinderArea(
 
             !state.hasLiveCameraEngine -> NoCameraAvailable(state, onAction)
 
-            // Hay motor de cámara pero todavía no está pintando: la sesión arranca sola en cuanto
-            // el catálogo confirma que puede (ver `ScannerAction.ScreenShown`).
-            else -> CircularProgressIndicator()
+            // Hay motor de cámara y se está abriendo: aquí el spinner sí dice la verdad. La sesión
+            // arranca sola en cuanto el catálogo confirma que puede (ver `ScannerAction.ScreenShown`).
+            state.sessionStatus == SessionStatus.Starting -> CircularProgressIndicator()
+
+            else -> CameraPaused(onAction)
         }
 
         SessionBadge(
@@ -177,6 +191,28 @@ private fun PermissionRequest(onAction: (ScannerAction) -> Unit) {
     ) {
         Button(onClick = { onAction(ScannerAction.RequestCameraPermission) }) {
             Text(stringResource(Res.string.action_grant_camera))
+        }
+    }
+}
+
+/**
+ * La cámara está apagada porque el usuario la apagó, o porque la sesión terminó tras leer un código
+ * sin escaneo continuo.
+ *
+ * Comparte forma con los otros dos estados que sustituyen al visor, y eso es lo importante: los tres
+ * dicen **qué pasa** y **qué hacer**. Antes este caso no existía y aquí giraba un
+ * `CircularProgressIndicator` indefinido, que promete que algo está en curso. No lo estaba: la app
+ * esperaba al usuario, y era el usuario quien esperaba a la app.
+ */
+@Composable
+private fun CameraPaused(onAction: (ScannerAction) -> Unit) {
+    ViewfinderMessage(
+        icon = Icons.Filled.Pause,
+        title = stringResource(Res.string.paused_title),
+        body = stringResource(Res.string.paused_body),
+    ) {
+        Button(onClick = { onAction(ScannerAction.StartSession) }) {
+            Text(stringResource(Res.string.action_resume))
         }
     }
 }
