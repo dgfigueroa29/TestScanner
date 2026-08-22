@@ -1,7 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Títulos de navegación. Los textos de cada pantalla viven en su propia feature (deuda D5). -->
+<!--
+  App-level strings: the product name and the navigation destinations. Each screen's own text lives
+  in its feature module.
+
+  `values/` has no qualifier, so it is the fallback for every locale that has no catalogue of its
+  own. That is why it is English: a phone set to German gets English here, not Spanish.
+-->
 <resources>
-    <string name="destination_scanner">Escanear</string>
-    <string name="destination_comparison">Comparar</string>
-    <string name="destination_history">Historial</string>
+
+    <string name="destination_scanner">Scan</string>
+    <string name="destination_comparison">Compare</string>
+    <string name="destination_history">History</string>
+    <string name="destination_settings">Settings</string>
 </resources>

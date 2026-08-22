@@ -1,8 +1,10 @@
 package com.testscanner.android
 
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -139,8 +141,35 @@ class MainActivity : ComponentActivity() {
             val backstack by navigator.backstack.collectAsState()
             BackHandler(enabled = backstack.size > 1) { navigator.goBack() }
 
-            App(navigator)
+            App(navigator = navigator, onDarkThemeResolved = ::applySystemBarStyle)
         }
+    }
+
+    /**
+     * Ajusta el contraste de los iconos de las barras del sistema al tema **de la app**.
+     *
+     * `enableEdgeToEdge()` sin argumentos deja que los iconos sigan al modo oscuro del *sistema*, y
+     * eso solo funciona mientras los dos coinciden. En cuanto el usuario elige un tema en Ajustes
+     * —que es justo lo que ahora se puede hacer— dejan de coincidir: con el teléfono en claro y la
+     * app forzada a oscuro, los iconos de la barra de estado salían oscuros sobre nuestro fondo
+     * oscuro, es decir, invisibles. Y al revés.
+     *
+     * Se vuelve a llamar a `enableEdgeToEdge` en cada cambio porque es idempotente y es la API que
+     * decide este contraste; no hay una versión "solo actualizar el estilo".
+     *
+     * Los dos estilos van transparentes: el color de fondo lo pinta Compose bajo las barras, que es
+     * lo que significa edge-to-edge. `SystemBarStyle.light` pide los dos colores —el segundo es el
+     * velo que el sistema usa en API 26-28, donde los iconos de la barra de navegación no podían
+     * ser oscuros— y transparente en ambos es lo correcto aquí.
+     */
+    private fun applySystemBarStyle(darkTheme: Boolean) {
+        val style = if (darkTheme) {
+            SystemBarStyle.dark(Color.TRANSPARENT)
+        } else {
+            SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+        }
+
+        enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
     }
 
     private fun launchCreateDocument(mimeType: String, suggestedName: String) {

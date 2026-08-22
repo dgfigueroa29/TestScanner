@@ -7,7 +7,7 @@ import com.testscanner.di.initKoin
 fun main() {
     initKoin()
     application {
-        Window(onCloseRequest = ::exitApplication, title = "TestScanner") {
+        Window(onCloseRequest = ::exitApplication, title = "Scanly") {
             App()
         }
     }

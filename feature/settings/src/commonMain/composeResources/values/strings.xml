@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings strings. Unqualified `values/`, so English is the fallback for every locale. -->
+<resources>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_theme_hint">Following the system also follows its schedule, so the app turns dark when the phone does.</string>
+
+    <string name="settings_language">Language</string>
+    <string name="settings_language_system">System</string>
+    <string name="settings_language_english">English</string>
+    <string name="settings_language_spanish">Español</string>
+
+    <string name="settings_advanced">Advanced</string>
+    <string name="settings_advanced_mode">Engine workbench</string>
+    <string name="settings_advanced_mode_hint">Brings back the engine catalogue, the side-by-side comparison and the per-read latencies. Off by default: scanning a code does not require choosing a decoder.</string>
+
+    <string name="settings_about">About</string>
+    <string name="settings_privacy">No account, no tracking, no network. Scanly does not request internet access at all, so what you scan cannot leave the device.</string>
+
+    <!-- Accessibility (RNF-05): the theme and language options are chips whose label alone does not
+         say what they set. "Dark" on its own could be anything. -->
+    <string name="a11y_theme_option">Theme: %1$s</string>
+    <string name="a11y_language_option">Language: %1$s</string>
+</resources>

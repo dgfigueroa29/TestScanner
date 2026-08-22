@@ -1,10 +1,20 @@
-# TestScanner
+# Scanly
 
-Banco de pruebas de **motores de escaneo de códigos de barras y QR**, en Compose Multiplatform.
+Lector de **códigos de barras y QR** en Compose Multiplatform, sin cuenta, sin rastreo y sin red.
 
-El objetivo no es leer un código: es poder **elegir entre varias alternativas de escaneo**,
-compararlas y degradar con elegancia cuando una no está disponible — sobre Android, iOS, Desktop
-y Web con un único código base.
+Debajo hay un **banco de pruebas de motores de escaneo**: la app no lee un código de una sola
+manera, sino que elige entre varias alternativas, las compara y degrada con elegancia cuando una no
+está disponible — sobre Android, iOS, Desktop y Web con un único código base.
+
+Las dos cosas conviven porque son la misma app en dos modos. Por defecto Scanly es un lector: se
+apunta y se lee. El **modo avanzado** (Ajustes → Avanzado) devuelve el catálogo de los ocho motores,
+el comparador en paralelo y las latencias por lectura.
+
+> **Sobre los nombres.** El producto se llama Scanly y el `applicationId` de Play es
+> `com.scanly.app`. El repositorio, los paquetes de Kotlin y los módulos siguen siendo
+> `com.testscanner.*` **a propósito**: renombrarlos tocaría doscientos archivos para cambiar algo que
+> ningún usuario ve, y el `applicationId` —que sí es la identidad pública y permanente en Play— ya
+> está donde tiene que estar.
 
 ---
 
@@ -19,7 +29,7 @@ y Web con un único código base.
 | Comparador de motores con marcador en vivo (G5) | ✅ implementado y en la UI |
 | Motor de entrada manual | ✅ funcional en las 4 plataformas |
 | Google Code Scanner y ML Kit + CameraX (Android) | ✅ implementados y compilando |
-| Historial persistente | ✅ Room en Android, iOS y Desktop; en Web, JSON en el almacén del navegador |
+| Historial persistente | ✅ Room en Android, iOS y Desktop; en Web, JSON en el almacén del navegador. **El driver bundled no se aplicaba** hasta esta versión: ver más abajo |
 | Preferencias persistentes | ✅ las cuatro plataformas |
 | CI en GitHub Actions | ✅ **en verde**: detekt, tests, Android (con R8), Desktop y Web |
 | Vision / AVFoundation (iOS) | ✅ implementado; **todo el Kotlin de iOS enlaza**, a demanda en el workflow `iOS (manual)`. Falta el dispositivo, no la compilación |
@@ -33,7 +43,13 @@ y Web con un único código base.
 | Acciones sobre el resultado (RF-13) | ✅ copiar, compartir y abrir, según el significado del código |
 | Navegación | ✅ propia, con backstack que sobrevive a que el sistema mate el proceso |
 | Build de release con R8 | ✅ `minify` y `shrinkResources`, con `assembleRelease` en CI |
-| Accesibilidad (RNF-05) | ✅ contraste AA **verificado por test**, y semántica para lectores de pantalla |
+| Marca, icono y tema | ✅ Scanly: icono adaptativo con capa monocroma, paleta con los ~30 roles de Material 3, escala tipográfica y de formas propias |
+| Selector de tema claro/oscuro | ✅ Sistema / Claro / Oscuro, persistido, con las barras del sistema siguiendo al tema **de la app** |
+| Idiomas inglés y español | ✅ los cuatro catálogos en `values/` (inglés, respaldo de cualquier idioma) y `values-es/`, con selector propio ([ADR-0011](docs/adr/ADR-0011-idioma-de-la-app-por-encima-del-sistema.md)) y `localeConfig` para el selector por app de Android 13+ |
+| Pantalla de escaneo | ✅ cámara a pantalla completa con el resultado en una hoja que la empuja, no que la tapa; la sesión arranca sola y se apaga al salir ([ADR-0010](docs/adr/ADR-0010-dos-disposiciones-de-la-pantalla-de-escaneo.md)) |
+| Lecturas repetidas | ✅ suprimidas en el dominio con ventana de dos segundos. Antes, tres segundos apuntando a un QR escribían noventa filas en el historial |
+| Que el grafo de Koin resuelva | ✅ `KoinGraphTest` en los módulos comunes y en escritorio — cierra media D18. Falta el `platformModule` de Android |
+| Accesibilidad (RNF-05) | ✅ contraste AA **verificado por test** (56 pares, los dos temas), y semántica para lectores de pantalla |
 | Privacidad (RNF-03) | ✅ auditada: sin trazas, sin cliente HTTP, sin analítica y sin permiso `INTERNET` |
 | ZXing en Java (Desktop) | ✅ el único decodificador de escritorio; **verificado de verdad**, decodificando imágenes generadas en el test |
 
@@ -67,7 +83,29 @@ Lo que queda fuera por ahora, y por qué:
 > Lo que el CI **no** comprueba es que la app arranque: sin tests instrumentados nadie ejecuta la
 > `MainActivity`, así que un fallo de arranque no lo detecta ningún check. No es teórico — el primer
 > arranque en un dispositivo real murió por un `Executor` registrado en Koin con el tipo equivocado,
-> con el CI en verde todo el tiempo. Está contado en `docs/adr/ADR-0003` y registrado como deuda D18.
+> con el CI en verde todo el tiempo. Está contado en `docs/adr/ADR-0003`.
+>
+> **Parte de ese hueco ya está tapado, y hay que decir cuál.** `KoinGraphTest` arranca el grafo real
+> y resuelve cada tipo que la raíz de la app consume; corre en un test JVM normal, sin emulador. En
+> su primera ejecución encontró un defecto que llevaba meses en producción y que ningún check veía:
+>
+> - **La base de datos nunca recibía su driver.** `:core:database` declaraba una *extensión*
+>   `build()` sobre `RoomDatabase.Builder` para configurar el driver bundled, y en Kotlin **un
+>   miembro siempre gana a una extensión**: los tres `platformModule` llamaban al `build()` de Room y
+>   esa configuración no se ejecutó nunca. Escritorio e iOS reventaban al abrir la primera pantalla;
+>   Android funcionaba cayendo al SQLite del framework — justo el driver que ese código existe para
+>   evitar, así que la garantía de "la misma versión de SQLite en las cuatro plataformas" llevaba
+>   siendo falsa desde que se escribió.
+> - **El compilador lo avisaba en cada build** (`This extension is shadowed by a member`) y nadie
+>   leía el aviso. Queda registrado como deuda D19: o se limpian todos los avisos, o se acepta el
+>   ruido explícitamente.
+> - Encontrarlo exigió antes arreglar otra cosa: **un test que fallaba en CI no decía por qué**. La
+>   salida por defecto de Gradle daba el tipo de excepción y la línea, sin mensaje ni causa. El
+>   `build.gradle.kts` raíz configura ahora `testLogging` con `exceptionFormat = FULL`.
+>
+> Lo que sigue sin cubrir: el `platformModule` de **Android** —que es donde estaba el defecto
+> original de D18 y necesita `androidUnitTest`— y que la app se abra y lea un código, que sigue
+> necesitando un dispositivo.
 >
 > Hasta que se activó Actions nada de esto se había compilado nunca —el entorno de desarrollo no
 > alcanza el maven de Google—, y el primer CI encontró **doce fallos encadenados**, desde el
@@ -98,20 +136,89 @@ core/scanner-ui     capacidad de UI del motor: CameraPreviewEngine
 core/scanner-testing suite de contrato que todo motor hereda
 core/domain         casos de uso, políticas de selección y decoradores del SPI
 core/data           registro de motores, preferencias e historial
-core/designsystem   tema y componentes Compose compartidos
+core/designsystem   tema, paleta, tipografía, formas, marca y cambio de idioma en caliente
 core/permissions    abstracción de permisos por plataforma
 core/platform       acciones del sistema: copiar, compartir, abrir, elegir imagen, guardar archivo
 core/database       Room KMP: historial persistente (sin target wasmJs)
 engines/*           un módulo por alternativa de escaneo
 feature/scanner     MVI, pantalla de escaneo y comparador de motores
 feature/history     historial filtrable por motor
+feature/settings    tema, idioma y modo avanzado
 composeApp          raíz Compose Multiplatform y composition root de la DI
 androidApp          shell de Android
 iosApp              shell de iOS (Xcode)
+playstore/          material de la ficha de Play (icono 512×512)
 ```
 
 La regla de dependencias es estricta: un módulo `engines/*` depende solo de `:core:scanner-api`
 y de su SDK nativo. Nunca de `:feature:*`, ni de `:core:data`, ni de otro motor.
+
+---
+
+## Marca, tema e idiomas
+
+**El tema.** `ScanlyTheme` declara los ~30 roles de color de Material 3, y no solo los seis
+habituales. No es exhaustividad por gusto: `lightColorScheme()` rellena con su paleta de fábrica todo
+lo que no se le pase, así que un `FilterChip` seleccionado o el indicador del ítem activo de la barra
+salían **morados** en una app cuya marca es azul. `ContrastTest` mide 50 pares de color a 4.5:1 y 6
+más a 3.0:1, sobre los dos esquemas, con aritmética de WCAG en `commonTest`: sin dispositivo y sin
+renderizar nada.
+
+**El selector claro/oscuro** vive en Ajustes y persiste. En Android hay una segunda mitad que no
+pinta Compose: los iconos de las barras del sistema. Con `enableEdgeToEdge()` a secas siguen al modo
+oscuro *del sistema*, y en cuanto el usuario elige un tema distinto dejan de coincidir — teléfono en
+claro y app en oscuro daba iconos oscuros sobre fondo oscuro. `MainActivity` recibe el valor ya
+resuelto y reajusta el estilo de las barras.
+
+**Los idiomas.** Los cuatro catálogos de textos viven en `values/` (inglés) y `values-es/`. El
+inglés está en la carpeta **sin calificador** a propósito: es el respaldo de cualquier idioma que no
+sea español, así que un teléfono en alemán ve inglés y no castellano. El selector propio va por
+encima del idioma del sistema cambiando el locale de la plataforma y tirando el subárbol de
+Compose con `key(tag)`, y `androidApp` declara `localeConfig` para que Scanly aparezca además en el
+selector de idioma por app de Android 13+.
+
+Ese mecanismo es el segundo intento. El primero sustituía el entorno de recursos con
+`LocalComposeEnvironment`, que es lo que documentan varios ejemplos y **no compila con Compose
+Multiplatform 1.11.1**: esa interfaz y su `CompositionLocal` son `internal` a la librería. Lo dice
+`AppLanguage.kt` con el error exacto al lado, para que nadie lo vuelva a intentar.
+
+En Web el selector **no se muestra**: el idioma sale de `navigator.language`, que una página no
+puede escribir. Preferimos no ofrecer el control a ofrecerlo roto —
+`PlatformSupportsLanguageOverride` es lo que lo decide, y es `false` solo ahí.
+
+**El icono** se dibuja dos veces, y las dos copias lo dicen: `ScanlyMark` como `ImageVector` para la
+UI y `ic_launcher_foreground.xml` para el lanzador, con las mismas coordenadas escaladas. Lleva capa
+`monochrome`, así que se tiñe con los iconos temáticos de Android 13+, y hay PNG de respaldo para
+API 24 y 25, que no entienden iconos adaptativos. Antes de esto **no había icono en absoluto**: el
+manifiesto no declaraba `android:icon` y Android ponía su robot por defecto.
+
+El razonamiento completo del idioma está en
+[ADR-0011](docs/adr/ADR-0011-idioma-de-la-app-por-encima-del-sistema.md).
+
+---
+
+## La pantalla de escaneo
+
+Hay **dos disposiciones**, no una con condicionales, y el motivo está en
+[ADR-0010](docs/adr/ADR-0010-dos-disposiciones-de-la-pantalla-de-escaneo.md): leer un código y
+comparar motores son preguntas distintas y quieren jerarquías distintas.
+
+En el modo por defecto el visor ocupa todo el alto y los resultados llegan en una hoja que **lo
+empuja hacia arriba en lugar de taparlo** — por eso no es un `ModalBottomSheet`: quien escanea en
+serie mira el resultado y apunta al siguiente sin tocar la pantalla. Antes el visor era el primer
+elemento de un `LazyColumn` y se iba de la pantalla en cuanto llegaba el segundo resultado.
+
+**La sesión arranca sola** al aparecer la pantalla y se apaga al salir. Lo segundo no es una
+optimización: el ViewModel sobrevive a la navegación, así que la cámara seguía capturando mientras el
+usuario miraba el historial. El arranque automático **no** dispara la petición de permiso — pedirlo
+sin que el usuario haya tocado nada es la forma más rápida de que lo deniegue para siempre; en su
+lugar la pantalla explica para qué se usa la cámara y ofrece el botón.
+
+**Las lecturas repetidas se suprimen en el dominio**, no en la UI, y eso importa: a treinta frames
+por segundo, tres segundos apuntando a un QR emitían noventa lecturas idénticas que se escribían
+**una a una en el historial persistente**. No era ruido visual sino corrupción de los datos del
+usuario. La regla es una ventana de dos segundos y no "una vez por sesión", porque volver a leer el
+mismo código es un caso de uso real — contar unidades iguales en un inventario.
 
 ---
 

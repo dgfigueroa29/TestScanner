@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Android resources, not Compose resources. These two catalogues are separate on purpose and are
+    not duplicates: this one is read by the **system** — the launcher label, the app info screen,
+    the permission dialogs — before a single composable exists. The Compose one under
+    `composeApp/src/commonMain/composeResources` is read by the UI and is shared with iOS, Desktop
+    and Web, which have no `res/` at all.
+
+    `values/` carries no qualifier, so it is the fallback for every locale: English.
+-->
+<resources>
+    <!-- The brand name is not translated: it is the same word in every store listing. -->
+    <string name="app_name" translatable="false">Scanly</string>
+</resources>

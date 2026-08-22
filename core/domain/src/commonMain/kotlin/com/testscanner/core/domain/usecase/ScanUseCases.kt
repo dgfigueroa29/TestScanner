@@ -8,6 +8,7 @@ import com.testscanner.core.domain.scan.FallbackScannerEngine
 import com.testscanner.core.domain.scan.enforcingRequestLimits
 import com.testscanner.core.domain.scan.filteringFormats
 import com.testscanner.core.domain.scan.interpretingValues
+import com.testscanner.core.domain.scan.suppressingRepeats
 import com.testscanner.core.domain.scan.withDeadline
 import com.testscanner.core.model.Barcode
 import com.testscanner.core.model.BarcodeValueType
@@ -40,6 +41,7 @@ import kotlinx.coroutines.flow.flow
 class StartScanSessionUseCase(
     private val engineRepository: ScannerEngineRepository,
     private val selectEngine: SelectScannerEngineUseCase,
+    private val time: TimeProvider = SystemTimeProvider,
 ) {
 
     operator fun invoke(
@@ -59,13 +61,15 @@ class StartScanSessionUseCase(
         //    límites del request (cuántos códigos y si la sesión sigue), y solo lo que sobrevive se
         //    interpreta semánticamente. Envolver la cadena entera dejaría el fallback fuera del
         //    filtrado.
-        //  - Sobre la cadena: el plazo. Si fuera por motor, una cadena de tres tardaría el triple
-        //    de lo que el usuario pidió.
+        //  - Sobre la cadena: el plazo y la supresión de repeticiones. El plazo, porque si fuera
+        //    por motor una cadena de tres tardaría el triple de lo que el usuario pidió. La
+        //    supresión, porque un código que un motor lee y otro vuelve a leer tras un fallback es
+        //    **una** lectura repetida y no dos: dedupliar por motor la dejaría pasar.
         val chain: BarcodeScannerEngine = FallbackScannerEngine(
             engines.map { engine ->
                 engine.filteringFormats().enforcingRequestLimits().interpretingValues()
             },
-        ).withDeadline()
+        ).withDeadline().suppressingRepeats(time)
 
         emitAll(chain.scan(request))
     }

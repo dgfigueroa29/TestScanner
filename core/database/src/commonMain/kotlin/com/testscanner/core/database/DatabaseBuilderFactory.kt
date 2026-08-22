@@ -32,8 +32,28 @@ internal expect val queryDispatcher: CoroutineDispatcher
  * Se usa el driver **bundled** y no el del sistema para que las cuatro plataformas corran la misma
  * versión de SQLite. Con el driver del sistema, una consulta podría comportarse distinto en Android
  * 24 que en iOS 17 — y este proyecto existe para comparar plataformas, no para pelearse con ellas.
+ *
+ * ## Por qué no se llama `build()`
+ *
+ * Se llamaba así, y **no se ejecutaba nunca**. En Kotlin un miembro siempre gana a una extensión, y
+ * `RoomDatabase.Builder` ya tiene su propio `build()`; los tres `platformModule` escribían
+ * `.create().build()` creyendo que pasaban por aquí, y en realidad llamaban al de Room. El
+ * compilador lo avisaba en cada build desde el principio:
+ *
+ *     w: This extension is shadowed by a member: 'fun build(): T'
+ *
+ * Las consecuencias no eran teóricas y eran distintas en cada plataforma, que es lo que hizo que
+ * pasara desapercibido tanto tiempo:
+ *
+ *  - **Escritorio e iOS reventaban** al tocar el historial por primera vez, con
+ *    `IllegalArgumentException: Cannot create a RoomDatabase without providing a SQLiteDriver`. Y
+ *    como el escáner necesita `SaveDetectionUseCase`, eso es al abrir la primera pantalla.
+ *  - **Android funcionaba**, y por eso nadie lo vio: ahí Room cae al SQLite del framework cuando no
+ *    se le da driver. Funcionaba usando justo el driver que este archivo existe para no usar.
+ *
+ * Lo encontró `KoinGraphTest` en su primera ejecución. El nombre nuevo no puede volver a colisionar.
  */
-fun RoomDatabase.Builder<ScanDatabase>.build(): ScanDatabase = this
+fun RoomDatabase.Builder<ScanDatabase>.buildBundled(): ScanDatabase = this
     .setDriver(BundledSQLiteDriver())
     .setQueryCoroutineContext(queryDispatcher)
     .fallbackToDestructiveMigration(dropAllTables = true)

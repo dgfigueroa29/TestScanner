@@ -217,6 +217,103 @@ recupera correctamente EAN-13 impresos sobre códigos dañados.
 
 ---
 
+## Fase 6 — De banco de pruebas a producto de Play 🚧
+
+Hasta aquí el criterio de todas las fases fue *técnico*. Este no: la app tenía que dejar de parecer
+lo que es por dentro. Un usuario que abre un lector de códigos no debería encontrarse ocho motores
+con sus latencias en la portada, ni una app llamada "TestScanner" sin icono.
+
+### Ronda 1 — marca, sistema de diseño, tema e idiomas ✅
+
+- [x] **Nombre y marca: Scanly.** `applicationId` a `com.scanly.app` — se cambia ahora porque
+      después de la primera publicación en Play ya no se puede. Los paquetes de Kotlin se quedan en
+      `com.testscanner.*` a conciencia: son doscientos archivos para cambiar algo que nadie ve
+- [x] **Icono de lanzador, que no existía.** Ni uno: el manifiesto no declaraba `android:icon`, así
+      que Android ponía su robot por defecto. Es un bloqueo duro de Play, y de los que no aparecen en
+      ningún CI. Adaptativo con capa `monochrome` (iconos temáticos de Android 13+), PNG de respaldo
+      para API 24-25 y el 512×512 de la ficha en `playstore/`
+- [x] **Los ~30 roles de color de Material 3 declarados.** Estaban los seis de siempre más los
+      `on*`; faltaban los `*Container`, que es lo que pinta un `FilterChip` seleccionado, la `Card`,
+      el `NavigationBar` y el indicador del ítem activo. Todos ellos salían **morados**, del relleno
+      de fábrica de `lightColorScheme()`. Es exactamente el mismo defecto que la Fase 5 arregló para
+      los `on*`, en la mitad de los roles que aquella no miró
+- [x] **`ContrastTest` pasa de 22 pares a 56**, con un umbral aparte a 3.0:1 para lo que no es texto
+      (`outline`). La lista de pares se declara una vez y se aplica a los dos temas, así que la
+      simetría entre claro y oscuro deja de depender de mantener dos copias a mano
+- [x] **Escala tipográfica y de formas propias.** No había ninguna: `MaterialTheme` usaba las de
+      fábrica. El valor de un código leído pasa a monoespaciada — es un dato que alguien coteja
+      carácter a carácter contra una etiqueta, y en proporcional `1`, `l` e `I` se confunden
+- [x] **Iconos en la barra de navegación.** Estaban en `icon = {}`, literalmente vacíos, y por eso
+      no había indicador de ítem activo: Material 3 lo dibuja **alrededor del icono**
+- [x] **Selector de tema Sistema / Claro / Oscuro**, persistido. Con él aparece un defecto que antes
+      no podía existir: `enableEdgeToEdge()` ata los iconos de las barras del sistema al modo oscuro
+      *del sistema*, así que forzar el tema de la app los volvía invisibles. `MainActivity` recibe el
+      valor resuelto y reajusta el estilo
+- [x] **Inglés y español.** Los cuatro catálogos duplicados en `values/` (inglés) y `values-es/`.
+      El inglés va en la carpeta sin calificador porque es el respaldo de todo idioma que no sea
+      español: antes, un teléfono en alemán veía castellano. 127 claves con paridad comprobada
+- [x] **Selector de idioma propio**, más `localeConfig` para el selector por app de Android 13+.
+      En Web no se muestra: `navigator.language` no se puede escribir desde la página, y un control
+      inerte es peor que no tenerlo. El mecanismo es el segundo intento: sustituir el entorno de
+      recursos con `LocalComposeEnvironment` **no compila** en CMP 1.11.1 —esa interfaz y su
+      `CompositionLocal` son `internal`—, así que se cambia el locale de la plataforma y se tira el
+      subárbol con `key(tag)`, que es de donde `stringResource` saca el idioma de verdad
+- [x] **`:feature:settings`** con su ViewModel y sus tests, y **modo avanzado** como preferencia: el
+      catálogo de motores, el comparador, el filtro de formatos y las latencias vuelven con un
+      interruptor. `Navigator.pruneTo` saca del backstack lo que deja de estar disponible
+
+### Ronda 2 — la pantalla de escaneo, y dos defectos que salieron debajo ✅
+
+- [x] **Visor a pantalla completa con el resultado en una hoja inferior.** Antes el visor era el
+      primer elemento de un `LazyColumn` y se iba de la pantalla en cuanto llegaba el segundo
+      resultado, justo cuando el usuario quiere seguir apuntando
+- [x] Estados de permiso y de "aquí no hay cámara" con su motivo y su salida, resueltos con un `when`
+      sobre cuatro casos excluyentes en vez de condiciones sueltas
+- [x] La sesión **arranca sola** al aparecer la pantalla y se apaga al salir. La cámara seguía
+      capturando mientras el usuario miraba el historial: el ViewModel sobrevive a la navegación y
+      nadie paraba la sesión
+- [x] Animación al crecer la hoja, tope de cien resultados vivos, pausa y reanudación sobre el visor
+- [x] **D18 saldada para los módulos comunes y el escritorio** (`KoinGraphTest`). El `platformModule`
+      de Android sigue necesitando `androidUnitTest`
+- [x] **Lecturas repetidas suprimidas.** Una cámara a 30 fps emitía el mismo código noventa veces en
+      tres segundos, y cada repetición **se guardaba en el historial persistente**: no era ruido
+      visual, era corrupción de los datos del usuario. Lo arregla `DistinctDetectionsScannerEngine`
+- [x] **La base de datos nunca recibía su driver.** `DatabaseBuilderFactory` declaraba una extensión
+      `build()` sobre `RoomDatabase.Builder`, y en Kotlin **un miembro siempre gana a una
+      extensión**: los tres `platformModule` llamaban al `build()` de Room y la configuración del
+      driver bundled no se ejecutaba nunca. Escritorio e iOS reventaban al abrir la primera pantalla;
+      Android funcionaba cayendo al SQLite del framework, que es justo el driver que ese archivo
+      existe para no usar. **El compilador lo avisaba en cada build** —`This extension is shadowed by
+      a member`— y nadie leía el aviso. Lo encontró `KoinGraphTest` en su primera ejecución
+- [x] **Un test que falla en CI ahora dice por qué.** Con la salida por defecto de Gradle el fallo
+      anterior aparecía como `IllegalArgumentException at KoinGraphTest.kt:189`, sin mensaje ni
+      causa; encontrar el defecto de Room exigió configurar `testLogging` primero
+
+### Ronda 3 — pendiente 🔜
+
+- [ ] `androidUnitTest` en `:composeApp` para que `KoinGraphTest` cubra también el grafo de Android,
+      que es donde estaba el defecto original de D18
+- [ ] Animaciones de transición **entre destinos** (las de dentro de la pantalla ya están)
+- [ ] Objetivos táctiles y `enableEdgeToEdge` **mirados con los ojos** en un dispositivo (queda
+      pendiente desde la Fase 5)
+- [ ] El aviso `KoinContext is not needed anymore` de `App.kt`: Koin dice que `startKoin()` ya monta
+      el contexto de Compose, pero quitarlo cambia por dónde resuelven `koinInject` y `koinViewModel`
+      y eso no se puede comprobar sin ejecutar la app
+
+### Pendiente para publicar
+
+- [ ] Comprobar en Play Console que `com.scanly.app` está libre y que "Scanly" no colisiona con una
+      ficha existente. **Sin red en el entorno de desarrollo, esto no se pudo verificar aquí**
+- [ ] Capturas, gráfico de cabecera 1024×500 y textos de la ficha, en los dos idiomas
+- [ ] Política de privacidad publicada y formulario de seguridad de datos. Es el trámite más corto
+      de todos: sin `INTERNET`, la respuesta a casi todo es "no se recoge nada"
+- [ ] Firma de release y `bundle` en vez de APK
+
+**Criterio de salida:** alguien que no sabe qué es un motor de escaneo abre la app, lee un código y
+lo comparte, sin ver ni una vez la palabra "motor".
+
+---
+
 ## Qué cubre a los motores de cámara sin emulador
 
 La decisión de no tener tests instrumentados deja un hueco real y conviene decir exactamente cuál es
@@ -228,7 +325,8 @@ y qué lo compensa:
 | Que la selección, el fallback, los límites de petición y el plazo se comportan según el contrato, incluida la cadena completa que llega al ViewModel | Que la cámara arranque, y que se libere al cancelar |
 | Que lo declarado tenga quien lo cumpla, en todo lo instanciable sin `Context` | Lo mismo en los motores de Android e iOS, que necesitan `Context` o `AVCaptureSession` |
 | Que ZXing (Java) **lea de verdad** un QR y un EAN-13 desde píxeles, filtre por formato y distinga "no hay código" de "no es una imagen" | Lo mismo en los motores que necesitan cámara |
-| Que el proyecto **compile** para Android, Escritorio y Web, incluida la build de release con R8 | — |
+| Que el **grafo de Koin resuelva** de verdad: `KoinGraphTest` arranca los módulos comunes más el `platformModule` de escritorio y pide cada tipo que la raíz de la app consume | Lo mismo para el `platformModule` de **Android**, que necesita `androidUnitTest` en `:composeApp` |
+| Que el proyecto **compile** para Android, Escritorio y Web, incluida la build de release con R8 | Que la app **arranque** y lea un código: sigue haciendo falta un dispositivo |
 
 El riesgo que queda es el de siempre en este tipo de app: el código de cámara solo se prueba
 usándola. Lo que sí evita el diseño es que un fallo ahí se lleve por delante al resto — el SPI
@@ -260,4 +358,7 @@ Registrada de forma explícita para que no se olvide:
 | ~~D13~~ | ~~Desktop y Web se quedan sin decodificador: zxing-cpp no publica artefacto JVM ni wasmJs~~ | **Saldada en Desktop**: `:engines:zxing-java` sobre `com.google.zxing:core`, en el catálogo **como motor propio** y no con el nombre de zxing-cpp — son proyectos distintos y confundirlos falsearía la comparación. Solo imagen estática: el decodificador está, la captura de webcam no. **Web se queda como está**: no hay artefacto wasmJs y su respaldo sigue siendo la entrada manual |
 | ~~D16~~ | ~~`ScannerViewModel` tiene doce colaboradores y veinte funciones~~ | **Saldada**: seis dependencias. Los ajustes en `ScanSettings`, la sesión y el guardado en `ScanSessions`, las acciones sobre el resultado en `ResultActionRunner`. Los tres casos de uso de preferencias y el del catálogo se **borraron** en vez de envolverse —delegaban al repositorio sin añadir nada—, y la única regla que había se conservó donde se puede probar. Quince tests nuevos que antes exigían levantar el ViewModel entero. Quedan dos supresiones, ninguna global: `TooManyFunctions` en la clase (catorce acciones de usuario, catorce funciones) y `CyclomaticComplexMethod` en `onAction`, que es una tabla de despacho sobre un `sealed interface` |
 | D17 | `IosPlatformActions.openUrl` usa `UIApplication.openURL:`, que Apple depreció en iOS 10 a favor de `openURL:options:completionHandler:`. Compila —solo es un aviso— pero es API vieja en código nuevo. Salió de auditar el header real al preparar la compilación de iOS, no de un fallo | Cuando iOS enlace en verde y se pueda comprobar el cambio en el runner |
-| D18 | **Nada comprueba que el grafo de Koin resuelva.** Lo demostró el primer arranque real en un dispositivo: `platformModule` registraba el executor de análisis como `ExecutorService` mientras los tres motores de cámara lo piden como `Executor`, y Koin resuelve por igualdad exacta de tipo. La app moría al componer la primera pantalla con `NoDefinitionFoundException`. **El compilador no puede verlo** —los `get()` son genéricos que se resuelven en ejecución— y el CI tampoco: compila, pasa lint, pasa R8 y publica un APK que revienta al abrirse. Es el mismo agujero que el criterio de salida de la Fase 1, visto desde el otro lado | Con un test JVM que llame a `verify()` de `koin-test` sobre cada `platformModule` más los módulos comunes. Para Android hay que montar `androidUnitTest` en `:composeApp` y añadir esa tarea al job de CI: `verify()` reflexiona sobre los constructores sin instanciar nada, así que no hace falta emulador — justo la clase de comprobación que sí cabe en la decisión D6 |
+| ~~D18~~ | ~~**Nada comprueba que el grafo de Koin resuelva.**~~ El defecto que la abrió lo demostró el primer arranque real en un dispositivo: `platformModule` registraba el executor de análisis como `ExecutorService` mientras los tres motores de cámara lo piden como `Executor`, y Koin resuelve por igualdad exacta de tipo. La app moría al componer la primera pantalla con `NoDefinitionFoundException`. **El compilador no puede verlo** —los `get()` son genéricos que se resuelven en ejecución— y el CI tampoco: compila, pasa lint, pasa R8 y publica un APK que revienta al abrirse. Es el mismo agujero que el criterio de salida de la Fase 1, visto desde el otro lado. **Saldada a medias, y la mitad que falta está dicha.** `KoinGraphTest` (`composeApp/src/desktopTest`) arranca el grafo real y **resuelve** cada tipo que la raíz de la app consume, agrupado por el ViewModel que lo pide. No usa `verify()` sino resolución de verdad, que es más fuerte: instancia en vez de reflexionar. Cubre `dataModule`, `domainModule` y los tres módulos de feature —comunes a las cuatro plataformas— más el `platformModule` de escritorio. En su primera ejecución destapó el defecto del driver de Room que no se aplicaba (SDD §11) | **Falta el `platformModule` de Android**, que es justo donde estaba el defecto original: necesita `androidUnitTest` en `:composeApp` y su tarea en el job de CI |
+| D19 | **Los avisos del compilador no los lee nadie, y uno de ellos era un defecto de producción.** `This extension is shadowed by a member` llevaba apareciendo en cada build desde que existe `:core:database`, y señalaba el defecto del driver de Room que reventaba escritorio e iOS (SDD §11): un aviso correcto, visible en cada compilación y leído por nadie durante meses. Hoy el build emite además avisos de deprecación (`KoinContext is not needed anymore`, los accesores `compose.runtime` como `String`) mezclados con ruido de terceros, así que ninguno destaca | Decidiendo una postura: o se limpian todos y se activa `allWarningsAsErrors`, o se acepta el ruido explícitamente. Lo primero exige antes saber cuáles vienen de plugins y no se pueden arreglar |
+| D20 | **El aviso `KoinContext is not needed anymore` en `App.kt`.** Koin dice que `startKoin()` ya monta el contexto de Compose y que ese envoltorio sobra. Quitarlo cambia por dónde resuelven `koinInject` y `koinViewModel`, y eso **no se puede comprobar sin ejecutar la app** | En el mismo pase que la primera instalación en un dispositivo con estos cambios |
+| D21 | **El selector de idioma en iOS está sin verificar.** El actual escribe `AppleLanguages` en `NSUserDefaults`, que es el mecanismo estándar; si Compose lee `preferredLanguages` el cambio es inmediato, si lee `currentLocale` no lo será hasta reabrir. Ver ADR-0011 | Cuando haya un iPhone. Es lo primero que hay que mirar de la UI de iOS |

@@ -1,6 +1,8 @@
 package com.testscanner.core.data.di
 
 import com.testscanner.core.data.repository.ScannerEngineRepositoryImpl
+import com.testscanner.core.data.repository.SettingsAppPreferencesRepository
+import com.testscanner.core.domain.repository.AppPreferencesRepository
 import com.testscanner.core.domain.repository.ScannerEngineRepository
 import com.testscanner.core.domain.usecase.ClearScanHistoryUseCase
 import com.testscanner.core.domain.usecase.DecodeImageUseCase
@@ -35,6 +37,12 @@ val dataModule: Module = module {
             installedEngines = get<List<BarcodeScannerEngine>>(),
         )
     }
+
+    // Las preferencias de **app** —tema, idioma, modo avanzado— sí viven aquí, y la diferencia con
+    // las de escaneo no es un descuido: `Settings` está en el grafo de las cuatro plataformas, así
+    // que no hay nada específico que aportar y repetir esta línea cuatro veces solo daría cuatro
+    // sitios donde olvidarse de cambiarla.
+    single<AppPreferencesRepository> { SettingsAppPreferencesRepository(get()) }
 
     // Ni `ScanPreferencesRepository` ni `ScanHistoryRepository` se declaran aquí: los aporta
     // cada `platformModule`, porque su

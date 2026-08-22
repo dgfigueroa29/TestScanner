@@ -66,10 +66,17 @@ class NavigatorTest {
 
     @Test
     fun `todo_destino_se_puede_guardar_y_volver_a_encontrar`() {
+        // Se itera sobre `Destination.all` y no sobre una copia escrita aquí: con la copia, añadir
+        // un destino y olvidar registrarlo dejaba este test en verde comprobando los de siempre.
         // Si alguien agrega un destino y olvida el id, esto lo caza antes que una release ofuscada.
-        val destinos = listOf(Destination.Scanner, Destination.Comparison, Destination.History)
+        Destination.all.forEach { assertEquals(it, Destination.fromId(it.id)) }
+    }
 
-        destinos.forEach { assertEquals(it, Destination.fromId(it.id)) }
+    @Test
+    fun `los_ids_de_los_destinos_no_se_repiten`() {
+        // Dos destinos con el mismo id harían que restaurar el backstack devolviera al usuario a
+        // una pantalla que no es la que dejó, y `fromId` elegiría siempre el primero en silencio.
+        assertEquals(Destination.all.size, Destination.all.map { it.id }.distinct().size)
     }
 
     @Test
@@ -91,6 +98,34 @@ class NavigatorTest {
         navigator.restoreState(listOf("nada", "de", "esto"))
 
         assertEquals(listOf(Destination.Scanner, Destination.History), navigator.backstack.value)
+    }
+
+    @Test
+    fun `podar_quita_los_destinos_que_dejaron_de_estar_disponibles`() {
+        // Es lo que pasa al apagar el modo avanzado: el comparador desaparece de la barra.
+        val navigator = Navigator()
+        navigator.navigateTo(Destination.Comparison)
+        navigator.navigateTo(Destination.History)
+
+        navigator.pruneTo(listOf(Destination.Scanner, Destination.History, Destination.Settings))
+
+        // El comparador se va también de en medio del backstack, no solo de la cima: si quedara
+        // enterrado, el botón atrás devolvería a una pantalla que ya no se ofrece.
+        assertEquals(listOf(Destination.Scanner, Destination.History), navigator.backstack.value)
+        assertEquals(Destination.History, navigator.current)
+    }
+
+    @Test
+    fun `podar_hasta_dejarlo_vacio_vuelve_al_destino_inicial`() {
+        // Un backstack vacío no es representable: `current` es `last()`. Vale más volver a la raíz
+        // que reventar con una IndexOutOfBounds en la siguiente composición.
+        val navigator = Navigator()
+        navigator.navigateTo(Destination.Comparison)
+
+        navigator.pruneTo(emptyList())
+
+        assertEquals(listOf(Destination.Scanner), navigator.backstack.value)
+        assertFalse(navigator.canGoBack)
     }
 
     @Test
