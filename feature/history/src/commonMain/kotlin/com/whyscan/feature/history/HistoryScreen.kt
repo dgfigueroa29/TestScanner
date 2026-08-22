@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.stickyHeader
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
@@ -167,6 +166,11 @@ fun HistoryContent(
                         // Pegajosa: mientras se recorre un día largo, la cabecera se queda arriba
                         // diciendo cuál es. Sin eso, a la tercera pantalla ya no se sabe dónde uno
                         // está — que es justo el problema que las cabeceras vienen a resolver.
+                        //
+                        // Sin `import`: `stickyHeader` es un **miembro** de `LazyListScope`, no una
+                        // extensión de nivel superior, así que se resuelve por el receptor. Importarlo
+                        // da `Unresolved reference`, que es un error confuso para lo que en realidad
+                        // es un import de más.
                         stickyHeader(key = group.date.toString()) { DayHeader(group.date, today) }
 
                         items(group.entries, key = { it.id }) { entry ->
