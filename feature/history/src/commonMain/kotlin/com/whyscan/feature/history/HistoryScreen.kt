@@ -81,7 +81,6 @@ import com.whyscan.feature.history.resources.month_9
 import com.whyscan.feature.history.resources.share_separator
 import com.whyscan.feature.history.resources.share_wifi
 import com.whyscan.feature.history.resources.share_wifi_with_password
-import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.Month
@@ -92,6 +91,8 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 @Composable
 fun HistoryScreen(
@@ -129,7 +130,7 @@ fun HistoryScreen(
  *   es lo que convierte el historial en una herramienta de comparación (G5) y no tiene sentido para
  *   quien nunca eligió uno: los chips se llaman `mlkit-camerax` y `zxing-cpp`.
  */
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalTime::class)
 @Composable
 fun HistoryContent(
     state: HistoryState,

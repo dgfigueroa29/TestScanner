@@ -1,10 +1,11 @@
 package com.whyscan.feature.history
 
 import com.whyscan.core.model.HistoryEntry
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 /**
  * Las lecturas de un mismo día, con el día delante.
@@ -47,6 +48,14 @@ fun List<HistoryEntry>.groupByDay(timeZone: TimeZone): List<HistoryGroup> =
     groupBy { it.detection.detectedAtMillis.toLocalDate(timeZone) }
         .map { (date, entries) -> HistoryGroup(date, entries) }
 
-/** El día local en el que cayó un instante. */
+/**
+ * El día local en el que cayó un instante.
+ *
+ * `Instant` es el de **`kotlin.time`**, no el de `kotlinx.datetime`. A partir de la 0.7 esos tipos
+ * se mudaron a la stdlib y el nombre viejo sobrevive solo como typealias: compila y luego revienta
+ * al ejecutar con `ClassNotFoundException`, porque un typealias no existe en el bytecode. Es la
+ * única línea del proyecto que nombra un `Instant`, y por eso vive aquí sola.
+ */
+@OptIn(ExperimentalTime::class)
 internal fun Long.toLocalDate(timeZone: TimeZone): LocalDate =
     Instant.fromEpochMilliseconds(this).toLocalDateTime(timeZone).date

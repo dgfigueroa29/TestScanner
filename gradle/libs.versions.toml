@@ -65,11 +65,15 @@ coroutines = "1.11.0"
 # La dependencia que §9.7 evitó a conciencia para no formatear una columna de un CSV. Con cabeceras
 # de fecha en el historial el cálculo cambia: agrupar por día exige saber en qué día cayó un instante,
 # y eso es una zona horaria y un calendario — no aritmética sobre milisegundos.
-# 0.6.2 y no la última: a partir de 0.7 `kotlinx.datetime.Instant` se muda a `kotlin.time.Instant`
-# de la stdlib, con su periodo de deprecación y sus opt-in. Aquí solo hace falta "en qué día local
-# cayó este instante", que es API estable desde hace años en la 0.6.x. Cuando haya un motivo para
-# subir, el cambio son dos imports.
-kotlinxDatetime = "0.6.2"
+# Se intentó fijar la 0.6.2 —donde `kotlinx.datetime.Instant` es una clase de verdad— y **no sirvió
+# de nada**: algo más del grafo pide una versión superior, Gradle resuelve la mayor para todo el
+# classpath, y el resultado fue lo peor de los dos mundos. Compilaba (en 0.7+ ese nombre sobrevive
+# como typealias, que el compilador acepta) y reventaba al ejecutar con
+# `ClassNotFoundException: kotlinx.datetime.Instant`, porque un typealias no es una clase.
+#
+# La lección: declarar una versión no la impone. Se declara la que de verdad se resuelve y se usa
+# `kotlin.time.Instant` de la stdlib, que es a donde se mudaron esos tipos.
+kotlinxDatetime = "0.8.0"
 serialization = "1.11.0"
 
 # AndroidX / Jetbrains multiplatform
