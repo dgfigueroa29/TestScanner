@@ -37,7 +37,6 @@ el comparador en paralelo y las latencias por lectura.
 | BarcodeDetector del navegador (Web) | ✅ implementado, con visor sobre el canvas |
 | OCR con ML Kit Text Recognition (Android) | ✅ implementado; en iOS irá con Vision, no con ML Kit |
 | Escaneo desde imagen (RF-07) | ✅ selector en las cuatro plataformas, sin pedir permisos |
-| Exportación del historial | ✅ CSV y JSON, guardado en las cuatro plataformas |
 | ZXing-cpp (Android + iOS) | ✅ implementado — el mismo decodificador C++ en ambas, que es lo que hace comparables las lecturas |
 | Acciones sobre el resultado (RF-13) | ✅ copiar, compartir y abrir, según el significado del código |
 | Navegación | ✅ propia, con backstack que sobrevive a que el sistema mate el proceso |
@@ -48,8 +47,10 @@ el comparador en paralelo y las latencias por lectura.
 | Pantalla de escaneo | ✅ cámara a pantalla completa con el resultado en una hoja que la empuja, no que la tapa; la sesión arranca sola y se apaga al salir ([ADR-0010](docs/adr/ADR-0010-dos-disposiciones-de-la-pantalla-de-escaneo.md)) |
 | Lecturas repetidas | ✅ suprimidas en el dominio con ventana de dos segundos. Antes, tres segundos apuntando a un QR escribían noventa filas en el historial |
 | Notas en el historial | ✅ texto de referencia por lectura, con buscador que mira valor **y** nota ([ADR-0012](docs/adr/ADR-0012-la-nota-es-del-historial-no-de-la-deteccion.md)). La poda no se lleva lo anotado |
-| Borrado del historial | ✅ una lectura suelta, o todo con confirmación que dice cuántas se pierden |
-| Que el grafo de Koin resuelva | ✅ `KoinGraphTest` en los módulos comunes y en escritorio — cierra media D18. Falta el `platformModule` de Android |
+| Borrado del historial | ✅ una lectura suelta **con deshacer**, o todo con confirmación que dice cuántas se pierden |
+| Exportación del historial | ✅ CSV, JSON y texto plano, guardado en las cuatro plataformas |
+| Migraciones de la base | ✅ `@AutoMigration`, y un test que abre una base v1 con datos y comprueba que siguen ahí |
+| Que el grafo de Koin resuelva | ✅ los módulos comunes, escritorio **y Android** (este con Robolectric, en la JVM y sin emulador). D18 cerrada |
 | Accesibilidad (RNF-05) | ✅ contraste AA **verificado por test** (56 pares, los dos temas), y semántica para lectores de pantalla |
 | Privacidad (RNF-03) | ✅ auditada: sin trazas, sin cliente HTTP, sin analítica y sin permiso `INTERNET` |
 | ZXing en Java (Desktop) | ✅ el único decodificador de escritorio; **verificado de verdad**, decodificando imágenes generadas en el test |
@@ -68,7 +69,9 @@ Lo que queda fuera por ahora, y por qué:
   framework entero enlaza. Falta el `iosApp.xcodeproj`, que solo se crea desde Xcode, y un iPhone.
 - **No hay tests instrumentados y no los va a haber.** Sin emulador en CI, un test que exija
   dispositivo nunca se ejecuta y da una falsa sensación de red. El ROADMAP dice exactamente qué queda
-  cubierto sin dispositivo y qué no.
+  cubierto sin dispositivo y qué no. La regla, dicha con precisión, es **que todo lo que se comprueba
+  se pueda ejecutar en cada PR**: lo que la incumple es el hardware, no el nombre de la plataforma —
+  por eso el grafo de Android sí tiene test, con Robolectric, en la misma JVM que el resto.
 - **Escritorio lee archivos pero no cámara**: hay decodificador (ZXing en Java) y no hay captura de
   webcam, así que una sesión en vivo cae a la entrada manual.
 - **El APK de Android carga con los cuatro motores de la plataforma.** RNF-06 se cumple entre
@@ -104,9 +107,10 @@ Lo que queda fuera por ahora, y por qué:
 >   salida por defecto de Gradle daba el tipo de excepción y la línea, sin mensaje ni causa. El
 >   `build.gradle.kts` raíz configura ahora `testLogging` con `exceptionFormat = FULL`.
 >
-> Lo que sigue sin cubrir: el `platformModule` de **Android** —que es donde estaba el defecto
-> original de D18 y necesita `androidUnitTest`— y que la app se abra y lea un código, que sigue
-> necesitando un dispositivo.
+> **Ese hueco ya está cerrado del todo.** `AndroidKoinGraphTest` monta el `platformModule` de
+> Android —el más grande de los cuatro y el único donde ocurrió el crash— con un `Context` real que
+> da Robolectric en la JVM. Lo que sigue sin cubrir es que la app **se abra y lea un código**, que
+> necesita un dispositivo y siempre lo va a necesitar.
 >
 > Hasta que se activó Actions nada de esto se había compilado nunca —el entorno de desarrollo no
 > alcanza el maven de Google—, y el primer CI encontró **doce fallos encadenados**, desde el
@@ -254,9 +258,19 @@ Añadirla obligó a mirar cómo se comportaba la base de datos ante un cambio de
   clara de que esa lectura le importa a alguien; el techo existe para acotar lo que genera una sesión
   continua, no para borrar lo que alguien escribió a mano.
 
-También se puede **borrar una lectura suelta** —antes era todo o nada— y vaciar el historial entero
-pide confirmación diciendo cuántas lecturas se pierden. Era la única acción irreversible de la app y
-se disparaba con un toque.
+También se puede **borrar una lectura suelta** —antes era todo o nada—. Ese borrado no pregunta y por
+eso **se puede deshacer**: son las dos caras de la misma decisión, porque un diálogo por cada fila
+convierte limpiar veinte lecturas en veinte interrupciones. Vaciar el historial entero sí pregunta, y
+dice cuántas lecturas se pierden, porque ahí no hay nada que devolver.
+
+El buscador **ignora los acentos**: en español media gente escribe "factura" buscando lo que guardó
+como "Factúra", y desde un teclado sin tildes no hay otra opción. La eñe no se pliega — es una letra
+distinta, y que "ano" encontrara "año" sería desconcertante.
+
+Y hay un tercer formato de exportación, **texto plano**, una lectura por línea sin cabecera ni
+comillas. CSV y JSON son para herramientas; lo que la gente hace con treinta códigos es pegarlos en
+un correo. Ese formato es el único que **no** neutraliza fórmulas, a propósito: no lo abre una hoja
+de cálculo, y una comilla delante rompería justo lo que existe para dar.
 
 ---
 

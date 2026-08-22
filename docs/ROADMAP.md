@@ -289,7 +289,7 @@ con sus latencias en la portada, ni una app con nombre de proyecto interno y sin
       anterior aparecía como `IllegalArgumentException at KoinGraphTest.kt:189`, sin mensaje ni
       causa; encontrar el defecto de Room exigió configurar `testLogging` primero
 
-### Ronda 3 — en curso 🚧
+### Ronda 3 — cerrada ✅
 
 - [x] **Un solo nombre: WhyScan, en todas partes.** El proyecto convivía con dos —uno de producto y
       uno interno—, y cada documento cargaba con una nota explicando por qué. Se unifican el nombre
@@ -329,32 +329,60 @@ con sus latencias en la portada, ni una app con nombre de proyecto interno y sin
       línea junto a `ObserveScanHistoryUseCase` y `ClearScanHistoryUseCase`, que ya delegaban sin
       añadir nada. Los dos se borraron y su trabajo vive en `ScanHistory`. De paso se retira
       `findById` del contrato: no lo llamaba nadie desde la Fase 1
-- [ ] `androidUnitTest` en `:composeApp` para que `KoinGraphTest` cubra también el grafo de Android,
-      que es donde estaba el defecto original de D18
-- [ ] Animaciones de transición **entre destinos** (las de dentro de la pantalla ya están)
-- [ ] Objetivos táctiles y `enableEdgeToEdge` **mirados con los ojos** en un dispositivo (queda
-      pendiente desde la Fase 5)
-- [ ] El aviso `KoinContext is not needed anymore` de `App.kt`: Koin dice que `startKoin()` ya monta
-      el contexto de Compose, pero quitarlo cambia por dónde resuelven `koinInject` y `koinViewModel`
-      y eso no se puede comprobar sin ejecutar la app
+- [x] **D18 saldada del todo.** `AndroidKoinGraphTest` monta el `platformModule` de Android —el más
+      grande de los cuatro y el único donde ocurrió el crash— con Robolectric, que da un `Context`
+      de verdad en la JVM. Incluye el test que le faltaba a la deuda: que el executor de análisis
+      resuelva por `Executor` y no por `ExecutorService`. Lo que **no** cubre queda escrito en el
+      propio archivo: `sqlite-bundled` trae binarios de las ABI de Android y bajo Robolectric el
+      proceso es una JVM de escritorio, así que el historial persistente se queda fuera — y esa
+      misma cadena sí se resuelve de verdad en el `KoinGraphTest` de escritorio
+- [x] **Transiciones entre destinos:** *fade through* de Material 3. Fundido y no deslizamiento
+      porque los cuatro destinos son hermanos y se alcanzan desde la misma barra en cualquier orden;
+      deslizar contaría una jerarquía que no existe y obligaría a deducir la dirección del índice en
+      la barra, que se rompe al reordenar los ítems o al ocultar el comparador
 
-### Ronda 4 — propuestas 🔜
+**Lo que esta ronda no pudo cerrar, y por qué.** Las dos cosas que quedan necesitan ejecutar la app
+en un dispositivo, así que se mueven a "Pendiente para publicar" en lugar de arrastrarse de ronda en
+ronda como si fueran trabajo pendiente:
 
-Lo que salió al revisar la app con la vista puesta en "clase mundial" y **no** entró en la Ronda 3.
-Están aquí con su motivo para que la decisión de hacerlas o no sea explícita, y ordenadas por lo que
-aportan frente a lo que cuestan.
+- Objetivos táctiles y `enableEdgeToEdge` **mirados con los ojos** (pendiente desde la Fase 5).
+- El aviso `KoinContext is not needed anymore` de `App.kt` (D20): quitarlo cambia por dónde resuelven
+  `koinInject` y `koinViewModel`, y eso no lo comprueba ningún test sin abrir la app.
 
-**Lo que más se nota, y es barato**
+### Ronda 4 — en curso 🚧
 
-- [ ] **Deshacer un borrado.** Ahora una lectura borrada se pierde y el snackbar solo lo confirma. Un
-      "Deshacer" en ese mismo snackbar cuesta guardar la entrada en memoria hasta que se cierre, y
-      convierte la única acción destructiva que no pregunta en una que no hace falta que pregunte
+Lo que salió al revisar la app con la vista puesta en "clase mundial". Ordenadas por lo que aportan
+frente a lo que cuestan, y con el motivo de cada una escrito para que la decisión de hacerlas o no
+sea explícita.
+
+**Hecho**
+
+- [x] **D22 saldada: la migración se ejecuta de verdad.** Room valida `@AutoMigration` en compilación
+      contra los esquemas exportados, lo que garantiza que el SQL es correcto — pero **un esquema
+      correcto es perfectamente compatible con haber borrado la tabla y haberla recreado**, que es lo
+      que este proyecto hacía hasta la ronda anterior. Un test de esquema le habría dado el visto
+      bueno. Así que `MigrationTest` no mira el esquema: levanta una base v1 con el `createSql`
+      literal del `1.json`, le escribe filas, la abre con el código v2 y comprueba que siguen ahí —
+      y que la columna nueva acepta datos
+- [x] **Deshacer un borrado.** Borrar una fila no pregunta, y por eso ahora se puede deshacer: son
+      las dos caras de la misma decisión, porque un diálogo por fila convierte limpiar veinte
+      lecturas en veinte interrupciones. Restituir devuelve la nota y coloca la fila **en su sitio
+      por fecha**, lo que obligó a que los almacenes de Web y de memoria ordenen como ya ordenaba la
+      consulta de Room — una divergencia entre plataformas que llevaba ahí desde la Fase 4
+- [x] **La búsqueda ignora los acentos.** En español media gente escribe "factura" buscando lo que
+      guardó como "Factúra", y desde un teclado sin tildes no hay otra opción. Que un buscador no
+      encuentre algo que está delante no parece un fallo: parece que el dato no existe. La eñe **no**
+      se pliega, que es una letra distinta y no una `n` con adorno
+- [x] **Exportar a texto plano.** Una lectura por línea, sin cabecera y sin comillas. CSV y JSON son
+      para herramientas; lo que la gente hace con treinta códigos es pegarlos en un correo. No lleva
+      guardado anti-fórmula **a propósito**, y hay un test que lo fija: esto no lo abre una hoja de
+      cálculo, y una comilla delante rompería justo lo que el formato existe para dar
+
+**Pendiente**
 - [ ] **Ordenar y agrupar el historial por día.** Doscientas filas planas son doscientas filas
       planas; una cabecera por fecha las convierte en algo que se recorre. Exige `kotlinx-datetime`,
       que es la dependencia que §9.7 evitó a propósito para no formatear una columna — con
       cabeceras de fecha en pantalla el cálculo cambia
-- [ ] **Un formato de exportación más:** texto plano con una lectura por línea. CSV y JSON son para
-      herramientas; pegar treinta códigos en un correo es lo que la gente hace de verdad
 - [ ] **Anotar desde la pantalla de escaneo**, no solo desde el historial. El momento en que uno sabe
       para qué es un código es justo cuando lo acaba de leer
 
@@ -362,8 +390,6 @@ aportan frente a lo que cuestan.
 
 - [ ] **Una pantalla de "qué hay de nuevo"** o, como mínimo, no estrenar funciones en silencio. La
       nota y el buscador no se descubren solos
-- [ ] **Medir el arranque en frío** en un dispositivo real. No hay ninguna cifra sobre esto y Play
-      la reporta en Vitals desde el primer día
 - [ ] **Baseline Profile.** Es la optimización con mejor relación resultado/esfuerzo en Android y
       encaja mal con lo que este proyecto puede hacer sin dispositivo, así que conviene decidirlo con
       datos del punto anterior y no antes
@@ -374,14 +400,22 @@ aportan frente a lo que cuestan.
       por el mismo motor en el mismo milisegundo, colisionan — y con `INSERT OR IGNORE` la segunda
       lectura se descarta en silencio. La probabilidad es ínfima y las consecuencias son pequeñas,
       pero el id ya no es solo un identificador: ahora cuelga de él la nota del usuario
-- [ ] **Nada comprueba que `@AutoMigration` haga lo que dice.** Room la genera y la valida en
-      compilación contra los esquemas exportados, que es bastante, pero abrir una base v1 real con
-      código v2 y ver que el historial sigue ahí no lo hace nadie. Es un test JVM con un archivo de
-      base de datos de prueba, no necesita dispositivo
-- [ ] **El buscador no normaliza acentos.** "factura" no encuentra "Factúra". Es deliberado por ahora
-      —el usuario busca lo que él mismo escribió— pero en español se nota más que en inglés
 
 ### Pendiente para publicar
+
+**Necesita un dispositivo.** Todo lo de este bloque está bloqueado por lo mismo, y por eso vive aquí
+y no en una ronda: arrastrarlo de ronda en ronda lo haría parecer trabajo que nadie hace, cuando lo
+que falta es un teléfono.
+
+- [ ] Objetivos táctiles y `enableEdgeToEdge` **mirados con los ojos** (pendiente desde la Fase 5)
+- [ ] Quitar el `KoinContext` de `App.kt` (D20): cambia por dónde resuelven `koinInject` y
+      `koinViewModel`, y no lo comprueba ningún test sin abrir la app
+- [ ] Verificar el selector de idioma en iOS (D21)
+- [ ] Medir el arranque en frío, que es lo que Play reporta en Vitals desde el primer día
+- [ ] El `actual` de Android de `DatabaseBuilderFactory`, que es lo único de la cadena de Room que no
+      ejecuta ningún test
+
+**Trámite de la ficha**
 
 - [ ] Comprobar en Play Console que `com.whyscan.app` está libre y que "WhyScan" no colisiona con una
       ficha existente. **Sin red en el entorno de desarrollo, esto no se pudo verificar aquí**
@@ -439,8 +473,8 @@ Registrada de forma explícita para que no se olvide:
 | ~~D13~~ | ~~Desktop y Web se quedan sin decodificador: zxing-cpp no publica artefacto JVM ni wasmJs~~ | **Saldada en Desktop**: `:engines:zxing-java` sobre `com.google.zxing:core`, en el catálogo **como motor propio** y no con el nombre de zxing-cpp — son proyectos distintos y confundirlos falsearía la comparación. Solo imagen estática: el decodificador está, la captura de webcam no. **Web se queda como está**: no hay artefacto wasmJs y su respaldo sigue siendo la entrada manual |
 | ~~D16~~ | ~~`ScannerViewModel` tiene doce colaboradores y veinte funciones~~ | **Saldada**: seis dependencias. Los ajustes en `ScanSettings`, la sesión y el guardado en `ScanSessions`, las acciones sobre el resultado en `ResultActionRunner`. Los tres casos de uso de preferencias y el del catálogo se **borraron** en vez de envolverse —delegaban al repositorio sin añadir nada—, y la única regla que había se conservó donde se puede probar. Quince tests nuevos que antes exigían levantar el ViewModel entero. Quedan dos supresiones, ninguna global: `TooManyFunctions` en la clase (catorce acciones de usuario, catorce funciones) y `CyclomaticComplexMethod` en `onAction`, que es una tabla de despacho sobre un `sealed interface` |
 | D17 | `IosPlatformActions.openUrl` usa `UIApplication.openURL:`, que Apple depreció en iOS 10 a favor de `openURL:options:completionHandler:`. Compila —solo es un aviso— pero es API vieja en código nuevo. Salió de auditar el header real al preparar la compilación de iOS, no de un fallo | Cuando iOS enlace en verde y se pueda comprobar el cambio en el runner |
-| ~~D18~~ | ~~**Nada comprueba que el grafo de Koin resuelva.**~~ El defecto que la abrió lo demostró el primer arranque real en un dispositivo: `platformModule` registraba el executor de análisis como `ExecutorService` mientras los tres motores de cámara lo piden como `Executor`, y Koin resuelve por igualdad exacta de tipo. La app moría al componer la primera pantalla con `NoDefinitionFoundException`. **El compilador no puede verlo** —los `get()` son genéricos que se resuelven en ejecución— y el CI tampoco: compila, pasa lint, pasa R8 y publica un APK que revienta al abrirse. Es el mismo agujero que el criterio de salida de la Fase 1, visto desde el otro lado. **Saldada a medias, y la mitad que falta está dicha.** `KoinGraphTest` (`composeApp/src/desktopTest`) arranca el grafo real y **resuelve** cada tipo que la raíz de la app consume, agrupado por el ViewModel que lo pide. No usa `verify()` sino resolución de verdad, que es más fuerte: instancia en vez de reflexionar. Cubre `dataModule`, `domainModule` y los tres módulos de feature —comunes a las cuatro plataformas— más el `platformModule` de escritorio. En su primera ejecución destapó el defecto del driver de Room que no se aplicaba (SDD §11) | **Falta el `platformModule` de Android**, que es justo donde estaba el defecto original: necesita `androidUnitTest` en `:composeApp` y su tarea en el job de CI |
+| ~~D18~~ | ~~**Nada comprueba que el grafo de Koin resuelva.**~~ El defecto que la abrió lo demostró el primer arranque real en un dispositivo: `platformModule` registraba el executor de análisis como `ExecutorService` mientras los tres motores de cámara lo piden como `Executor`, y Koin resuelve por igualdad exacta de tipo. La app moría al componer la primera pantalla con `NoDefinitionFoundException`. **El compilador no puede verlo** —los `get()` son genéricos que se resuelven en ejecución— y el CI tampoco: compila, pasa lint, pasa R8 y publica un APK que revienta al abrirse. Es el mismo agujero que el criterio de salida de la Fase 1, visto desde el otro lado. **Saldada a medias, y la mitad que falta está dicha.** `KoinGraphTest` (`composeApp/src/desktopTest`) arranca el grafo real y **resuelve** cada tipo que la raíz de la app consume, agrupado por el ViewModel que lo pide. No usa `verify()` sino resolución de verdad, que es más fuerte: instancia en vez de reflexionar. Cubre `dataModule`, `domainModule` y los tres módulos de feature —comunes a las cuatro plataformas— más el `platformModule` de escritorio. En su primera ejecución destapó el defecto del driver de Room que no se aplicaba (SDD §11) | **Saldada del todo.** `AndroidKoinGraphTest` monta el `platformModule` de Android con Robolectric —un `Context` de verdad en la JVM, sin emulador— y lo ejecuta `:composeApp:testDebugUnitTest` en el job de checks. Incluye el test del `Executor` que la abrió |
 | D19 | **Los avisos del compilador no los lee nadie, y uno de ellos era un defecto de producción.** `This extension is shadowed by a member` llevaba apareciendo en cada build desde que existe `:core:database`, y señalaba el defecto del driver de Room que reventaba escritorio e iOS (SDD §11): un aviso correcto, visible en cada compilación y leído por nadie durante meses. Hoy el build emite además avisos de deprecación (`KoinContext is not needed anymore`, los accesores `compose.runtime` como `String`) mezclados con ruido de terceros, así que ninguno destaca | Decidiendo una postura: o se limpian todos y se activa `allWarningsAsErrors`, o se acepta el ruido explícitamente. Lo primero exige antes saber cuáles vienen de plugins y no se pueden arreglar |
 | D20 | **El aviso `KoinContext is not needed anymore` en `App.kt`.** Koin dice que `startKoin()` ya monta el contexto de Compose y que ese envoltorio sobra. Quitarlo cambia por dónde resuelven `koinInject` y `koinViewModel`, y eso **no se puede comprobar sin ejecutar la app** | En el mismo pase que la primera instalación en un dispositivo con estos cambios |
 | D21 | **El selector de idioma en iOS está sin verificar.** El actual escribe `AppleLanguages` en `NSUserDefaults`, que es el mecanismo estándar; si Compose lee `preferredLanguages` el cambio es inmediato, si lee `currentLocale` no lo será hasta reabrir. Ver ADR-0011 | Cuando haya un iPhone. Es lo primero que hay que mirar de la UI de iOS |
-| D22 | **Nada ejecuta la migración de la base de datos.** Room genera `@AutoMigration` y la valida en compilación contra los esquemas exportados, que cubre que el SQL sea correcto — pero que una base v1 con historial dentro se abra con código v2 y siga teniendo el historial no lo comprueba nadie. Es justo el fallo que la migración existe para evitar, y es un test JVM con un archivo de prueba: no necesita dispositivo | Con el siguiente cambio de esquema, o antes si se publica |
+| ~~D22~~ | ~~**Nada ejecuta la migración de la base de datos.**~~ Room genera `@AutoMigration` y la valida en compilación contra los esquemas exportados, que cubre que el SQL sea correcto — pero que una base v1 con historial dentro se abra con código v2 y siga teniendo el historial no lo comprueba nadie. Es justo el fallo que la migración existe para evitar, y es un test JVM con un archivo de prueba: no necesita dispositivo | **Saldada**: `MigrationTest` levanta una base v1 con el `createSql` literal del `1.json`, le escribe filas y comprueba que siguen ahí tras abrirla con el código v2. No mira el esquema a propósito — un esquema correcto es compatible con haber borrado la tabla, que es justo el fallo que se quería evitar |

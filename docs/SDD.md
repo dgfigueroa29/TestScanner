@@ -4,11 +4,11 @@
 |---|---|
 | Proyecto | WhyScan |
 | Documento | Software Design Document (SDD) |
-| Versión | 1.9 |
+| Versión | 1.10 |
 | Estado | Vigente — **el proyecto compila y pasa CI** en Android (con R8), Escritorio y Web, y el framework de iOS **enlaza entero** desde el workflow manual `ios.yml`. Fases 1, 2, 4 y 5 cerradas salvo lo listado como pendiente; la 3 (iOS) escrita y despriorizada por falta de dispositivo, no de compilación. **La app arrancó por primera vez en un dispositivo real** en la versión anterior, y ese arranque encontró un defecto que ninguna comprobación automática podía ver (§10); esta versión convierte esa comprobación en un test y, con él, destapa un segundo defecto de meses en la persistencia (§11) |
 | Fecha | 2026-08-22 |
 | Autor | Equipo WhyScan |
-| Alcance de esta versión | Notas del usuario en el historial y lo que destaparon en la persistencia (§6.1, §11, ADR-0012); buscador y borrado por fila; el estado pausado del visor (§9.10). Antes, en la misma fase: marca, tema, idiomas y el rediseño del escáner (§9.9, ADR-0010, ADR-0011), y el renombrado a **WhyScan** (§1.1) |
+| Alcance de esta versión | Cierre de D18 y D22 —el grafo de Android y la migración pasan a tener test (§10, §11, §13.1)—, deshacer un borrado, búsqueda sin acentos y exportación a texto plano (§9.7). Antes, en la misma fase: las notas del historial (ADR-0012), marca, tema, idiomas y el rediseño del escáner (ADR-0010, ADR-0011), y el renombrado a **WhyScan** (§1.1) |
 
 ---
 
@@ -796,10 +796,9 @@ que lanzaba en el teléfono.
 
 Lo que **no** cubre, dicho para que no se confunda con una red completa:
 
-- Es el `platformModule` de **escritorio**, que es el que un test JVM puede enlazar. El de Android
-  —justo donde estaba el defecto original— necesita un `androidUnitTest` en `:composeApp` y sigue
-  pendiente. Lo que sí queda cubierto para las cuatro plataformas son `dataModule`, `domainModule` y
-  los tres módulos de feature.
+- Es el `platformModule` de **escritorio**, que es el que un test JVM puede enlazar sin más. El de
+  Android tiene ahora el suyo —ver abajo—. Lo que cubren los dos a la vez, para las cuatro
+  plataformas, son `dataModule`, `domainModule` y los tres módulos de feature.
 - No construye los ViewModels: instanciarlos arranca corrutinas en `viewModelScope`, que exige un
   `Dispatchers.Main` real. Comprueba que **todo lo que piden por constructor** resuelva, que es
   exactamente donde falló D18. Añadir un parámetro a un ViewModel obliga a añadirlo también a la
@@ -808,6 +807,28 @@ Lo que **no** cubre, dicho para que no se confunda con una red completa:
 **Encontró un defecto en su primera ejecución**, y no en el cableado de Koin sino en la persistencia
 (§11): la base de datos nunca recibía su driver. Es la mejor defensa posible de por qué este test
 tenía que existir — no comprobaba una hipótesis, destapó algo que llevaba meses ahí.
+
+### El grafo de Android, con Robolectric
+
+`AndroidKoinGraphTest` cierra la otra mitad, que es **la mitad donde ocurrió el crash**. El
+`platformModule` de Android es con diferencia el mayor de los cuatro —cuatro motores de cámara, el
+`Executor`, el controlador de permisos, tres servicios del sistema y las preferencias sobre
+`SharedPreferences`— y que resuelva el de escritorio no dice absolutamente nada de él.
+
+Necesita un `Context` de verdad: `SharedPreferencesSettings` llama a `getSharedPreferences` y eso no
+lo satisface un doble. **Robolectric da ese `Context` en la JVM**, así que el test corre en el mismo
+job que todos los demás, con `:composeApp:testDebugUnitTest`.
+
+Conviene decir por qué esto no contradice la decisión de no tener tests instrumentados (§13.1). Aquel
+argumento era concreto: sin emulador en CI, un test que exija dispositivo nunca se ejecuta y da una
+falsa sensación de red. Esto es lo contrario — un test que sí se ejecuta en cada PR. Lo que se
+mantiene es lo que importaba: nada de esto necesita hardware.
+
+Queda un hueco y está acotado: **no toca el historial persistente**. `sqlite-bundled` trae binarios
+nativos de las ABI de Android y bajo Robolectric el proceso es una JVM de escritorio, así que no los
+puede cargar. No es un hueco de cableado —esa misma cadena se resuelve de verdad en el test de
+escritorio, y fue ahí donde se destapó lo del driver—; lo único sin cubrir es el `actual` de Android
+de `DatabaseBuilderFactory`, que son cuatro líneas y sigue necesitando un dispositivo.
 
 **Un caso de uso por operación no es una regla**, y esta versión es la primera en aplicarlo *antes*
 de repetir el error en vez de después. Añadir la nota y el borrado por fila pedía dos clases nuevas de
@@ -906,6 +927,23 @@ Añadir una columna que admite `null` es exactamente lo que `@AutoMigration` res
 los esquemas exportados a `core/database/schemas/`, que ya se exportaban desde la Fase 2 sin que
 nadie los usara para nada. La bajada de versión sí se queda destructiva: el código no puede conocer
 un esquema del futuro, y en la práctica ocurre al saltar entre ramas en desarrollo.
+
+#### Y ahora la migración se ejecuta, no solo se valida
+
+Room genera `@AutoMigration` y la valida **en compilación** contra los esquemas exportados. Es
+bastante: garantiza que el SQL es correcto y que el esquema resultante coincide con el declarado.
+
+No garantiza lo único que le importa al usuario. **Un esquema correcto es perfectamente compatible
+con haber borrado la tabla y haberla vuelto a crear** — que es literalmente lo que este proyecto
+hacía hasta la versión anterior. Un test que validara el esquema le habría dado el visto bueno a la
+migración destructiva.
+
+Por eso `MigrationTest` (`:core:database`, `jvmTest`) no mira el esquema: **levanta una base v1 de
+verdad, le escribe filas y comprueba que siguen ahí después de abrirla con el código v2.** La v1 se
+construye con el `createSql` literal de `schemas/…/1.json` más las dos cosas con las que Room
+reconoce una base como suya —el `room_master_table` con el `identityHash` de esa versión y el
+`PRAGMA user_version`—, así que si alguien tocara el esquema v1 a posteriori el hash dejaría de
+cuadrar y el test lo diría.
 
 **La mitad simétrica está en el navegador.** Ahí no hay Room ni migraciones: el DTO guardado gana un
 campo `note` **con valor por defecto**, de modo que un historial escrito por una versión anterior
@@ -1102,6 +1140,8 @@ información que solo existía como posición o como color":
 | **Grafo de dependencias** | `desktopTest` | Que el grafo real de Koin **resuelva**: arranca los módulos y pide cada tipo que la raíz de la app consume (`KoinGraphTest`, §10) | kotlin-test, koin-core |
 | Contraste de la paleta | `commonTest` | 56 pares de color contra su umbral WCAG, sobre los dos esquemas (§12.1) | kotlin-test |
 | Notas, búsqueda y borrado | `commonTest` | Que anotar, buscar por nota, borrar una fila y confirmar el vaciado hagan lo que dicen, y que la poda no se lleve lo anotado | kotlin-test, turbine |
+| **Grafo de Android** | `androidUnitTest` | Que el `platformModule` de Android resuelva, con un `Context` real en la JVM (`AndroidKoinGraphTest`, §10) | kotlin-test, Robolectric |
+| **Migración de la base** | `jvmTest` | Que una base v1 con filas dentro siga teniéndolas tras abrirla con el código v2 (`MigrationTest`, §11) | kotlin-test |
 
 Objetivo de cobertura: **≥ 80 % en `:core:domain` y `:core:data`**; la UI no se persigue por
 cobertura sino por casos de estado representativos.
@@ -1117,9 +1157,17 @@ primer arranque en un dispositivo real murió por un `Executor` declarado como `
 (§10), y ninguno de los tests de dominio lo habría visto: inyectan sus dobles a mano y nunca montan
 el grafo. Es un caso distinto del de la cámara — ahí hace falta hardware, aquí no hace falta nada.
 
-**Eso ya no está pendiente**: `KoinGraphTest` es la fila nueva de la tabla, y en su primera ejecución
-destapó un segundo defecto que llevaba meses ahí, el driver de la base de datos que nunca se aplicaba
-(§11). Queda abierta la mitad de Android, que necesita `androidUnitTest` en `:composeApp`.
+**Eso ya no está pendiente, y ahora por las dos mitades.** `KoinGraphTest` cubre los módulos comunes
+y el `platformModule` de escritorio —y en su primera ejecución destapó el driver de la base de datos
+que nunca se aplicaba (§11)—; `AndroidKoinGraphTest` cubre el de Android, que es donde estaba el
+defecto original.
+
+**El segundo obligó a matizar D6, y el matiz merece quedar escrito.** "No hay tests instrumentados"
+se leía como "nada que diga Android", y no era eso: el argumento era que sin emulador en CI, un test
+que exija dispositivo nunca se ejecuta y da una falsa sensación de red. Robolectric no exige
+dispositivo — levanta el `Context` en la misma JVM que el resto de los tests. La regla, dicha con
+precisión, es **que todo lo que este proyecto comprueba se pueda ejecutar en cada PR**; lo que la
+incumple es el hardware, no el nombre de la plataforma.
 
 La tabla de arriba dejaba ver un patrón que conviene no perder de vista aunque haya mejorado: **casi
 todo lo que se comprueba son piezas, y muy poco comprueba el montaje.** El criterio de salida de la
@@ -1469,6 +1517,22 @@ o por `=` no necesita mala intención para que la hoja de cálculo la ejecute, y
 de línea son mucho más probables en texto que escribe una persona que en un código de barras. La
 columna `note` va **la última** para que quien tenga un script leyendo por posición no se rompa al
 añadirla.
+
+#### Un tercer formato, que no protege nada a propósito
+
+CSV y JSON son para herramientas. **Texto plano** —una lectura por línea, sin cabecera y sin
+comillas— es para personas: lo que la gente hace de verdad con treinta códigos escaneados es pegarlos
+en un correo, en un chat o en una celda, y ahí los otros dos estorban.
+
+Ese formato **no lleva el guardado anti-fórmula**, y la decisión es del mismo tipo que la de
+ponérselo al CSV: se mira quién va a abrir el archivo. Una hoja de cálculo ejecuta celdas; un cuerpo
+de correo no ejecuta nada. Anteponer una comilla a un valor que empieza por `-` rompería justo lo que
+este formato existe para dar —el valor tal cual, listo para pegar— sin proteger de nada. Quien lleve
+los datos a una hoja tiene el CSV, que sí lo protege. Hay un test que fija las dos mitades de esta
+regla, para que nadie "arregle" una de ellas por simetría.
+
+Lo único que se toca es aplanar los saltos de línea de una nota, porque una nota multilínea rompería
+el "una lectura por línea" que es toda la propuesta del formato.
 
 Los nombres de columna y las claves JSON están en inglés y en `snake_case` aunque la app esté en
 español. No es interfaz: es un archivo que abre una hoja de cálculo o consume un script, y traducir
