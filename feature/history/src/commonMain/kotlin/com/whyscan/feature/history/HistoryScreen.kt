@@ -1,5 +1,6 @@
 package com.whyscan.feature.history
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.stickyHeader
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
@@ -22,11 +24,13 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -41,6 +45,7 @@ import com.whyscan.feature.history.resources.history_clear_body
 import com.whyscan.feature.history.resources.history_clear_cancel
 import com.whyscan.feature.history.resources.history_clear_confirm
 import com.whyscan.feature.history.resources.history_clear_title
+import com.whyscan.feature.history.resources.history_date
 import com.whyscan.feature.history.resources.history_empty
 import com.whyscan.feature.history.resources.history_export_csv
 import com.whyscan.feature.history.resources.history_export_json
@@ -49,6 +54,8 @@ import com.whyscan.feature.history.resources.history_filter_all
 import com.whyscan.feature.history.resources.history_no_matches
 import com.whyscan.feature.history.resources.history_search
 import com.whyscan.feature.history.resources.history_search_clear
+import com.whyscan.feature.history.resources.history_today
+import com.whyscan.feature.history.resources.history_yesterday
 import com.whyscan.feature.history.resources.message_copied
 import com.whyscan.feature.history.resources.message_copy_failed
 import com.whyscan.feature.history.resources.message_entry_deleted
@@ -60,9 +67,27 @@ import com.whyscan.feature.history.resources.message_nothing_to_export
 import com.whyscan.feature.history.resources.message_open_failed
 import com.whyscan.feature.history.resources.message_share_failed
 import com.whyscan.feature.history.resources.message_undo
+import com.whyscan.feature.history.resources.month_1
+import com.whyscan.feature.history.resources.month_10
+import com.whyscan.feature.history.resources.month_11
+import com.whyscan.feature.history.resources.month_12
+import com.whyscan.feature.history.resources.month_2
+import com.whyscan.feature.history.resources.month_3
+import com.whyscan.feature.history.resources.month_4
+import com.whyscan.feature.history.resources.month_5
+import com.whyscan.feature.history.resources.month_6
+import com.whyscan.feature.history.resources.month_7
+import com.whyscan.feature.history.resources.month_8
+import com.whyscan.feature.history.resources.month_9
 import com.whyscan.feature.history.resources.share_separator
 import com.whyscan.feature.history.resources.share_wifi
 import com.whyscan.feature.history.resources.share_wifi_with_password
+import kotlinx.datetime.Clock
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
+import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
@@ -104,6 +129,7 @@ fun HistoryScreen(
  *   es lo que convierte el historial en una herramienta de comparación (G5) y no tiene sentido para
  *   quien nunca eligió uno: los chips se llaman `mlkit-camerax` y `zxing-cpp`.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HistoryContent(
     state: HistoryState,
@@ -130,20 +156,89 @@ fun HistoryContent(
             if (state.isFilteredEmpty) {
                 Centered(Modifier) { EmptyMessage(stringResource(Res.string.history_no_matches)) }
             } else {
+                // La zona horaria se lee aquí, en el borde: la agrupación es pura y recibe la que le
+                // den, para que un test no dependa de dónde corra el runner.
+                val timeZone = TimeZone.currentSystemDefault()
+                val today = remember(timeZone) { Clock.System.now().toLocalDateTime(timeZone).date }
+
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                    items(state.visible, key = { it.id }) { entry ->
-                        HistoryRow(
-                            entry = entry,
-                            canShare = state.canShare,
-                            advancedMode = advancedMode,
-                            isEditingNote = state.editingNoteFor == entry.id,
-                            onAction = onAction,
-                        )
+                    state.visibleGroups(timeZone).forEach { group ->
+                        // Pegajosa: mientras se recorre un día largo, la cabecera se queda arriba
+                        // diciendo cuál es. Sin eso, a la tercera pantalla ya no se sabe dónde uno
+                        // está — que es justo el problema que las cabeceras vienen a resolver.
+                        stickyHeader(key = group.date.toString()) { DayHeader(group.date, today) }
+
+                        items(group.entries, key = { it.id }) { entry ->
+                            HistoryRow(
+                                entry = entry,
+                                canShare = state.canShare,
+                                advancedMode = advancedMode,
+                                isEditingNote = state.editingNoteFor == entry.id,
+                                onAction = onAction,
+                            )
+                        }
                     }
                 }
             }
         }
     }
+}
+
+/**
+ * Cabecera de un día.
+ *
+ * **"Hoy" y "Ayer" en lugar de la fecha**, porque es lo que una persona reconoce sin leer: nadie
+ * piensa "lo escaneé el 22 de agosto", piensa "fue ayer". A partir del antepenúltimo día la fecha
+ * vuelve a ser la única referencia útil y se escribe entera.
+ *
+ * El día de hoy llega como parámetro y no se lee aquí. Es la misma razón que en la agrupación: leer
+ * el reloj dentro de un composable lo hace impredecible, y un `remember` lo dejaría además congelado
+ * en el instante en que se compuso — con la app abierta a medianoche, "Hoy" pasaría a ser mentira sin
+ * que nada la recompusiera.
+ */
+@Composable
+private fun DayHeader(date: LocalDate, today: LocalDate) {
+    val label = when (date) {
+        today -> stringResource(Res.string.history_today)
+        today.minus(1, DateTimeUnit.DAY) -> stringResource(Res.string.history_yesterday)
+        else -> stringResource(
+            Res.string.history_date,
+            date.dayOfMonth,
+            stringResource(date.monthNumber.monthResource()),
+            date.year,
+        )
+    }
+
+    Surface(color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(vertical = Spacing.xs),
+        )
+    }
+}
+
+/**
+ * El nombre del mes, traducible.
+ *
+ * Un `when` explícito y no un array indexado por el número de mes. El array es más corto y tiene una
+ * forma de fallar que este no: escrito con un elemento de menos, o desplazado, devuelve el mes
+ * equivocado en silencio y nadie lo nota hasta que llega ese mes. Aquí cada rama dice qué mes es.
+ */
+private fun Int.monthResource(): StringResource = when (this) {
+    1 -> Res.string.month_1
+    2 -> Res.string.month_2
+    3 -> Res.string.month_3
+    4 -> Res.string.month_4
+    5 -> Res.string.month_5
+    6 -> Res.string.month_6
+    7 -> Res.string.month_7
+    8 -> Res.string.month_8
+    9 -> Res.string.month_9
+    10 -> Res.string.month_10
+    11 -> Res.string.month_11
+    else -> Res.string.month_12
 }
 
 /**

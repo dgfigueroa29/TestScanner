@@ -11,6 +11,26 @@
     <string name="history_row_meta">%1$s · %2$s</string>
     <string name="history_row_latency"> · %1$d ms</string>
 
+    <!-- Day headers. "Today" and "Yesterday" are what people actually recognise; anything
+         older gets a date. Month names live here because they are the only part of a date
+         that has to be translated. -->
+    <string name="history_today">Today</string>
+    <string name="history_yesterday">Yesterday</string>
+    <!-- day, month name, year -->
+    <string name="history_date">%1$d %2$s %3$d</string>
+    <string name="month_1">January</string>
+    <string name="month_2">February</string>
+    <string name="month_3">March</string>
+    <string name="month_4">April</string>
+    <string name="month_5">May</string>
+    <string name="month_6">June</string>
+    <string name="month_7">July</string>
+    <string name="month_8">August</string>
+    <string name="month_9">September</string>
+    <string name="month_10">October</string>
+    <string name="month_11">November</string>
+    <string name="month_12">December</string>
+
     <!-- Search. Looks at the scanned value and at the note, which is half the point of notes. -->
     <string name="history_search">Search value or note</string>
     <string name="history_search_clear">Clear search</string>

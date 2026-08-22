@@ -4,6 +4,7 @@ import com.whyscan.core.domain.export.ExportFormat
 import com.whyscan.core.domain.scan.ResultAction
 import com.whyscan.core.model.HistoryEntry
 import com.whyscan.core.model.ScannerEngineId
+import kotlinx.datetime.TimeZone
 
 data class HistoryState(
     val isLoading: Boolean = true,
@@ -40,6 +41,15 @@ data class HistoryState(
 
     /** Hay historial, pero el filtro o la búsqueda no dejan nada. Es un vacío distinto del otro. */
     val isFilteredEmpty: Boolean get() = !isLoading && entries.isNotEmpty() && visible.isEmpty()
+
+    /**
+     * Lo visible, agrupado por día.
+     *
+     * Toma la zona horaria en lugar de leerla del sistema para que la agrupación sea **pura**: con
+     * `TimeZone.currentSystemDefault()` dentro, un test pasaría o fallaría según dónde corriera el
+     * runner. La pantalla le pasa la del dispositivo y los tests una fija.
+     */
+    fun visibleGroups(timeZone: TimeZone): List<HistoryGroup> = visible.groupByDay(timeZone)
 }
 
 /**

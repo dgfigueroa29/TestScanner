@@ -10,6 +10,26 @@
     <string name="history_row_meta">%1$s · %2$s</string>
     <string name="history_row_latency"> · %1$d ms</string>
 
+    <!-- Cabeceras de día. "Hoy" y "Ayer" es lo que la gente reconoce de verdad; lo más
+         antiguo lleva fecha. Los nombres de mes viven aquí porque son la única parte de
+         una fecha que hay que traducir. -->
+    <string name="history_today">Hoy</string>
+    <string name="history_yesterday">Ayer</string>
+    <!-- día, nombre del mes, año -->
+    <string name="history_date">%1$d de %2$s de %3$d</string>
+    <string name="month_1">enero</string>
+    <string name="month_2">febrero</string>
+    <string name="month_3">marzo</string>
+    <string name="month_4">abril</string>
+    <string name="month_5">mayo</string>
+    <string name="month_6">junio</string>
+    <string name="month_7">julio</string>
+    <string name="month_8">agosto</string>
+    <string name="month_9">septiembre</string>
+    <string name="month_10">octubre</string>
+    <string name="month_11">noviembre</string>
+    <string name="month_12">diciembre</string>
+
     <!-- Buscador. Mira el valor y la nota, que es la mitad del sentido de poder anotar. -->
     <string name="history_search">Buscar valor o nota</string>
     <string name="history_search_clear">Limpiar la búsqueda</string>
