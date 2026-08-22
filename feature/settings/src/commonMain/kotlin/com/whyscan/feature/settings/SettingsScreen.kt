@@ -27,8 +27,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.whyscan.core.designsystem.WhyScanMark
 import com.whyscan.core.designsystem.Spacing
+import com.whyscan.core.designsystem.WhyScanMark
 import com.whyscan.core.domain.repository.AppLanguage
 import com.whyscan.core.domain.repository.ThemeMode
 import com.whyscan.feature.settings.resources.Res
