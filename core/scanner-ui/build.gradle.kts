@@ -1,9 +1,9 @@
 plugins {
-    id("testscanner.kmp.compose")
+    id("whyscan.kmp.compose")
 }
 
 android {
-    namespace = "com.testscanner.core.scanner.ui"
+    namespace = "com.whyscan.core.scanner.ui"
 }
 
 kotlin {

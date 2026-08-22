@@ -1,14 +1,14 @@
-# Software Design Document — Scanly Multiplatform (repositorio: TestScanner)
+# Software Design Document — WhyScan Multiplatform
 
 | Campo | Valor |
 |---|---|
-| Proyecto | Scanly (repositorio `TestScanner`) |
+| Proyecto | WhyScan |
 | Documento | Software Design Document (SDD) |
-| Versión | 1.7 |
+| Versión | 1.8 |
 | Estado | Vigente — **el proyecto compila y pasa CI** en Android (con R8), Escritorio y Web, y el framework de iOS **enlaza entero** desde el workflow manual `ios.yml`. Fases 1, 2, 4 y 5 cerradas salvo lo listado como pendiente; la 3 (iOS) escrita y despriorizada por falta de dispositivo, no de compilación. **La app arrancó por primera vez en un dispositivo real** en la versión anterior, y ese arranque encontró un defecto que ninguna comprobación automática podía ver (§10); esta versión convierte esa comprobación en un test y, con él, destapa un segundo defecto de meses en la persistencia (§11) |
-| Fecha | 2026-08-21 |
-| Autor | Equipo Scanly |
-| Alcance de esta versión | Preparación para publicar: marca, tema claro/oscuro, inglés y español, y el rediseño de la pantalla de escaneo en dos disposiciones (§9.9, §9.10, ADR-0010, ADR-0011) |
+| Fecha | 2026-08-22 |
+| Autor | Equipo WhyScan |
+| Alcance de esta versión | Preparación para publicar: marca, tema claro/oscuro, inglés y español, y el rediseño de la pantalla de escaneo en dos disposiciones (§9.9, §9.10, ADR-0010, ADR-0011). El proyecto pasa a llamarse **WhyScan** en todas partes, sin nombre interno aparte (§1.1) |
 
 ---
 
@@ -16,15 +16,19 @@
 
 ### 1.1 Propósito
 
-Este documento define la arquitectura objetivo de **Scanly** tras su migración desde una
+Este documento define la arquitectura objetivo de **WhyScan** tras su migración desde una
 aplicación Android de módulo único hacia una aplicación **Compose Multiplatform (CMP)**.
 
-> **Sobre los nombres.** El producto se llama **Scanly** y su `applicationId` en Play es
-> `com.scanly.app`. El repositorio, los paquetes de Kotlin y los módulos Gradle siguen siendo
-> `com.testscanner.*` **a propósito**: renombrarlos tocaría doscientos archivos para cambiar algo que
-> ningún usuario ve, mientras que el `applicationId` —que sí es la identidad pública y permanente en
-> Play— ya está donde corresponde. Este documento usa "Scanly" para el producto y `TestScanner` para
-> el repositorio.
+> **Un solo nombre, escrito siempre igual.** **WhyScan** nombra el producto, el proyecto Gradle,
+> los paquetes de Kotlin (`com.whyscan.*`), el `namespace` de cada módulo, los plugins de convención
+> (`whyscan.kmp.library`, `whyscan.kmp.compose`, `whyscan.android.application`), el `applicationId`
+> de Play (`com.whyscan.app`) y los almacenes de datos de cada plataforma. **Es una sola palabra**:
+> `WhyScan` en prosa y en tipos, `whyScan` en identificadores lowerCamelCase, `whyscan` en paquetes,
+> ids de plugin y nombres de recurso. Nunca "Why Scan" ni "Why-Scan".
+>
+> Esto no fue así desde el principio, y la decisión de unificarlo es deliberada: convivían un nombre
+> de producto y un nombre interno distintos, con una nota en cada documento explicando por qué. Un
+> nombre que hay que explicar en tres sitios cuesta más que el renombrado que evita.
 
 El objetivo funcional principal del producto es:
 
@@ -32,7 +36,7 @@ El objetivo funcional principal del producto es:
 > barras y QR**, permitiendo comparar motores, degradar con elegancia cuando uno no está
 > disponible, y funcionar sobre Android, iOS, Desktop y Web.
 
-Scanly no es solo un lector de códigos: es un **banco de pruebas de motores de escaneo**. Esa
+WhyScan no es solo un lector de códigos: es un **banco de pruebas de motores de escaneo**. Esa
 naturaleza es lo que dicta la decisión arquitectónica central del documento — el **Scanner Engine
 SPI** (§7).
 
@@ -82,7 +86,7 @@ la misma pantalla con cosas ocultas sino dos disposiciones distintas, por los mo
 ### 2.1 Estado inicial (antes de la migración)
 
 ```
-TestScanner/
+WhyScan/
 └── app/                          # módulo Android único
     ├── build.gradle              # Groovy DSL, AGP 8.0.2, Kotlin 1.8.10
     └── src/main/java/…/
@@ -223,7 +227,7 @@ dominio**. Un módulo de motor depende de `:core:scanner-api` y de su SDK nativo
 ### 5.2 Estructura de módulos Gradle
 
 ```
-TestScanner/
+WhyScan/
 ├── gradle/libs.versions.toml          # version catalog — única fuente de versiones
 ├── build-logic/                       # convention plugins: kmp.library, kmp.compose, android.application
 │
@@ -563,7 +567,7 @@ Detalle operativo completo en `docs/ENGINES.md`. Resumen:
 La presencia de **ZXing-cpp en las cuatro plataformas** no es redundante: es el control
 experimental. Al ser el mismo decodificador en todas partes, cualquier diferencia de resultado
 entre plataformas se atribuye a la captura de cámara, no al algoritmo — que es exactamente la
-medición que hace útil a TestScanner.
+medición que hace útil a WhyScan.
 
 ---
 
@@ -1428,7 +1432,7 @@ siempre: son decisiones del producto entero y no de una pantalla.
 
 #### La paleta se declara entera
 
-`ScanlyTheme` fija los **~30 roles** de Material 3 y no los seis habituales. El motivo está contado
+`WhyScanTheme` fija los **~30 roles** de Material 3 y no los seis habituales. El motivo está contado
 en §12.1: `lightColorScheme()` rellena con su paleta de fábrica todo lo que no se le pase, y el mismo
 defecto apareció dos veces —primero en los `on*`, después en los `*Container`— antes de que quedara
 claro que la única postura estable es no dejar ninguno al azar. `surfaceTint` incluido: es el color
@@ -1437,7 +1441,7 @@ superficie con elevación.
 
 Se mantiene la decisión de **no usar `dynamicColorScheme`** (Material You). Un tema que cambia con el
 fondo de pantalla del usuario es incompatible con una UI que se superpone a un preview de cámara,
-donde el contraste tiene que estar garantizado (RNF-05) — y ahora, además, el azul de Scanly es parte
+donde el contraste tiene que estar garantizado (RNF-05) — y ahora, además, el azul de WhyScan es parte
 del producto.
 
 #### Tipografía y formas
@@ -1460,7 +1464,7 @@ correcto por casualidad y se habría redondeado de rebote al cambiar el margen d
 #### Tema claro/oscuro elegido por el usuario
 
 `ThemeMode` (Sistema / Claro / Oscuro) se persiste con las demás preferencias de app.
-`ScanlyTheme` recibe un **booleano ya resuelto** y no el modo: resolver "sistema" contra lo que el
+`WhyScanTheme` recibe un **booleano ya resuelto** y no el modo: resolver "sistema" contra lo que el
 sistema dice *ahora* es cosa de quien tiene el estado delante, y así `:core:designsystem` no depende
 del dominio.
 
@@ -1487,7 +1491,7 @@ incógnita pendiente en iOS están en
 
 #### La marca
 
-`ScanlyMark` es un `ImageVector` dibujado en código —cuatro esquinas de encuadre y la línea de
+`WhyScanMark` es un `ImageVector` dibujado en código —cuatro esquinas de encuadre y la línea de
 lectura— y no una imagen empaquetada, por dos motivos: se tiñe con el color del tema, así que
 funciona en claro y en oscuro sin dos archivos; y es **la misma forma** que el icono de lanzador de
 Android, con lo que la app y su icono no se pueden separar por descuido.

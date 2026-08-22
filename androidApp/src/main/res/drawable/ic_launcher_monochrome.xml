@@ -3,7 +3,7 @@
     Capa monocroma para los iconos temáticos de Android 13+.
 
     Cuando el usuario activa "icono temático", el sistema descarta fondo y primer plano y pinta
-    **esta** capa con los colores de su fondo de pantalla. Sin declararla, Scanly sería de las
+    **esta** capa con los colores de su fondo de pantalla. Sin declararla, WhyScan sería de las
     aplicaciones que se quedan con su icono a todo color en una pantalla en la que el resto se ha
     teñido, que es justo lo que delata una app que no se revisó para la versión actual.
 

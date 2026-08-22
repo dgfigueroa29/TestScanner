@@ -1,7 +1,7 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 
-// Único módulo que NO usa `testscanner.kmp.compose`: necesita frameworks de iOS, un ejecutable de
+// Único módulo que NO usa `whyscan.kmp.compose`: necesita frameworks de iOS, un ejecutable de
 // Wasm y el target JVM nombrado "desktop" para el plugin de escritorio. Meter todo eso en un
 // convention plugin que solo usaría este módulo sería una abstracción de un solo cliente.
 plugins {
@@ -112,12 +112,12 @@ kotlin {
 
 compose.resources {
     publicResClass = true
-    packageOfResClass = "com.testscanner.resources"
+    packageOfResClass = "com.whyscan.resources"
     generateResClass = always
 }
 
 android {
-    namespace = "com.testscanner.shared"
+    namespace = "com.whyscan.shared"
     compileSdk = libs.versions.compileSdk.get().toInt()
     defaultConfig {
         minSdk = libs.versions.minSdk.get().toInt()
@@ -130,10 +130,10 @@ android {
 
 compose.desktop {
     application {
-        mainClass = "com.testscanner.MainKt"
+        mainClass = "com.whyscan.MainKt"
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "Scanly"
+            packageName = "WhyScan"
             packageVersion = "1.0.0"
         }
     }

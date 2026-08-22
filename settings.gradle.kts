@@ -71,7 +71,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "TestScanner"
+rootProject.name = "WhyScan"
 
 // Núcleo compartido
 include(":core:model")

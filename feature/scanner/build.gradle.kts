@@ -1,16 +1,16 @@
 plugins {
-    id("testscanner.kmp.compose")
+    id("whyscan.kmp.compose")
 }
 
 android {
-    namespace = "com.testscanner.feature.scanner"
+    namespace = "com.whyscan.feature.scanner"
 }
 
 // El paquete se fija a mano en lugar de dejar que se derive: así el import de `Res` es estable y
 // no depende de cómo el plugin componga el nombre a partir del grupo y el módulo.
 compose.resources {
     publicResClass = true
-    packageOfResClass = "com.testscanner.feature.scanner.resources"
+    packageOfResClass = "com.whyscan.feature.scanner.resources"
     generateResClass = always
 }
 

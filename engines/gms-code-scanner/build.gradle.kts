@@ -1,4 +1,4 @@
-// No usa `testscanner.kmp.library`: este motor solo existe en Android, así que declarar cuatro
+// No usa `whyscan.kmp.library`: este motor solo existe en Android, así que declarar cuatro
 // targets sería mentir sobre dónde funciona. El binario de iOS, Desktop y Web no debe enlazarlo
 // (RNF-06), y el catálogo ya lo reporta como no soportado fuera de Android.
 plugins {
@@ -26,7 +26,7 @@ kotlin {
 }
 
 android {
-    namespace = "com.testscanner.engines.gms"
+    namespace = "com.whyscan.engines.gms"
     compileSdk = libs.versions.compileSdk.get().toInt()
     defaultConfig {
         minSdk = libs.versions.minSdk.get().toInt()

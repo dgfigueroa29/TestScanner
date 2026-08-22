@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!--
-        Tema mínimo del sistema: el aspecto real lo define `ScanlyTheme` en Compose, compartido
+        Tema mínimo del sistema: el aspecto real lo define `WhyScanTheme` en Compose, compartido
         con iOS, Desktop y Web. Este solo cubre el hueco entre que el sistema crea la ventana y
         Compose pinta la primera pantalla.
 
@@ -12,7 +12,7 @@
         preferencias. Resolverlo del todo exige `androidx.core:core-splashscreen`, que es una
         dependencia nueva y una decisión aparte.
     -->
-    <style name="Theme.Scanly" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">@color/scanly_window_background</item>
+    <style name="Theme.WhyScan" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/whyscan_window_background</item>
     </style>
 </resources>

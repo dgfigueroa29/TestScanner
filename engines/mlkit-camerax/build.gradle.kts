@@ -36,7 +36,7 @@ kotlin {
 }
 
 android {
-    namespace = "com.testscanner.engines.mlkit"
+    namespace = "com.whyscan.engines.mlkit"
     compileSdk = libs.versions.compileSdk.get().toInt()
     defaultConfig {
         minSdk = libs.versions.minSdk.get().toInt()

@@ -18,7 +18,7 @@
     <string name="settings_advanced_mode_hint">Brings back the engine catalogue, the side-by-side comparison and the per-read latencies. Off by default: scanning a code does not require choosing a decoder.</string>
 
     <string name="settings_about">About</string>
-    <string name="settings_privacy">No account, no tracking, no network. Scanly does not request internet access at all, so what you scan cannot leave the device.</string>
+    <string name="settings_privacy">No account, no tracking, no network. WhyScan does not request internet access at all, so what you scan cannot leave the device.</string>
 
     <!-- Accessibility (RNF-05): the theme and language options are chips whose label alone does not
          say what they set. "Dark" on its own could be anything. -->

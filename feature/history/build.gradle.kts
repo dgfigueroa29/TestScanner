@@ -1,14 +1,14 @@
 plugins {
-    id("testscanner.kmp.compose")
+    id("whyscan.kmp.compose")
 }
 
 android {
-    namespace = "com.testscanner.feature.history"
+    namespace = "com.whyscan.feature.history"
 }
 
 compose.resources {
     publicResClass = true
-    packageOfResClass = "com.testscanner.feature.history.resources"
+    packageOfResClass = "com.whyscan.feature.history.resources"
     generateResClass = always
 }
 

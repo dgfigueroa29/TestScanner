@@ -1,4 +1,4 @@
-# Scanly
+# WhyScan
 
 Lector de **códigos de barras y QR** en Compose Multiplatform, sin cuenta, sin rastreo y sin red.
 
@@ -6,15 +6,14 @@ Debajo hay un **banco de pruebas de motores de escaneo**: la app no lee un códi
 manera, sino que elige entre varias alternativas, las compara y degrada con elegancia cuando una no
 está disponible — sobre Android, iOS, Desktop y Web con un único código base.
 
-Las dos cosas conviven porque son la misma app en dos modos. Por defecto Scanly es un lector: se
+Las dos cosas conviven porque son la misma app en dos modos. Por defecto WhyScan es un lector: se
 apunta y se lee. El **modo avanzado** (Ajustes → Avanzado) devuelve el catálogo de los ocho motores,
 el comparador en paralelo y las latencias por lectura.
 
-> **Sobre los nombres.** El producto se llama Scanly y el `applicationId` de Play es
-> `com.scanly.app`. El repositorio, los paquetes de Kotlin y los módulos siguen siendo
-> `com.testscanner.*` **a propósito**: renombrarlos tocaría doscientos archivos para cambiar algo que
-> ningún usuario ve, y el `applicationId` —que sí es la identidad pública y permanente en Play— ya
-> está donde tiene que estar.
+> **Un solo nombre.** WhyScan es el nombre del producto, el del proyecto Gradle, el de los paquetes
+> de Kotlin (`com.whyscan.*`), el del `applicationId` de Play (`com.whyscan.app`) y el de los
+> plugins de convención. Se escribe siempre como una sola palabra —`WhyScan`, `whyScan`,
+> `whyscan`—, nunca separado.
 
 ---
 
@@ -43,7 +42,7 @@ el comparador en paralelo y las latencias por lectura.
 | Acciones sobre el resultado (RF-13) | ✅ copiar, compartir y abrir, según el significado del código |
 | Navegación | ✅ propia, con backstack que sobrevive a que el sistema mate el proceso |
 | Build de release con R8 | ✅ `minify` y `shrinkResources`, con `assembleRelease` en CI |
-| Marca, icono y tema | ✅ Scanly: icono adaptativo con capa monocroma, paleta con los ~30 roles de Material 3, escala tipográfica y de formas propias |
+| Marca, icono y tema | ✅ WhyScan: icono adaptativo con capa monocroma, paleta con los ~30 roles de Material 3, escala tipográfica y de formas propias |
 | Selector de tema claro/oscuro | ✅ Sistema / Claro / Oscuro, persistido, con las barras del sistema siguiendo al tema **de la app** |
 | Idiomas inglés y español | ✅ los cuatro catálogos en `values/` (inglés, respaldo de cualquier idioma) y `values-es/`, con selector propio ([ADR-0011](docs/adr/ADR-0011-idioma-de-la-app-por-encima-del-sistema.md)) y `localeConfig` para el selector por app de Android 13+ |
 | Pantalla de escaneo | ✅ cámara a pantalla completa con el resultado en una hoja que la empuja, no que la tapa; la sesión arranca sola y se apaga al salir ([ADR-0010](docs/adr/ADR-0010-dos-disposiciones-de-la-pantalla-de-escaneo.md)) |
@@ -157,7 +156,7 @@ y de su SDK nativo. Nunca de `:feature:*`, ni de `:core:data`, ni de otro motor.
 
 ## Marca, tema e idiomas
 
-**El tema.** `ScanlyTheme` declara los ~30 roles de color de Material 3, y no solo los seis
+**El tema.** `WhyScanTheme` declara los ~30 roles de color de Material 3, y no solo los seis
 habituales. No es exhaustividad por gusto: `lightColorScheme()` rellena con su paleta de fábrica todo
 lo que no se le pase, así que un `FilterChip` seleccionado o el indicador del ítem activo de la barra
 salían **morados** en una app cuya marca es azul. `ContrastTest` mide 50 pares de color a 4.5:1 y 6
@@ -174,7 +173,7 @@ resuelto y reajusta el estilo de las barras.
 inglés está en la carpeta **sin calificador** a propósito: es el respaldo de cualquier idioma que no
 sea español, así que un teléfono en alemán ve inglés y no castellano. El selector propio va por
 encima del idioma del sistema cambiando el locale de la plataforma y tirando el subárbol de
-Compose con `key(tag)`, y `androidApp` declara `localeConfig` para que Scanly aparezca además en el
+Compose con `key(tag)`, y `androidApp` declara `localeConfig` para que WhyScan aparezca además en el
 selector de idioma por app de Android 13+.
 
 Ese mecanismo es el segundo intento. El primero sustituía el entorno de recursos con
@@ -186,7 +185,7 @@ En Web el selector **no se muestra**: el idioma sale de `navigator.language`, qu
 puede escribir. Preferimos no ofrecer el control a ofrecerlo roto —
 `PlatformSupportsLanguageOverride` es lo que lo decide, y es `false` solo ahí.
 
-**El icono** se dibuja dos veces, y las dos copias lo dicen: `ScanlyMark` como `ImageVector` para la
+**El icono** se dibuja dos veces, y las dos copias lo dicen: `WhyScanMark` como `ImageVector` para la
 UI y `ic_launcher_foreground.xml` para el lanzador, con las mismas coordenadas escaladas. Lleva capa
 `monochrome`, así que se tiñe con los iconos temáticos de Android 13+, y hay PNG de respaldo para
 API 24 y 25, que no entienden iconos adaptativos. Antes de esto **no había icono en absoluto**: el

@@ -1,4 +1,4 @@
-// Motor exclusivo de iOS: declara solo los targets de Apple. No usa `testscanner.kmp.library`
+// Motor exclusivo de iOS: declara solo los targets de Apple. No usa `whyscan.kmp.library`
 // porque ese convention plugin da los cuatro, y aquí tres de ellos serían mentira.
 plugins {
     alias(libs.plugins.kotlinMultiplatform)

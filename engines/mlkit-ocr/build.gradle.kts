@@ -37,7 +37,7 @@ kotlin {
 }
 
 android {
-    namespace = "com.testscanner.engines.ocr"
+    namespace = "com.whyscan.engines.ocr"
     compileSdk = libs.versions.compileSdk.get().toInt()
     defaultConfig {
         minSdk = libs.versions.minSdk.get().toInt()

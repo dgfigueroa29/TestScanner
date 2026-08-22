@@ -103,9 +103,9 @@
 
     <!-- Disposición con la cámara primero: los estados que ocupan el visor -->
     <string name="permission_title">Acceso a la cámara</string>
-    <string name="permission_body">Scanly necesita la cámara para leer códigos. Los frames se procesan en el dispositivo y no salen de él: la app no pide permiso de internet.</string>
+    <string name="permission_body">WhyScan necesita la cámara para leer códigos. Los frames se procesan en el dispositivo y no salen de él: la app no pide permiso de internet.</string>
     <string name="no_camera_title">Sin cámara en vivo</string>
-    <string name="no_camera_body">Este dispositivo no tiene captura que Scanly pueda manejar. Igual podés escanear una imagen o escribir un código a mano.</string>
+    <string name="no_camera_body">Este dispositivo no tiene captura que WhyScan pueda manejar. Igual podés escanear una imagen o escribir un código a mano.</string>
     <string name="session_paused">En pausa</string>
     <string name="action_resume">Reanudar</string>
 

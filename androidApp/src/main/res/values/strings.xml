@@ -10,5 +10,5 @@
 -->
 <resources>
     <!-- The brand name is not translated: it is the same word in every store listing. -->
-    <string name="app_name" translatable="false">Scanly</string>
+    <string name="app_name" translatable="false">WhyScan</string>
 </resources>

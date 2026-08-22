@@ -7,5 +7,5 @@
         la ventana y Compose pinta la primera pantalla se ve un destello de otro color. Es el defecto
         que nadie reporta como bug y que todo el mundo percibe como "la app arranca mal".
     -->
-    <color name="scanly_window_background">#F8FAFC</color>
+    <color name="whyscan_window_background">#F8FAFC</color>
 </resources>

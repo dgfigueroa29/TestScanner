@@ -1,12 +1,12 @@
 plugins {
-    id("testscanner.kmp.library")
+    id("whyscan.kmp.library")
     // Solo para la exportación del historial (RF-11): el formato del archivo es una decisión
     // explícita con sus propios DTO, no un reflejo del modelo interno.
     alias(libs.plugins.kotlinSerialization)
 }
 
 android {
-    namespace = "com.testscanner.core.domain"
+    namespace = "com.whyscan.core.domain"
 }
 
 kotlin {

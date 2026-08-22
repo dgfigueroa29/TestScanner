@@ -1,21 +1,22 @@
 plugins {
-    id("testscanner.android.application")
+    id("whyscan.android.application")
 }
 
 android {
-    namespace = "com.testscanner.android"
+    namespace = "com.whyscan.android"
 
     defaultConfig {
         // El `applicationId` es la identidad de la app en Play **para siempre**: es la URL de la
         // ficha y la clave con la que el sistema reconoce una actualización. No se puede cambiar
         // después de la primera publicación, así que se ajusta ahora que todavía no hay ninguna.
         //
-        // No tiene por qué coincidir con los paquetes de Kotlin, y aquí no coincide a propósito:
-        // renombrar `com.testscanner.*` en doscientos archivos sería mucho movimiento para cambiar
-        // algo que el usuario no ve. Lo que el usuario ve es esto.
+        // No tiene por qué coincidir con los paquetes de Kotlin, pero aquí coincide: el proyecto
+        // usa `com.whyscan.*` en todas partes —paquetes, `namespace` de cada módulo, plugins de
+        // convención y almacenes de datos—, así que no hay dos nombres que mantener sincronizados
+        // ni ninguno que explicar.
         //
         // Antes de la primera subida hay que comprobar en Play Console que este id está libre.
-        applicationId = "com.scanly.app"
+        applicationId = "com.whyscan.app"
         versionCode = 1
         versionName = "1.0.0"
     }

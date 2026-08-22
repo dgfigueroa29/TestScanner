@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Idiomas que Scanly habla, declarados para el sistema.
+    Idiomas que WhyScan habla, declarados para el sistema.
 
     Esto es lo que enciende el **selector de idioma por app** de Android 13+: con `localeConfig`
-    declarado, la app aparece en Ajustes → Aplicaciones → Scanly → Idioma, y Play lo usa para su
+    declarado, la app aparece en Ajustes → Aplicaciones → WhyScan → Idioma, y Play lo usa para su
     ficha. Sin esto, el selector propio de la app funcionaría igual pero el sistema no sabría que
-    Scanly tiene español, y quien busque el ajuste donde lo busca siempre no lo encontraría.
+    WhyScan tiene español, y quien busque el ajuste donde lo busca siempre no lo encontraría.
 
     La lista tiene que coincidir con los catálogos de `composeResources`: `values/` (inglés, que es
     además el respaldo de cualquier otro idioma) y `values-es/`.

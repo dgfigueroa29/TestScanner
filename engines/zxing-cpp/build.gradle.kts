@@ -44,7 +44,7 @@ kotlin {
 }
 
 android {
-    namespace = "com.testscanner.engines.zxing"
+    namespace = "com.whyscan.engines.zxing"
     compileSdk = libs.versions.compileSdk.get().toInt()
     defaultConfig {
         minSdk = libs.versions.minSdk.get().toInt()

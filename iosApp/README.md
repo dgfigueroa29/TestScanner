@@ -42,7 +42,7 @@ Una vez creado, versionar el `.xcodeproj` y borrar esta sección.
 
 `:composeApp` publica el framework `ComposeApp` (`isStatic = true`) para `iosArm64` e
 `iosSimulatorArm64`, y expone `MainViewController()` en
-`composeApp/src/iosMain/kotlin/com/testscanner/MainViewController.kt`. Esa función arranca Koin de
+`composeApp/src/iosMain/kotlin/com/whyscan/MainViewController.kt`. Esa función arranca Koin de
 forma idempotente y devuelve el `UIViewController` con la UI compartida.
 
 El motor de escaneo de iOS es [`:engines:vision-ios`](../engines/vision-ios): `AVCaptureSession` con

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Capa de primer plano del icono adaptativo: la marca de Scanly, la misma forma que dibuja
-    `ScanlyMark` en `:core:designsystem`. Están duplicadas porque viven en dos mundos que no se
+    Capa de primer plano del icono adaptativo: la marca de WhyScan, la misma forma que dibuja
+    `WhyScanMark` en `:core:designsystem`. Están duplicadas porque viven en dos mundos que no se
     hablan —Compose y el sistema de recursos de Android—, y por eso ambas llevan esta nota: quien
     toque una tiene que tocar la otra.
 

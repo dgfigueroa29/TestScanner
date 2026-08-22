@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Mismo tema con el padre oscuro, para que el arranque no destelle en blanco. -->
-    <style name="Theme.Scanly" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/scanly_window_background</item>
+    <style name="Theme.WhyScan" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/whyscan_window_background</item>
     </style>
 </resources>

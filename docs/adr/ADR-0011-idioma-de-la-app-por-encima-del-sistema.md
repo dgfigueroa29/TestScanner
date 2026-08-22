@@ -66,7 +66,7 @@ locale por defecto—. No hace falta tocar la `Configuration`, que además está
 `navigator.language`, que una página no puede escribir. Un control inerte es peor que no tenerlo.
 
 **4. Android declara además `localeConfig`.** Con `res/xml/locales_config.xml` la app aparece en
-Ajustes → Aplicaciones → Scanly → Idioma, que es donde mucha gente lo busca, y Play lo usa para su
+Ajustes → Aplicaciones → WhyScan → Idioma, que es donde mucha gente lo busca, y Play lo usa para su
 ficha. Es complementario al selector propio, no un sustituto.
 
 ## Consecuencias

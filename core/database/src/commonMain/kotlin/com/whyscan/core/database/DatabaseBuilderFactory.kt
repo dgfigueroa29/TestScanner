@@ -1,0 +1,60 @@
+package com.whyscan.core.database
+
+import androidx.room.RoomDatabase
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import kotlinx.coroutines.CoroutineDispatcher
+
+/**
+ * Cada plataforma sabe dónde vive su archivo de base de datos; el resto de la construcción es
+ * idéntico y se centraliza en [build].
+ */
+expect class DatabaseBuilderFactory {
+    fun create(): RoomDatabase.Builder<ScanDatabase>
+}
+
+/**
+ * El hilo donde corren las consultas: siempre `Dispatchers.IO`, pero nombrado por plataforma.
+ *
+ * Escribir `Dispatchers.IO` aquí, en `commonMain`, **no compila para iOS**, y el motivo no es
+ * obvio: en el artefacto JVM de coroutines, `IO` es un miembro público del objeto `Dispatchers`,
+ * mientras que en el nativo el miembro es `internal` y lo público es una extensión declarada en
+ * `concurrentMain`. Desde `commonMain` esa extensión no está en el ámbito —el `commonMain` de
+ * coroutines no declara `IO`— así que la única candidata es el miembro interno, y el compilador
+ * responde `Cannot access 'val IO': it is internal`. En Android y Escritorio la misma línea
+ * compilaba porque ahí el miembro sí es público; por eso el fallo esperó al primer runner macOS.
+ *
+ * La salida es pedirlo desde cada plataforma, donde la extensión sí es visible. No hay
+ * `wasmJs` en la lista porque Room no soporta ese target (SDD §11).
+ */
+internal expect val queryDispatcher: CoroutineDispatcher
+
+/**
+ * Se usa el driver **bundled** y no el del sistema para que las cuatro plataformas corran la misma
+ * versión de SQLite. Con el driver del sistema, una consulta podría comportarse distinto en Android
+ * 24 que en iOS 17 — y este proyecto existe para comparar plataformas, no para pelearse con ellas.
+ *
+ * ## Por qué no se llama `build()`
+ *
+ * Se llamaba así, y **no se ejecutaba nunca**. En Kotlin un miembro siempre gana a una extensión, y
+ * `RoomDatabase.Builder` ya tiene su propio `build()`; los tres `platformModule` escribían
+ * `.create().build()` creyendo que pasaban por aquí, y en realidad llamaban al de Room. El
+ * compilador lo avisaba en cada build desde el principio:
+ *
+ *     w: This extension is shadowed by a member: 'fun build(): T'
+ *
+ * Las consecuencias no eran teóricas y eran distintas en cada plataforma, que es lo que hizo que
+ * pasara desapercibido tanto tiempo:
+ *
+ *  - **Escritorio e iOS reventaban** al tocar el historial por primera vez, con
+ *    `IllegalArgumentException: Cannot create a RoomDatabase without providing a SQLiteDriver`. Y
+ *    como el escáner necesita `SaveDetectionUseCase`, eso es al abrir la primera pantalla.
+ *  - **Android funcionaba**, y por eso nadie lo vio: ahí Room cae al SQLite del framework cuando no
+ *    se le da driver. Funcionaba usando justo el driver que este archivo existe para no usar.
+ *
+ * Lo encontró `KoinGraphTest` en su primera ejecución. El nombre nuevo no puede volver a colisionar.
+ */
+fun RoomDatabase.Builder<ScanDatabase>.buildBundled(): ScanDatabase = this
+    .setDriver(BundledSQLiteDriver())
+    .setQueryCoroutineContext(queryDispatcher)
+    .fallbackToDestructiveMigration(dropAllTables = true)
+    .build()

@@ -2,18 +2,18 @@
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-07-30
-- **Contexto del proyecto:** Migración de TestScanner desde Android monolítico
+- **Contexto del proyecto:** Migración de WhyScan desde Android monolítico
 
 ## Contexto
 
-TestScanner debe correr en Android, iOS, Desktop y Web. Existen dos estrategias:
+WhyScan debe correr en Android, iOS, Desktop y Web. Existen dos estrategias:
 
 1. **KMP + UI nativa por plataforma** — lógica compartida en Kotlin, UI en Compose (Android),
    SwiftUI (iOS), Compose Desktop y algo web.
 2. **Compose Multiplatform** — lógica *y* UI compartidas, con `expect/actual` solo donde la
    plataforma es inevitable.
 
-La UI de TestScanner es mayoritariamente **chrome alrededor de una superficie de cámara**:
+La UI de WhyScan es mayoritariamente **chrome alrededor de una superficie de cámara**:
 selector de motor, catálogo de capacidades, overlay de detección, lista de resultados, historial.
 Es UI de datos, no interacción con idioms de plataforma profundos.
 
