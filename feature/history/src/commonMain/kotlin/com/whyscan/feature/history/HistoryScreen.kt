@@ -85,6 +85,7 @@ import com.whyscan.feature.history.resources.share_wifi_with_password
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.Month
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
@@ -204,7 +205,7 @@ private fun DayHeader(date: LocalDate, today: LocalDate) {
         else -> stringResource(
             Res.string.history_date,
             date.dayOfMonth,
-            stringResource(date.monthNumber.monthResource()),
+            stringResource(date.month.nameResource()),
             date.year,
         )
     }
@@ -222,23 +223,25 @@ private fun DayHeader(date: LocalDate, today: LocalDate) {
 /**
  * El nombre del mes, traducible.
  *
- * Un `when` explícito y no un array indexado por el número de mes. El array es más corto y tiene una
- * forma de fallar que este no: escrito con un elemento de menos, o desplazado, devuelve el mes
- * equivocado en silencio y nadie lo nota hasta que llega ese mes. Aquí cada rama dice qué mes es.
+ * Sobre el **enum** y no sobre el número de mes, y no es cosmético: un `when` exhaustivo sobre un
+ * enum no lleva `else`, así que **el compilador obliga a cubrir los doce**. La primera versión de
+ * esto iba sobre `Int`, necesitaba un `else` —que en la práctica era "y si no, diciembre"— y detekt
+ * la rechazó con nueve `MagicNumber` seguidos. Tenía razón: una lista de números sueltos en un
+ * `when` es justo donde se cuela un mes desplazado que nadie ve hasta que llega ese mes.
  */
-private fun Int.monthResource(): StringResource = when (this) {
-    1 -> Res.string.month_1
-    2 -> Res.string.month_2
-    3 -> Res.string.month_3
-    4 -> Res.string.month_4
-    5 -> Res.string.month_5
-    6 -> Res.string.month_6
-    7 -> Res.string.month_7
-    8 -> Res.string.month_8
-    9 -> Res.string.month_9
-    10 -> Res.string.month_10
-    11 -> Res.string.month_11
-    else -> Res.string.month_12
+private fun Month.nameResource(): StringResource = when (this) {
+    Month.JANUARY -> Res.string.month_1
+    Month.FEBRUARY -> Res.string.month_2
+    Month.MARCH -> Res.string.month_3
+    Month.APRIL -> Res.string.month_4
+    Month.MAY -> Res.string.month_5
+    Month.JUNE -> Res.string.month_6
+    Month.JULY -> Res.string.month_7
+    Month.AUGUST -> Res.string.month_8
+    Month.SEPTEMBER -> Res.string.month_9
+    Month.OCTOBER -> Res.string.month_10
+    Month.NOVEMBER -> Res.string.month_11
+    Month.DECEMBER -> Res.string.month_12
 }
 
 /**
