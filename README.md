@@ -28,7 +28,7 @@ el comparador en paralelo y las latencias por lectura.
 | Comparador de motores con marcador en vivo (G5) | ✅ implementado y en la UI |
 | Motor de entrada manual | ✅ funcional en las 4 plataformas |
 | Google Code Scanner y ML Kit + CameraX (Android) | ✅ implementados y compilando |
-| Historial persistente | ✅ Room en Android, iOS y Desktop; en Web, JSON en el almacén del navegador. **El driver bundled no se aplicaba** hasta esta versión: ver más abajo |
+| Historial persistente | ✅ Room en Android, iOS y Desktop; en Web, JSON en el almacén del navegador. Con **migración de verdad**: hasta esta versión, el primer cambio de esquema lo habría borrado entero |
 | Preferencias persistentes | ✅ las cuatro plataformas |
 | CI en GitHub Actions | ✅ **en verde**: detekt, tests, Android (con R8), Desktop y Web |
 | Vision / AVFoundation (iOS) | ✅ implementado; **todo el Kotlin de iOS enlaza**, a demanda en el workflow `iOS (manual)`. Falta el dispositivo, no la compilación |
@@ -47,6 +47,8 @@ el comparador en paralelo y las latencias por lectura.
 | Idiomas inglés y español | ✅ los cuatro catálogos en `values/` (inglés, respaldo de cualquier idioma) y `values-es/`, con selector propio ([ADR-0011](docs/adr/ADR-0011-idioma-de-la-app-por-encima-del-sistema.md)) y `localeConfig` para el selector por app de Android 13+ |
 | Pantalla de escaneo | ✅ cámara a pantalla completa con el resultado en una hoja que la empuja, no que la tapa; la sesión arranca sola y se apaga al salir ([ADR-0010](docs/adr/ADR-0010-dos-disposiciones-de-la-pantalla-de-escaneo.md)) |
 | Lecturas repetidas | ✅ suprimidas en el dominio con ventana de dos segundos. Antes, tres segundos apuntando a un QR escribían noventa filas en el historial |
+| Notas en el historial | ✅ texto de referencia por lectura, con buscador que mira valor **y** nota ([ADR-0012](docs/adr/ADR-0012-la-nota-es-del-historial-no-de-la-deteccion.md)). La poda no se lleva lo anotado |
+| Borrado del historial | ✅ una lectura suelta, o todo con confirmación que dice cuántas se pierden |
 | Que el grafo de Koin resuelva | ✅ `KoinGraphTest` en los módulos comunes y en escritorio — cierra media D18. Falta el `platformModule` de Android |
 | Accesibilidad (RNF-05) | ✅ contraste AA **verificado por test** (56 pares, los dos temas), y semántica para lectores de pantalla |
 | Privacidad (RNF-03) | ✅ auditada: sin trazas, sin cliente HTTP, sin analítica y sin permiso `INTERNET` |
@@ -218,6 +220,43 @@ por segundo, tres segundos apuntando a un QR emitían noventa lecturas idéntica
 **una a una en el historial persistente**. No era ruido visual sino corrupción de los datos del
 usuario. La regla es una ventana de dos segundos y no "una vez por sesión", porque volver a leer el
 mismo código es un caso de uso real — contar unidades iguales en un inventario.
+
+**Pausado es un estado con nombre.** Lo era en la píldora de estado y no en el visor: al pausar
+desaparece la superficie de preview, y el `when` que decide qué ocupa ese hueco no tenía un caso para
+eso, así que caía en la rama final y dejaba **un spinner girando indefinidamente**. La pantalla
+llegaba a contradecirse — "Pausado" escrito encima de una señal de que algo está cargando. Ahora el
+spinner solo sale mientras la cámara se abre de verdad.
+
+---
+
+## El historial
+
+Cada lectura admite **una nota**: un texto de referencia que escribe el usuario. Sin ella,
+`7501234567893` es exacto y completamente inútil dentro de una lista de doscientas filas cuando lo
+que uno recuerda es "el del pedido de marzo". El buscador mira el valor **y** la nota, que es media
+razón de que la nota exista.
+
+La nota vive en un tipo aparte (`HistoryEntry`) y **no** dentro de `Detection`
+([ADR-0012](docs/adr/ADR-0012-la-nota-es-del-historial-no-de-la-deteccion.md)): `Detection` la
+producen los motores y la atraviesan seis decoradores, el comparador y el marcador, así que un campo
+que escribe una persona más tarde no pinta nada ahí.
+
+Añadirla obligó a mirar cómo se comportaba la base de datos ante un cambio de esquema, y ahí había
+**tres defectos que nunca se habían disparado** porque nunca había habido una versión 2:
+
+- **La primera migración habría borrado el historial de todo el mundo.** La base se construía con
+  `fallbackToDestructiveMigration(dropAllTables = true)`. En una app sin cuenta, sin nube y sin
+  papelera, ese historial es el único sitio donde esos datos existen. Ahora sube con `@AutoMigration`
+  y lo destructivo queda solo para las bajadas de versión, donde no hay alternativa.
+- **Reinsertar una lectura borraba su nota.** El id de una detección es determinista, y el `upsert`
+  usaba `REPLACE`, que en SQLite es un borrado más un alta. Pasa a `INSERT OR IGNORE`.
+- **La poda borraba por antigüedad sin mirar si la fila estaba anotada.** Una nota es la señal más
+  clara de que esa lectura le importa a alguien; el techo existe para acotar lo que genera una sesión
+  continua, no para borrar lo que alguien escribió a mano.
+
+También se puede **borrar una lectura suelta** —antes era todo o nada— y vaciar el historial entero
+pide confirmación diciendo cuántas lecturas se pierden. Era la única acción irreversible de la app y
+se disparaba con un toque.
 
 ---
 

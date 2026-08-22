@@ -301,6 +301,34 @@ con sus latencias en la portada, ni una app con nombre de proyecto interno y sin
       plataformas. **Se escribe siempre como una sola palabra.** Nada que migrar: la app no se ha
       publicado, así que cambiar el nombre del fichero de base de datos y de los almacenes de
       preferencias no deja datos huérfanos a nadie
+- [x] **El visor pausado dejaba un spinner girando para siempre.** Al pausar, `activeEngineId` pasa a
+      `null` y con él desaparece la superficie de preview; el `when` de `ViewfinderArea` no tenía caso
+      para eso y lo absorbía por la rama final. La píldora de estado sí decía "Pausado", así que la
+      pantalla se contradecía a sí misma. Ahora el spinner solo sale en `Starting` y pausado es un
+      estado con nombre, icono y "Reanudar"
+- [x] **Notas del usuario en el historial.** Un código leído es exacto y completamente inútil dentro
+      de una lista de doscientas filas cuando lo que uno recuerda es "el del pedido de marzo".
+      `HistoryEntry(detection, note)` como tercer nivel del modelo, y **no** un campo de `Detection`:
+      esa la producen los motores y la atraviesan seis decoradores, el comparador y el marcador
+      ([ADR-0012](adr/ADR-0012-la-nota-es-del-historial-no-de-la-deteccion.md))
+- [x] **Tres defectos de persistencia que la nota destapó**, y ninguno se había disparado nunca
+      porque nunca había habido una versión 2 del esquema:
+      **(1)** la base se construía con `fallbackToDestructiveMigration(dropAllTables = true)`, así que
+      la primera migración habría borrado el historial de todo el mundo en silencio — ahora va por
+      `@AutoMigration` y lo destructivo queda solo para las bajadas de versión;
+      **(2)** el `upsert` con `REPLACE` es un borrado más un alta, y como el id de una detección es
+      determinista, releer el mismo código se llevaba la nota por delante — pasa a `INSERT OR IGNORE`;
+      **(3)** la poda borraba por antigüedad sin mirar si la fila estaba anotada
+- [x] **Buscador sobre el valor y la nota.** Media razón de poder anotar: nadie recuerda una tirada
+      de dígitos. Con él, un historial lleno cuyo filtro no deja nada deja de decir "todavía no
+      escaneaste nada", que con cien lecturas detrás era mentira
+- [x] **Borrar una lectura suelta** —antes era todo o nada— y **confirmación antes de vaciar**, con
+      el número de lecturas que se pierden. Era la única acción irreversible de la app y se
+      disparaba con un toque, sin copia en ninguna parte
+- [x] **La lección de D16 aplicada antes de repetirla.** La nota pedía dos casos de uso nuevos de una
+      línea junto a `ObserveScanHistoryUseCase` y `ClearScanHistoryUseCase`, que ya delegaban sin
+      añadir nada. Los dos se borraron y su trabajo vive en `ScanHistory`. De paso se retira
+      `findById` del contrato: no lo llamaba nadie desde la Fase 1
 - [ ] `androidUnitTest` en `:composeApp` para que `KoinGraphTest` cubra también el grafo de Android,
       que es donde estaba el defecto original de D18
 - [ ] Animaciones de transición **entre destinos** (las de dentro de la pantalla ya están)
@@ -309,6 +337,49 @@ con sus latencias en la portada, ni una app con nombre de proyecto interno y sin
 - [ ] El aviso `KoinContext is not needed anymore` de `App.kt`: Koin dice que `startKoin()` ya monta
       el contexto de Compose, pero quitarlo cambia por dónde resuelven `koinInject` y `koinViewModel`
       y eso no se puede comprobar sin ejecutar la app
+
+### Ronda 4 — propuestas 🔜
+
+Lo que salió al revisar la app con la vista puesta en "clase mundial" y **no** entró en la Ronda 3.
+Están aquí con su motivo para que la decisión de hacerlas o no sea explícita, y ordenadas por lo que
+aportan frente a lo que cuestan.
+
+**Lo que más se nota, y es barato**
+
+- [ ] **Deshacer un borrado.** Ahora una lectura borrada se pierde y el snackbar solo lo confirma. Un
+      "Deshacer" en ese mismo snackbar cuesta guardar la entrada en memoria hasta que se cierre, y
+      convierte la única acción destructiva que no pregunta en una que no hace falta que pregunte
+- [ ] **Ordenar y agrupar el historial por día.** Doscientas filas planas son doscientas filas
+      planas; una cabecera por fecha las convierte en algo que se recorre. Exige `kotlinx-datetime`,
+      que es la dependencia que §9.7 evitó a propósito para no formatear una columna — con
+      cabeceras de fecha en pantalla el cálculo cambia
+- [ ] **Un formato de exportación más:** texto plano con una lectura por línea. CSV y JSON son para
+      herramientas; pegar treinta códigos en un correo es lo que la gente hace de verdad
+- [ ] **Anotar desde la pantalla de escaneo**, no solo desde el historial. El momento en que uno sabe
+      para qué es un código es justo cuando lo acaba de leer
+
+**Lo que hace falta antes de publicar de verdad**
+
+- [ ] **Una pantalla de "qué hay de nuevo"** o, como mínimo, no estrenar funciones en silencio. La
+      nota y el buscador no se descubren solos
+- [ ] **Medir el arranque en frío** en un dispositivo real. No hay ninguna cifra sobre esto y Play
+      la reporta en Vitals desde el primer día
+- [ ] **Baseline Profile.** Es la optimización con mejor relación resultado/esfuerzo en Android y
+      encaja mal con lo que este proyecto puede hacer sin dispositivo, así que conviene decidirlo con
+      datos del punto anterior y no antes
+
+**Deuda de calidad que ya se puede ver**
+
+- [ ] **`Detection.idOf` usa `rawValue.hashCode()`.** Dos valores distintos con el mismo hash, leídos
+      por el mismo motor en el mismo milisegundo, colisionan — y con `INSERT OR IGNORE` la segunda
+      lectura se descarta en silencio. La probabilidad es ínfima y las consecuencias son pequeñas,
+      pero el id ya no es solo un identificador: ahora cuelga de él la nota del usuario
+- [ ] **Nada comprueba que `@AutoMigration` haga lo que dice.** Room la genera y la valida en
+      compilación contra los esquemas exportados, que es bastante, pero abrir una base v1 real con
+      código v2 y ver que el historial sigue ahí no lo hace nadie. Es un test JVM con un archivo de
+      base de datos de prueba, no necesita dispositivo
+- [ ] **El buscador no normaliza acentos.** "factura" no encuentra "Factúra". Es deliberado por ahora
+      —el usuario busca lo que él mismo escribió— pero en español se nota más que en inglés
 
 ### Pendiente para publicar
 
@@ -372,3 +443,4 @@ Registrada de forma explícita para que no se olvide:
 | D19 | **Los avisos del compilador no los lee nadie, y uno de ellos era un defecto de producción.** `This extension is shadowed by a member` llevaba apareciendo en cada build desde que existe `:core:database`, y señalaba el defecto del driver de Room que reventaba escritorio e iOS (SDD §11): un aviso correcto, visible en cada compilación y leído por nadie durante meses. Hoy el build emite además avisos de deprecación (`KoinContext is not needed anymore`, los accesores `compose.runtime` como `String`) mezclados con ruido de terceros, así que ninguno destaca | Decidiendo una postura: o se limpian todos y se activa `allWarningsAsErrors`, o se acepta el ruido explícitamente. Lo primero exige antes saber cuáles vienen de plugins y no se pueden arreglar |
 | D20 | **El aviso `KoinContext is not needed anymore` en `App.kt`.** Koin dice que `startKoin()` ya monta el contexto de Compose y que ese envoltorio sobra. Quitarlo cambia por dónde resuelven `koinInject` y `koinViewModel`, y eso **no se puede comprobar sin ejecutar la app** | En el mismo pase que la primera instalación en un dispositivo con estos cambios |
 | D21 | **El selector de idioma en iOS está sin verificar.** El actual escribe `AppleLanguages` en `NSUserDefaults`, que es el mecanismo estándar; si Compose lee `preferredLanguages` el cambio es inmediato, si lee `currentLocale` no lo será hasta reabrir. Ver ADR-0011 | Cuando haya un iPhone. Es lo primero que hay que mirar de la UI de iOS |
+| D22 | **Nada ejecuta la migración de la base de datos.** Room genera `@AutoMigration` y la valida en compilación contra los esquemas exportados, que cubre que el SQL sea correcto — pero que una base v1 con historial dentro se abra con código v2 y siga teniendo el historial no lo comprueba nadie. Es justo el fallo que la migración existe para evitar, y es un test JVM con un archivo de prueba: no necesita dispositivo | Con el siguiente cambio de esquema, o antes si se publica |

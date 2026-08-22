@@ -4,11 +4,11 @@
 |---|---|
 | Proyecto | WhyScan |
 | Documento | Software Design Document (SDD) |
-| Versión | 1.8 |
+| Versión | 1.9 |
 | Estado | Vigente — **el proyecto compila y pasa CI** en Android (con R8), Escritorio y Web, y el framework de iOS **enlaza entero** desde el workflow manual `ios.yml`. Fases 1, 2, 4 y 5 cerradas salvo lo listado como pendiente; la 3 (iOS) escrita y despriorizada por falta de dispositivo, no de compilación. **La app arrancó por primera vez en un dispositivo real** en la versión anterior, y ese arranque encontró un defecto que ninguna comprobación automática podía ver (§10); esta versión convierte esa comprobación en un test y, con él, destapa un segundo defecto de meses en la persistencia (§11) |
 | Fecha | 2026-08-22 |
 | Autor | Equipo WhyScan |
-| Alcance de esta versión | Preparación para publicar: marca, tema claro/oscuro, inglés y español, y el rediseño de la pantalla de escaneo en dos disposiciones (§9.9, §9.10, ADR-0010, ADR-0011). El proyecto pasa a llamarse **WhyScan** en todas partes, sin nombre interno aparte (§1.1) |
+| Alcance de esta versión | Notas del usuario en el historial y lo que destaparon en la persistencia (§6.1, §11, ADR-0012); buscador y borrado por fila; el estado pausado del visor (§9.10). Antes, en la misma fase: marca, tema, idiomas y el rediseño del escáner (§9.9, ADR-0010, ADR-0011), y el renombrado a **WhyScan** (§1.1) |
 
 ---
 
@@ -331,11 +331,31 @@ data class Detection(
     val detectedAtMillis: Long,
     val latencyMillis: Long?,          // desde inicio de sesión hasta detección
 )
+
+data class HistoryEntry(
+    val detection: Detection,
+    val note: String?,                 // lo que el usuario escribió, después y a mano
+)
 ```
+
+**Tres niveles, y cada envoltura responde a una pregunta distinta:**
+
+| | Qué es | Quién lo produce | Cuándo |
+|---|---|---|---|
+| `Barcode` | Qué dice el código | El mundo | Existe antes que la app |
+| `Detection` | Quién lo leyó y cuándo | Un motor | En el instante de leerlo |
+| `HistoryEntry` | Qué significa para el usuario | Una persona | Más tarde, y se reescribe |
 
 `Detection` envuelve a `Barcode` en lugar de añadirle campos: el `Barcode` es lo que existe en el
 mundo; la `Detection` es el evento de haberlo visto con un motor concreto en un instante. Esa
 separación es la que habilita G5 (comparabilidad entre motores).
+
+`HistoryEntry` envuelve a `Detection` por el mismo criterio llevado un paso más: una nota es un dato
+**mutable, humano y posterior**, y meterla dentro de `Detection` obligaría a los ocho motores, a los
+seis decoradores, al comparador y al marcador a acarrear un campo que en todo ese recorrido vale
+siempre `null` — además de hacer que "estas dos lecturas son la misma" dependiera de si alguien
+escribió algo. El razonamiento completo, y los tres defectos de persistencia que destapó, están en
+[ADR-0012](adr/ADR-0012-la-nota-es-del-historial-no-de-la-deteccion.md).
 
 ### 6.2 Formatos soportados (G3)
 
@@ -789,7 +809,16 @@ Lo que **no** cubre, dicho para que no se confunda con una red completa:
 (§11): la base de datos nunca recibía su driver. Es la mejor defensa posible de por qué este test
 tenía que existir — no comprobaba una hipótesis, destapó algo que llevaba meses ahí.
 
-**Un caso de uso por operación no es una regla.** `ScannerViewModel` llegó a tener doce
+**Un caso de uso por operación no es una regla**, y esta versión es la primera en aplicarlo *antes*
+de repetir el error en vez de después. Añadir la nota y el borrado por fila pedía dos clases nuevas de
+una línea al lado de `ObserveScanHistoryUseCase` y `ClearScanHistoryUseCase`, que ya delegaban sin
+añadir nada: cuatro nombres, cuatro registros en Koin y cuatro parámetros en el constructor del
+ViewModel para una sola idea. Los dos que había se borraron y su trabajo vive en `ScanHistory`, junto
+con la única regla que hay dentro —normalizar la nota en un sitio para que las tres plataformas
+guarden lo mismo—. `SaveDetectionUseCase` se queda fuera y no es una inconsistencia: lo llama el
+escáner al leer un código, que es otro camino y no quiere arrastrar el borrado ni las notas.
+
+La historia original, que es de donde salió el criterio: `ScannerViewModel` llegó a tener doce
 colaboradores por seguirla al pie de la letra, y cuatro de ellos eran la misma idea: tres casos de
 uso de una línea sobre `ScanPreferencesRepository` más el propio repositorio, inyectado aparte
 porque dos operaciones no tenían caso de uso. La corrección (deuda D16) fue en dos direcciones:
@@ -854,6 +883,54 @@ Decisiones del esquema:
   Android 24 que en iOS 17 — y este proyecto existe para comparar plataformas, no para pelearse
   con ellas.
 - No se guarda ningún píxel: la entidad no tiene dónde (RNF-03).
+
+### Migraciones: el primer cambio de esquema habría borrado el historial
+
+Añadir la columna `note` (ADR-0012) obligó a mirar por primera vez qué hace esta base ante un cambio
+de versión, y la respuesta era **borrarla entera**: se construía con
+`fallbackToDestructiveMigration(dropAllTables = true)`. Mientras solo hubo una versión no se notó
+—no había ningún salto que dar—, pero el primer `version = 2` habría vaciado el historial de todos
+los usuarios en silencio, sin registro y sin recuperación posible. En una app **sin cuenta, sin copia
+en la nube y sin papelera** ese historial es el único sitio donde esos datos existen; y la versión que
+lo habría provocado es justo la que invita a anotarlos.
+
+Queda así:
+
+| | Antes | Ahora |
+|---|---|---|
+| Subir de versión | borra todo | `@AutoMigration(from = 1, to = 2)` |
+| Bajar de versión | borra todo | borra todo — no hay alternativa |
+| Esquema sin migración declarada | borra todo | **falla al abrir**, que es un fallo de desarrollo y se ve en la primera prueba |
+
+Añadir una columna que admite `null` es exactamente lo que `@AutoMigration` resuelve sola a partir de
+los esquemas exportados a `core/database/schemas/`, que ya se exportaban desde la Fase 2 sin que
+nadie los usara para nada. La bajada de versión sí se queda destructiva: el código no puede conocer
+un esquema del futuro, y en la práctica ocurre al saltar entre ramas en desarrollo.
+
+**La mitad simétrica está en el navegador.** Ahí no hay Room ni migraciones: el DTO guardado gana un
+campo `note` **con valor por defecto**, de modo que un historial escrito por una versión anterior
+—donde esa clave no existía— sigue decodificando. Sin el defecto, `load()` habría descartado el
+historial entero al primer fallo de deserialización, que es su comportamiento correcto ante datos
+ilegibles y aquí habría sido igual de destructivo. Las dos plataformas migran o ninguna.
+
+### Reinsertar una lectura borraba su nota
+
+El DAO usaba `@Insert(onConflict = REPLACE)`, y en SQLite `REPLACE` es un borrado seguido de un alta.
+El id de una detección es determinista —motor, instante y valor—, así que volver a leer el mismo
+código en el mismo milisegundo reemplazaba la fila y **se llevaba la nota por delante**.
+
+Pasa a `IGNORE`. Una fila en conflicto es por construcción la misma lectura, con los mismos campos de
+máquina; lo único que pudo cambiar es lo que escribió el usuario. Ignorar el alta es igual de
+idempotente y no destruye nada. Es además lo que ya hacía `InMemoryScanHistoryRepository`, que
+comprobaba el id antes de añadir: las tres implementaciones coinciden ahora en la misma regla, que es
+la condición para que los historiales de las cuatro plataformas sigan siendo comparables.
+
+### La poda distingue lo que el usuario anotó
+
+`trimTo(500)` borraba por antigüedad. Con notas, eso es perder sin avisar lo único del historial que
+alguien se molestó en escribir a mano. La cláusula pasa a ser `WHERE note IS NULL`, y sus dos gemelas
+de `:core:data` comparten `trimmedKeepingNotes`. El techo sigue acotando lo que genera volumen —una
+sesión continua deja cientos de lecturas y ninguna nota— y deja de tocar lo demás.
 
 ### El driver no se aplicaba: una extensión tapada por un miembro
 
@@ -1024,6 +1101,7 @@ información que solo existía como posición o como color":
 | Decodificación real | `jvmTest` | ZXing (Java) decodificando imágenes que el propio ZXing genera en el test | kotlin-test |
 | **Grafo de dependencias** | `desktopTest` | Que el grafo real de Koin **resuelva**: arranca los módulos y pide cada tipo que la raíz de la app consume (`KoinGraphTest`, §10) | kotlin-test, koin-core |
 | Contraste de la paleta | `commonTest` | 56 pares de color contra su umbral WCAG, sobre los dos esquemas (§12.1) | kotlin-test |
+| Notas, búsqueda y borrado | `commonTest` | Que anotar, buscar por nota, borrar una fila y confirmar el vaciado hagan lo que dicen, y que la poda no se lleve lo anotado | kotlin-test, turbine |
 
 Objetivo de cobertura: **≥ 80 % en `:core:domain` y `:core:data`**; la UI no se persigue por
 cobertura sino por casos de estado representativos.
@@ -1359,8 +1437,8 @@ contiene el archivo y `:core:platform` (`FileSaver`) dónde acaba. Es el tercer 
 del módulo — [PlatformActions] son acciones instantáneas, `ImagePicker` trae algo de fuera y esto
 lleva algo hacia fuera.
 
-Se exporta **lo que se está viendo**, no todo el historial: si el usuario filtró por un motor, un
-archivo con el conjunto entero no se parecería a la pantalla que tiene delante.
+Se exporta **lo que se está viendo**, no todo el historial: si el usuario filtró por un motor o buscó
+algo, un archivo con el conjunto entero no se parecería a la pantalla que tiene delante.
 
 #### El dominio no redacta frases
 
@@ -1383,6 +1461,14 @@ escaneado, y por eso el JSON —donde no hay nada que ejecutar— lo conserva in
 El resto del CSV sigue RFC 4180: se entrecomilla cuando el valor lleva comas, comillas o saltos de
 línea, y las comillas internas se duplican. No es teórico: una vCard leída de un QR trae las tres
 cosas.
+
+**La nota del usuario pasa por exactamente el mismo guardado**, y ahí el razonamiento se invierte de
+forma interesante: al valor leído se le desconfía porque viene de un código que pudo poner cualquiera,
+mientras que la nota la escribe el propio dueño del archivo. Da igual — una nota que empiece por `-`
+o por `=` no necesita mala intención para que la hoja de cálculo la ejecute, y las comas y los saltos
+de línea son mucho más probables en texto que escribe una persona que en un código de barras. La
+columna `note` va **la última** para que quien tenga un script leyendo por posición no se rompa al
+añadirla.
 
 Los nombres de columna y las claves JSON están en inglés y en `snake_case` aunque la app esté en
 español. No es interfaz: es un archivo que abre una hoja de cálculo o consume un script, y traducir
@@ -1548,6 +1634,24 @@ reabriría la cámara que el usuario acaba de cerrar a mano con el botón de pau
 límite. Lo que se recorta no se pierde —el historial guarda todo, y ese es su trabajo— y deja de
 ocupar memoria en una pantalla donde nadie se desplaza cien lecturas hacia abajo.
 
+#### Pausado es un estado, no una espera
+
+`ViewfinderArea` resuelve con un `when` las cosas excluyentes que pueden ocupar ese espacio, y hasta
+esta versión eran cuatro: cargando, permiso, sin cámara, o cámara. **Faltaba una quinta y el `when`
+la absorbía por la rama final.**
+
+Al pausar, el ViewModel pone `activeEngineId = null` —correcto, no hay motor corriendo— y con él
+desaparece la superficie de preview. Sin caso propio, eso caía en el `else` y dejaba un
+`CircularProgressIndicator` **girando indefinidamente**: la señal universal de "esto está a punto de
+terminar" sobre algo que no iba a terminar nunca, porque estaba esperando al usuario. Y como
+`SessionBadge` sí sabía distinguirlo, la pantalla llegaba a contradecirse a sí misma: la píldora
+decía "Pausado" encima de un spinner.
+
+Ahora el spinner solo aparece mientras `SessionStatus.Starting`, que es cuando de verdad hay algo en
+marcha, y pausado tiene la misma forma que los otros dos estados que sustituyen al visor —icono,
+qué pasa, qué hacer—. La lección general es la de siempre con los `when`: **la rama `else` no es un
+caso, es el sitio donde se esconden los que no se enumeraron.**
+
 ---
 
 ## 16. Anexo — Decisiones registradas
@@ -1565,3 +1669,4 @@ ocupar memoria en una pantalla donde nadie se desplaza cien lecturas hacia abajo
 | [ADR-0009](adr/ADR-0009-play-feature-delivery-aplazado.md) | Play Feature Delivery se aplaza: incompatible con KMP, exige Play Store y no hay medición |
 | [ADR-0010](adr/ADR-0010-dos-disposiciones-de-la-pantalla-de-escaneo.md) | La pantalla de escaneo tiene dos disposiciones —producto y banco de pruebas— y no una con condicionales |
 | [ADR-0011](adr/ADR-0011-idioma-de-la-app-por-encima-del-sistema.md) | El idioma de la app se fija cambiando el locale de la plataforma: `LocalComposeEnvironment` es `internal` |
+| [ADR-0012](adr/ADR-0012-la-nota-es-del-historial-no-de-la-deteccion.md) | La nota del usuario es un tercer nivel del modelo (`HistoryEntry`) y no un campo de `Detection` |
